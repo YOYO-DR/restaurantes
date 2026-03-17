@@ -1,0 +1,19 @@
+Hola {{ order.customer_name|default:"cliente" }},
+
+Recibimos tu pedido {{ order.order_code }} en {{ restaurant.display_name }}.
+
+Tipo de pedido: {{ order.order_type.name }}
+{% if fulfillment and fulfillment.table %}Mesa: {{ fulfillment.table.table_number }}
+{% endif %}{% if fulfillment and fulfillment.delivery_address_text %}Direccion: {{ fulfillment.delivery_address_text }}
+{% endif %}
+Detalle:
+{% for item in items %}- {{ item.quantity }}x {{ item.item_name_snapshot }} - {{ item.line_total_amount }} {{ order.currency_code }}
+{% endfor %}
+
+Subtotal: {{ order.subtotal_amount }} {{ order.currency_code }}
+Domicilio: {{ order.delivery_fee_amount }} {{ order.currency_code }}
+Total: {{ order.total_amount }} {{ order.currency_code }}
+
+Notas: {{ order.customer_notes|default:"Sin notas" }}
+
+Te avisaremos cuando el restaurante actualice el estado de tu pedido.

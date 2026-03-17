@@ -1,0 +1,47 @@
+<html>
+  <body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,sans-serif;color:#0f172a;">
+    <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
+      <div style="padding:24px;background:linear-gradient(135deg,#f97316,#fb7185);color:#ffffff;">
+        <p style="margin:0 0 8px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.9;">FoodHub</p>
+        <h1 style="margin:0;font-size:28px;">Pedido confirmado</h1>
+        <p style="margin:12px 0 0;font-size:15px;opacity:.95;">{{ restaurant.display_name }} recibio tu orden {{ order.order_code }}.</p>
+      </div>
+      <div style="padding:24px;">
+        <p style="margin-top:0;">Hola <strong>{{ order.customer_name|default:"cliente" }}</strong>, aqui tienes el resumen de tu pedido.</p>
+
+        <div style="margin:20px 0;padding:16px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc;">
+          <p style="margin:0 0 8px;"><strong>Tipo:</strong> {{ order.order_type.name }}</p>
+          {% if fulfillment and fulfillment.table %}<p style="margin:0 0 8px;"><strong>Mesa:</strong> {{ fulfillment.table.table_number }}</p>{% endif %}
+          {% if fulfillment and fulfillment.delivery_address_text %}<p style="margin:0;"><strong>Direccion:</strong> {{ fulfillment.delivery_address_text }}</p>{% endif %}
+        </div>
+
+        <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+          <thead>
+            <tr>
+              <th align="left" style="padding:12px;border-bottom:1px solid #e2e8f0;font-size:12px;text-transform:uppercase;color:#64748b;">Producto</th>
+              <th align="center" style="padding:12px;border-bottom:1px solid #e2e8f0;font-size:12px;text-transform:uppercase;color:#64748b;">Cant.</th>
+              <th align="right" style="padding:12px;border-bottom:1px solid #e2e8f0;font-size:12px;text-transform:uppercase;color:#64748b;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items %}
+              <tr>
+                <td style="padding:12px;border-bottom:1px solid #f1f5f9;">{{ item.item_name_snapshot }}</td>
+                <td align="center" style="padding:12px;border-bottom:1px solid #f1f5f9;">{{ item.quantity }}</td>
+                <td align="right" style="padding:12px;border-bottom:1px solid #f1f5f9;">{{ item.line_total_amount }} {{ order.currency_code }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;">
+          <p style="margin:0 0 8px;"><strong>Subtotal:</strong> {{ order.subtotal_amount }} {{ order.currency_code }}</p>
+          <p style="margin:0 0 8px;"><strong>Domicilio:</strong> {{ order.delivery_fee_amount }} {{ order.currency_code }}</p>
+          <p style="margin:0;font-size:18px;"><strong>Total:</strong> {{ order.total_amount }} {{ order.currency_code }}</p>
+        </div>
+
+        <p style="margin:20px 0 0;color:#475569;">{{ order.customer_notes|default:"Sin notas adicionales." }}</p>
+      </div>
+    </div>
+  </body>
+</html>
