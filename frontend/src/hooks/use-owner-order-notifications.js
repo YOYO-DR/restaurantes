@@ -14,7 +14,7 @@ export function useOwnerOrderNotifications(ownerId, onNewOrder) {
       return undefined
     }
 
-    const socket = new WebSocket(buildSocketUrl(`/ws/orders/${ownerId}/`))
+    const socket = new WebSocket(buildSocketUrl(`/api/ws/orders/${ownerId}/`))
 
     socket.onmessage = (event) => {
       try {
@@ -49,7 +49,7 @@ export function useUserOrderNotifications(userId, onOrderUpdate) {
     }
 
     const socket = new WebSocket(
-      buildSocketUrl(`/ws/user-orders/${userId}/?access_token=${encodeURIComponent(accessToken)}`)
+      buildSocketUrl(`/api/ws/user-orders/${userId}/?access_token=${encodeURIComponent(accessToken)}`)
     )
 
     socket.onmessage = (event) => {
@@ -76,7 +76,7 @@ export function useGuestOrderNotifications(orderId, onOrderUpdate) {
       return undefined
     }
 
-    const socket = new WebSocket(buildSocketUrl(`/ws/guest-orders/${orderId}/`))
+    const socket = new WebSocket(buildSocketUrl(`/api/ws/guest-orders/${orderId}/`))
 
     socket.onmessage = (event) => {
       try {
