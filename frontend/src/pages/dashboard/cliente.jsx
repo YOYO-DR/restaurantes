@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -8,13 +9,25 @@ import { formatCurrency } from "@/lib/format"
 import { ArrowRight, Clock, ShoppingBag, Star, Utensils } from "lucide-react"
 
 export default function ClientDashboardPage() {
-  const { data, isLoading, error } = useCustomerDashboard()
+  const [orderScope, setOrderScope] = useState("all")
+  const { data, isLoading, error } = useCustomerDashboard(orderScope)
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <h2 className="text-2xl font-bold tracking-tight">Hola, {data.user_name || ""}!</h2>
-        <p className="text-muted-foreground">Bienvenido a tu cuenta de FoodHub</p>
+        <div className="space-y-2">
+          <p className="text-muted-foreground">Bienvenido a tu cuenta de FoodHub</p>
+          <select
+            value={orderScope}
+            onChange={(event) => setOrderScope(event.target.value)}
+            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="all">Todas las ordenes</option>
+            <option value="completed">Completadas</option>
+            <option value="non_completed">No finalizadas</option>
+          </select>
+        </div>
       </div>
 
       {isLoading ? <DashboardShellSkeleton /> : null}

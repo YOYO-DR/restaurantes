@@ -1,11 +1,11 @@
 export function dashboardPathByRole(role) {
-  if (role === "admin") {
-    return "/dashboard/admin"
-  }
-  if (role === "restaurante" || role === "dueno") {
-    return "/dashboard/restaurante"
-  }
-  return "/dashboard/cliente"
+    if (role === "admin") {
+        return "/dashboard/admin"
+    }
+    if (role === "restaurante" || role === "dueno") {
+        return "/dashboard/restaurante"
+    }
+    return "/dashboard/cliente"
 }
 
 function dashboardPrefixByRole(role) {

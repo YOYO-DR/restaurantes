@@ -34,6 +34,9 @@ class UserRole(BaseModel):
                 fields=("user", "role"), name="uniq_accounts_user_role"
             ),
         ]
+    
+    def __str__(self):
+        return f"{self.user.email} - {self.role.name}"
 
 
 class UserProfile(BaseModel):

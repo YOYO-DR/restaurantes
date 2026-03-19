@@ -3,6 +3,11 @@ from rest_framework.routers import DefaultRouter
 from rest_framework.routers import SimpleRouter
 
 from apps.accounts.api.views import AccountProfileViewSet
+from apps.accounts.api.views import AdminDashboardViewSet
+from apps.accounts.api.views import AdminReportsViewSet
+from apps.accounts.api.views import AdminRestaurantsViewSet
+from apps.accounts.api.views import AdminSettingsViewSet
+from apps.accounts.api.views import AdminUsersViewSet
 from apps.menu.api.views import OwnerMenuCategoryViewSet
 from apps.menu.api.views import OwnerMenuCrudItemViewSet
 from apps.menu.api.views import OwnerInventoryItemViewSet
@@ -22,6 +27,13 @@ from apps.users.api.views import UserViewSet
 router = DefaultRouter() if settings.DEBUG else SimpleRouter()
 
 router.register("account/profile", AccountProfileViewSet, basename="account-profile")
+router.register("admin/dashboard", AdminDashboardViewSet, basename="admin-dashboard")
+router.register("admin/users", AdminUsersViewSet, basename="admin-users")
+router.register(
+    "admin/restaurants", AdminRestaurantsViewSet, basename="admin-restaurants"
+)
+router.register("admin/reports", AdminReportsViewSet, basename="admin-reports")
+router.register("admin/settings", AdminSettingsViewSet, basename="admin-settings")
 router.register("users", UserViewSet)
 router.register("restaurants", PublicRestaurantViewSet, basename="restaurant")
 router.register(

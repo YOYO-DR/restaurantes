@@ -14,7 +14,14 @@ export function useOwnerOrderNotifications(ownerId, onNewOrder) {
       return undefined
     }
 
-    const socket = new WebSocket(buildSocketUrl(`/api/ws/orders/${ownerId}/`))
+    const accessToken = getAccessToken()
+    if (!accessToken) {
+      return undefined
+    }
+
+    const socket = new WebSocket(
+      buildSocketUrl(`/api/ws/orders/${ownerId}/?access_token=${encodeURIComponent(accessToken)}`)
+    )
 
     socket.onmessage = (event) => {
       try {

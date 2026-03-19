@@ -1,286 +1,288 @@
-import { useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Settings, Lock, Bell, Shield, Database, Loader2, Save, } from 'lucide-react';
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import { Bell, Database, Loader2, Lock, Save, Settings, Shield } from "lucide-react"
+
+import { DashboardShellSkeleton } from "@/components/ui/app-skeletons"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { useAdminSettings } from "@/hooks/use-admin"
+
+const TABS = [
+  { id: "general", label: "General", icon: Settings },
+  { id: "security", label: "Seguridad", icon: Lock },
+  { id: "notifications", label: "Notificaciones", icon: Bell },
+  { id: "compliance", label: "Cumplimiento", icon: Shield },
+]
+
 export default function AdminSettings() {
-    const [activeTab, setActiveTab] = useState('general');
-    const [isSaving, setIsSaving] = useState(false);
-    const handleSave = async () => {
-        setIsSaving(true);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        setIsSaving(false);
-    };
-    return (<div className="space-y-8">
-      {/* Header */}
+  const [activeTab, setActiveTab] = useState("general")
+  const [form, setForm] = useState(null)
+  const { data, isLoading, isSaving, error, saveSettings } = useAdminSettings()
+
+  useEffect(() => {
+    if (!data) {
+      return
+    }
+
+    setForm({
+      general: {
+        platform_name: data.general.platform_name || "",
+        support_email: data.general.support_email || "",
+        support_phone: data.general.support_phone || "",
+        support_address: data.general.support_address || "",
+        default_currency_code: data.general.default_currency_code || "COP",
+        default_locale: data.general.default_locale || "es-CO",
+        maintenance_mode: Boolean(data.general.maintenance_mode),
+      },
+      security: {
+        require_2fa_admin: Boolean(data.security.require_2fa_admin),
+        require_restaurant_verification: Boolean(data.security.require_restaurant_verification),
+        encrypt_payment_data: Boolean(data.security.encrypt_payment_data),
+        backup_frequency: data.security.backup_frequency || "daily",
+        backup_retention_days: String(data.security.backup_retention_days || 30),
+      },
+    })
+  }, [data])
+
+  const handleSave = async () => {
+    if (!form) {
+      return
+    }
+
+    try {
+      await saveSettings({
+        general: form.general,
+        security: {
+          ...form.security,
+          backup_retention_days: Number(form.security.backup_retention_days || 0),
+        },
+      })
+      toast.success("Configuracion administrativa actualizada")
+    } catch {
+      toast.error("No fue posible guardar la configuracion")
+    }
+  }
+
+  return (
+    <div className="space-y-8">
       <div>
-        <h1 className="text-4xl font-display font-bold text-foreground">
-          Configuración
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Administra la configuración general de la plataforma
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Configuracion</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Panel real para parametros globales de plataforma y seguridad operacional.
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 border-b border-border overflow-x-auto">
-        {[
-            { id: 'general', label: 'General', icon: Settings },
-            { id: 'security', label: 'Seguridad', icon: Lock },
-            { id: 'notifications', label: 'Notificaciones', icon: Bell },
-            { id: 'compliance', label: 'Cumplimiento', icon: Shield },
-        ].map(({ id, label, icon: Icon }) => (<button key={id} onClick={() => setActiveTab(id)} className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${activeTab === id
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
-            <Icon className="w-4 h-4"/>
+      <div className="flex gap-2 overflow-x-auto border-b border-border">
+        {TABS.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setActiveTab(id)}
+            className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm transition-colors ${
+              activeTab === id
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Icon className="h-4 w-4" />
             {label}
-          </button>))}
+          </button>
+        ))}
       </div>
 
-      {/* General Settings */}
-      {activeTab === 'general' && (<div className="space-y-6">
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-foreground mb-6">
-              Información de la Plataforma
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Nombre de la Plataforma
-                </label>
-                <Input defaultValue="FoodHub" className="w-full"/>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Email de Soporte
-                </label>
-                <Input type="email" defaultValue="support@foodhub.com" className="w-full"/>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Teléfono de Soporte
-                </label>
-                <Input defaultValue="+57 600 123 4567" className="w-full"/>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Dirección
-                </label>
-                <Input defaultValue="Bogotá, Colombia" className="w-full"/>
-              </div>
-            </div>
-          </Card>
+      {isLoading ? <DashboardShellSkeleton /> : null}
+      {error ? <div className="text-sm text-destructive">{error}</div> : null}
 
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-foreground mb-6">
-              Configuración de Negocio
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Comisión por Orden (%)
-                </label>
-                <Input type="number" defaultValue="10" className="w-full"/>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Costo de Envío Base ($)
-                </label>
-                <Input type="number" defaultValue="2.50" className="w-full"/>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Hora de Corte para Órdenes del Día
-                </label>
-                <Input type="time" defaultValue="23:59" className="w-full"/>
-              </div>
-            </div>
-          </Card>
-        </div>)}
+      {!isLoading && form ? (
+        <>
+          {activeTab === "general" ? (
+            <div className="grid gap-6 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Informacion de plataforma</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Field label="Nombre de la plataforma">
+                    <Input value={form.general.platform_name} onChange={(event) => setForm((current) => ({ ...current, general: { ...current.general, platform_name: event.target.value } }))} />
+                  </Field>
+                  <Field label="Email de soporte">
+                    <Input type="email" value={form.general.support_email} onChange={(event) => setForm((current) => ({ ...current, general: { ...current.general, support_email: event.target.value } }))} />
+                  </Field>
+                  <Field label="Telefono de soporte">
+                    <Input value={form.general.support_phone} onChange={(event) => setForm((current) => ({ ...current, general: { ...current.general, support_phone: event.target.value } }))} />
+                  </Field>
+                  <Field label="Direccion de soporte">
+                    <Input value={form.general.support_address} onChange={(event) => setForm((current) => ({ ...current, general: { ...current.general, support_address: event.target.value } }))} />
+                  </Field>
+                </CardContent>
+              </Card>
 
-      {/* Security Settings */}
-      {activeTab === 'security' && (<div className="space-y-6">
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-foreground mb-6">
-              Configuración de Seguridad
-            </h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                <div>
-                  <p className="font-medium text-foreground">
-                    Autenticación de Dos Factores
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Requiere verificación adicional para acceso a admin
-                  </p>
-                </div>
-                <input type="checkbox" defaultChecked className="w-6 h-6 rounded"/>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                <div>
-                  <p className="font-medium text-foreground">
-                    Verificación de Identidad de Restaurantes
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Requerir documentos antes de activar restaurante
-                  </p>
-                </div>
-                <input type="checkbox" defaultChecked className="w-6 h-6 rounded"/>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                <div>
-                  <p className="font-medium text-foreground">
-                    Encriptación de Datos de Pago
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Usar estándar PCI-DSS
-                  </p>
-                </div>
-                <input type="checkbox" defaultChecked className="w-6 h-6 rounded"/>
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Preferencias globales</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Field label="Moneda por defecto">
+                    <Input value={form.general.default_currency_code} onChange={(event) => setForm((current) => ({ ...current, general: { ...current.general, default_currency_code: event.target.value.toUpperCase() } }))} />
+                  </Field>
+                  <Field label="Locale por defecto">
+                    <Input value={form.general.default_locale} onChange={(event) => setForm((current) => ({ ...current, general: { ...current.general, default_locale: event.target.value } }))} />
+                  </Field>
+                  <ToggleRow
+                    title="Modo mantenimiento"
+                    description="Permite activar una bandera global de mantenimiento para la plataforma."
+                    checked={form.general.maintenance_mode}
+                    onChange={(checked) => setForm((current) => ({ ...current, general: { ...current.general, maintenance_mode: checked } }))}
+                  />
+                </CardContent>
+              </Card>
             </div>
-          </Card>
+          ) : null}
 
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-foreground mb-6">
-              Contraseña de Administrador
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Contraseña Actual
-                </label>
-                <Input type="password" className="w-full"/>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Nueva Contraseña
-                </label>
-                <Input type="password" className="w-full"/>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Confirmar Nueva Contraseña
-                </label>
-                <Input type="password" className="w-full"/>
-              </div>
-            </div>
-          </Card>
-        </div>)}
+          {activeTab === "security" ? (
+            <div className="grid gap-6 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Seguridad</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <ToggleRow
+                    title="Requerir 2FA para admins"
+                    description="Bandera operativa para reforzar acceso privilegiado."
+                    checked={form.security.require_2fa_admin}
+                    onChange={(checked) => setForm((current) => ({ ...current, security: { ...current.security, require_2fa_admin: checked } }))}
+                  />
+                  <ToggleRow
+                    title="Verificacion de restaurantes"
+                    description="Controla si el onboarding requiere revision administrativa."
+                    checked={form.security.require_restaurant_verification}
+                    onChange={(checked) => setForm((current) => ({ ...current, security: { ...current.security, require_restaurant_verification: checked } }))}
+                  />
+                  <ToggleRow
+                    title="Encriptar datos de pago"
+                    description="Bandera documental para la politica de manejo de pagos."
+                    checked={form.security.encrypt_payment_data}
+                    onChange={(checked) => setForm((current) => ({ ...current, security: { ...current.security, encrypt_payment_data: checked } }))}
+                  />
+                </CardContent>
+              </Card>
 
-      {/* Notifications Settings */}
-      {activeTab === 'notifications' && (<Card className="p-6">
-          <h3 className="text-lg font-semibold text-foreground mb-6">
-            Preferencias de Notificaciones
-          </h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-              <div>
-                <p className="font-medium text-foreground">
-                  Órdenes Nuevas
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Notificar cuando hay nuevas órdenes en restaurantes
-                </p>
-              </div>
-              <input type="checkbox" defaultChecked className="w-6 h-6 rounded"/>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Backups y retencion</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Field label="Frecuencia de backup">
+                    <select
+                      value={form.security.backup_frequency}
+                      onChange={(event) => setForm((current) => ({ ...current, security: { ...current.security, backup_frequency: event.target.value } }))}
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      {data.catalogs.backup_frequencies.map((option) => (
+                        <option key={option.code} value={option.code}>{option.name}</option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Dias de retencion">
+                    <Input
+                      type="number"
+                      min="1"
+                      value={form.security.backup_retention_days}
+                      onChange={(event) => setForm((current) => ({ ...current, security: { ...current.security, backup_retention_days: event.target.value } }))}
+                    />
+                  </Field>
+                </CardContent>
+              </Card>
             </div>
-            <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-              <div>
-                <p className="font-medium text-foreground">
-                  Problemas de Pago
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Notificar sobre transacciones fallidas
-                </p>
-              </div>
-              <input type="checkbox" defaultChecked className="w-6 h-6 rounded"/>
+          ) : null}
+
+          {activeTab === "notifications" ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Indicadores operativos actuales</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-4 md:grid-cols-2">
+                <InfoBlock title="Email de soporte activo" value={data.general.support_email || "Sin definir"} />
+                <InfoBlock title="Telefono de soporte" value={data.general.support_phone || "Sin definir"} />
+                <InfoBlock title="Modo mantenimiento" value={data.general.maintenance_mode ? "Activo" : "Inactivo"} />
+                <InfoBlock title="2FA administradores" value={data.security.require_2fa_admin ? "Requerido" : "No requerido"} />
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {activeTab === "compliance" ? (
+            <div className="grid gap-6 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Planes disponibles</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {data.catalogs.subscription_plans.map((plan) => (
+                    <div key={plan.code} className="rounded-xl border border-border/70 p-4">
+                      <p className="font-medium text-foreground">{plan.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {plan.billing_period} · {plan.currency_code} {plan.price_amount}
+                      </p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Capacidad de cumplimiento actual</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <InfoBlock title="Frecuencia de backup" value={data.security.backup_frequency_label} />
+                  <InfoBlock title="Retencion" value={`${data.security.backup_retention_days} dias`} />
+                  <InfoBlock title="Verificacion de restaurantes" value={data.security.require_restaurant_verification ? "Habilitada" : "Deshabilitada"} />
+                  <Button variant="outline" className="w-full justify-start gap-2" disabled>
+                    <Database className="h-4 w-4" />
+                    Accion manual de backup aun no implementada
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
-            <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-              <div>
-                <p className="font-medium text-foreground">
-                  Reportes de Usuarios
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Notificar sobre reportes de usuarios
-                </p>
-              </div>
-              <input type="checkbox" defaultChecked className="w-6 h-6 rounded"/>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-              <div>
-                <p className="font-medium text-foreground">
-                  Mantenimiento del Sistema
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Notificar sobre actualizaciones del sistema
-                </p>
-              </div>
-              <input type="checkbox" defaultChecked className="w-6 h-6 rounded"/>
-            </div>
+          ) : null}
+
+          <div className="flex justify-end">
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              {isSaving ? "Guardando..." : "Guardar cambios"}
+            </Button>
           </div>
-        </Card>)}
+        </>
+      ) : null}
+    </div>
+  )
+}
 
-      {/* Compliance Settings */}
-      {activeTab === 'compliance' && (<div className="space-y-6">
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-foreground mb-6">
-              Cumplimiento Normativo
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Política de Privacidad (URL)
-                </label>
-                <Input defaultValue="https://foodhub.com/privacy" className="w-full"/>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Términos y Condiciones (URL)
-                </label>
-                <Input defaultValue="https://foodhub.com/terms" className="w-full"/>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Política de Cookies (URL)
-                </label>
-                <Input defaultValue="https://foodhub.com/cookies" className="w-full"/>
-              </div>
-            </div>
-          </Card>
+function Field({ label, children }) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-medium text-foreground">{label}</label>
+      {children}
+    </div>
+  )
+}
 
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-foreground mb-6">
-              Datos y Base de Datos
-            </h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                <div>
-                  <p className="font-medium text-foreground">
-                    Última Copia de Seguridad
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Marzo 14, 2024 - 02:30 AM
-                  </p>
-                </div>
-                <Button variant="outline" size="sm">
-                  Ver
-                </Button>
-              </div>
-              <Button variant="outline" className="w-full">
-                <Database className="w-4 h-4 mr-2"/>
-                Realizar Copia de Seguridad Ahora
-              </Button>
-            </div>
-          </Card>
-        </div>)}
-
-      {/* Save Button */}
-      <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={isSaving}>
-          {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Save className="w-4 h-4 mr-2"/>}
-          {isSaving ? 'Guardando...' : 'Guardar Cambios'}
-        </Button>
+function ToggleRow({ title, description, checked, onChange }) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-xl border border-border/70 p-4">
+      <div>
+        <p className="font-medium text-foreground">{title}</p>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </div>
-    </div>);
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="h-5 w-5 rounded" />
+    </div>
+  )
+}
+
+function InfoBlock({ title, value }) {
+  return (
+    <div className="rounded-xl border border-border/70 p-4">
+      <p className="text-sm text-muted-foreground">{title}</p>
+      <p className="mt-1 font-medium text-foreground">{value}</p>
+    </div>
+  )
 }

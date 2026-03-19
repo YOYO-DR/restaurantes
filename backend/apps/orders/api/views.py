@@ -1,13 +1,16 @@
-from rest_framework import permissions
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
-from apps.orders.api.throttles import CheckoutOrderRateThrottle
-from apps.accounts.models import UserRole
+from rest_framework import permissions
+
+from apps.core.permissions import IsAuthenticatedUser
+from apps.core.permissions import IsOwnerOrAdminRole
+from apps.core.permissions import is_admin_user
 from apps.orders.api.serializers import CheckoutSerializer
+from apps.orders.api.throttles import CheckoutOrderRateThrottle
 from apps.orders.api.serializers import OrderCancelSerializer
 from apps.orders.api.serializers import OrderSerializer
 from apps.orders.api.serializers import OwnerOrderStatusUpdateSerializer
@@ -18,15 +21,8 @@ from apps.orders.services import notify_order_cancelled
 from apps.orders.services import notify_order_status_updated
 
 
-def _is_admin(user) -> bool:
-    return (
-        user.is_authenticated
-        and UserRole.objects.filter(user=user, role__code="admin").exists()
-    )
-
-
 class CustomerOrderViewSet(ReadOnlyModelViewSet):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedUser]
     serializer_class = OrderSerializer
 
     def get_queryset(self):
@@ -183,7 +179,7 @@ class CheckoutViewSet(GenericViewSet):
 
 
 class OwnerOrderViewSet(ReadOnlyModelViewSet):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsOwnerOrAdminRole]
     serializer_class = OrderSerializer
 
     def get_queryset(self):
@@ -199,7 +195,7 @@ class OwnerOrderViewSet(ReadOnlyModelViewSet):
             .prefetch_related("status_history__status")
             .order_by("-created_at")
         )
-        if _is_admin(self.request.user):
+        if is_admin_user(self.request.user):
             return queryset
         return queryset.filter(restaurant__owner=self.request.user)
 

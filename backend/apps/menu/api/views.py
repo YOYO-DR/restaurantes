@@ -5,7 +5,10 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.viewsets import ModelViewSet
 
-from apps.accounts.models import UserRole
+from apps.core.permissions import IsAuthenticatedUser
+from apps.core.permissions import IsOwnerOfRestaurantResourceOrAdminRole
+from apps.core.permissions import IsOwnerOrAdminRole
+from apps.core.permissions import is_admin_user
 from apps.menu.api.serializers import OwnerMenuCategoryWriteSerializer
 from apps.menu.api.serializers import OwnerMenuItemWriteSerializer
 from apps.menu.api.serializers import MenuItemAvailabilitySerializer
@@ -19,26 +22,8 @@ from apps.menu.models import MenuItem
 from apps.menu.services import ensure_inventory_catalogs
 
 
-def _is_admin(user) -> bool:
-    return (
-        user.is_authenticated
-        and UserRole.objects.filter(
-            user=user,
-            role__code="admin",
-        ).exists()
-    )
-
-
-class IsMenuOwnerOrAdmin(permissions.BasePermission):
-    def has_permission(self, request, view) -> bool:
-        return request.user.is_authenticated
-
-    def has_object_permission(self, request, view, obj: MenuItem) -> bool:
-        return _is_admin(request.user) or obj.restaurant.owner_id == request.user.id
-
-
 class OwnerMenuItemViewSet(GenericViewSet):
-    permission_classes = [IsMenuOwnerOrAdmin]
+    permission_classes = [IsOwnerOfRestaurantResourceOrAdminRole]
     serializer_class = MenuItemAvailabilitySerializer
     queryset = MenuItem.objects.select_related("restaurant")
 
@@ -55,13 +40,13 @@ class OwnerMenuItemViewSet(GenericViewSet):
 
 
 class OwnerMenuCategoryViewSet(ModelViewSet):
-    permission_classes = [IsMenuOwnerOrAdmin]
+    permission_classes = [IsOwnerOfRestaurantResourceOrAdminRole]
     serializer_class = OwnerMenuCategoryWriteSerializer
     queryset = MenuCategory.objects.select_related("restaurant")
 
     def get_queryset(self):
         queryset = self.queryset.order_by("sort_order", "name")
-        if _is_admin(self.request.user):
+        if is_admin_user(self.request.user):
             filtered_queryset = queryset
         else:
             filtered_queryset = queryset.filter(restaurant__owner=self.request.user)
@@ -92,25 +77,25 @@ class OwnerMenuCategoryViewSet(ModelViewSet):
 
 
 class OwnerMenuCrudItemViewSet(ModelViewSet):
-    permission_classes = [IsMenuOwnerOrAdmin]
+    permission_classes = [IsOwnerOfRestaurantResourceOrAdminRole]
     serializer_class = OwnerMenuItemWriteSerializer
     queryset = MenuItem.objects.select_related("restaurant", "menu_category")
 
     def get_queryset(self):
         queryset = self.queryset.order_by("name")
-        if _is_admin(self.request.user):
+        if is_admin_user(self.request.user):
             return queryset
         return queryset.filter(restaurant__owner=self.request.user)
 
 
 class OwnerInventoryItemViewSet(ModelViewSet):
-    permission_classes = [IsMenuOwnerOrAdmin]
+    permission_classes = [IsOwnerOfRestaurantResourceOrAdminRole]
     serializer_class = InventoryItemSerializer
     queryset = InventoryItem.objects.select_related("restaurant", "unit_type")
 
     def get_queryset(self):
         queryset = self.queryset.order_by("name")
-        if _is_admin(self.request.user):
+        if is_admin_user(self.request.user):
             filtered_queryset = queryset
         else:
             filtered_queryset = queryset.filter(restaurant__owner=self.request.user)
@@ -145,7 +130,7 @@ class OwnerInventoryItemViewSet(ModelViewSet):
 
 
 class OwnerInventoryMetadataViewSet(GenericViewSet):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedUser]
 
     def list(self, request, *args, **kwargs):
         ensure_inventory_catalogs()

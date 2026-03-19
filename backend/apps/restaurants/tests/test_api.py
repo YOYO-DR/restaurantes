@@ -173,6 +173,20 @@ def test_owner_cannot_view_other_restaurant_menu(api_client: APIClient):
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
+def test_owner_cannot_view_other_restaurant_dashboard(api_client: APIClient):
+    owner = UserFactory()
+    other_owner = UserFactory()
+    assign_role(owner, "restaurante")
+    restaurant = create_restaurant_with_menu(owner=other_owner)
+    api_client.force_authenticate(user=owner)
+
+    response = api_client.get(
+        reverse("api:owner-restaurant-dashboard", kwargs={"pk": restaurant.pk})
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
 def test_owner_can_toggle_menu_item_availability(api_client: APIClient):
     owner = UserFactory()
     assign_role(owner, "restaurante")

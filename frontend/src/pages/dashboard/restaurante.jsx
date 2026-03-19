@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Link } from "react-router-dom"
 import { DashboardShellSkeleton } from "@/components/ui/app-skeletons"
 import { Badge } from "@/components/ui/badge"
@@ -8,23 +9,35 @@ import { formatCurrency } from "@/lib/format"
 import { ArrowRight, Clock, DollarSign, ShoppingBag, Star, TrendingUp, Users } from "lucide-react"
 
 export default function OwnerDashboardPage() {
-  const { data, isLoading, error } = useOwnerRestaurantDashboard()
+  const [orderScope, setOrderScope] = useState("all")
+  const { data, isLoading, error } = useOwnerRestaurantDashboard(orderScope)
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
           <p className="text-muted-foreground">
             Resumen de tu restaurante {data.restaurant?.name || ""}
           </p>
         </div>
-        <Button asChild>
-          <Link to="/dashboard/restaurante/pedidos">
-            Ver todos los pedidos
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          <select
+            value={orderScope}
+            onChange={(event) => setOrderScope(event.target.value)}
+            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="all">Todas las ordenes</option>
+            <option value="completed">Completadas</option>
+            <option value="non_completed">No finalizadas</option>
+          </select>
+          <Button asChild>
+            <Link to="/dashboard/restaurante/pedidos">
+              Ver todos los pedidos
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {isLoading ? <DashboardShellSkeleton /> : null}

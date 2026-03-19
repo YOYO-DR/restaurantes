@@ -2,11 +2,11 @@ from datetime import timedelta
 
 from django.db.models import Avg
 from django.utils import timezone
-from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.viewsets import ModelViewSet
 
+from apps.core.permissions import IsAuthenticatedUser
 from apps.customers.api.serializers import CustomerAddressSerializer
 from apps.customers.api.serializers import FavoriteSerializer
 from apps.customers.models import Favorite
@@ -14,10 +14,11 @@ from apps.customers.models import CustomerAddress
 from apps.loyalty.models import LoyaltyAccount
 from apps.orders.api.serializers import OrderSerializer
 from apps.orders.models import Order
+from apps.orders.services import filter_orders_by_scope
 
 
 class CustomerAddressViewSet(ModelViewSet):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedUser]
     serializer_class = CustomerAddressSerializer
 
     def get_queryset(self):
@@ -27,13 +28,16 @@ class CustomerAddressViewSet(ModelViewSet):
 
 
 class CustomerDashboardViewSet(GenericViewSet):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedUser]
 
     def list(self, request):
         user = request.user
+        order_scope = request.query_params.get("order_scope", "all").strip()
+        orders_queryset = filter_orders_by_scope(
+            Order.objects.filter(user=user), order_scope
+        )
         recent_orders = (
-            Order.objects.filter(user=user)
-            .select_related(
+            orders_queryset.select_related(
                 "restaurant",
                 "status",
                 "order_type",
@@ -51,9 +55,9 @@ class CustomerDashboardViewSet(GenericViewSet):
         loyalty_account = (
             LoyaltyAccount.objects.filter(user=user).select_related("tier").first()
         )
-        total_orders = Order.objects.filter(user=user).count()
+        total_orders = orders_queryset.count()
         average_delivery_time = (
-            Order.objects.filter(user=user, order_type__code="delivery").aggregate(
+            orders_queryset.filter(order_type__code="delivery").aggregate(
                 avg=Avg("fulfillment__estimated_max_minutes")
             )["avg"]
             or 0
@@ -72,6 +76,7 @@ class CustomerDashboardViewSet(GenericViewSet):
                     if average_delivery_time
                     else 0,
                 },
+                "order_scope": order_scope,
                 "recent_orders": OrderSerializer(recent_orders, many=True).data,
                 "favorite_restaurants": [
                     {
@@ -92,7 +97,7 @@ class CustomerDashboardViewSet(GenericViewSet):
 
 
 class FavoriteViewSet(ModelViewSet):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedUser]
     serializer_class = FavoriteSerializer
 
     def get_queryset(self):

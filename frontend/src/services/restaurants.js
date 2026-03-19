@@ -71,8 +71,13 @@ export function getOwnerRestaurantMenu(restaurantId) {
   return apiJson(`/api/owner/restaurants/${restaurantId}/menu/`)
 }
 
-export function getOwnerRestaurantDashboard(restaurantId) {
-  return apiJson(`/api/owner/restaurants/${restaurantId}/dashboard/`)
+export function getOwnerRestaurantDashboard(restaurantId, orderScope = "all") {
+  const params = new URLSearchParams()
+  if (orderScope && orderScope !== "all") {
+    params.set("order_scope", orderScope)
+  }
+  const queryString = params.toString()
+  return apiJson(`/api/owner/restaurants/${restaurantId}/dashboard/${queryString ? `?${queryString}` : ""}`)
 }
 
 export function getOwnerRestaurantSettings(restaurantId) {

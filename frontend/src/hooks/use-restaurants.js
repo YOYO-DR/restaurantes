@@ -438,7 +438,7 @@ export function useOwnerRestaurantPersonalization() {
   }
 }
 
-export function useOwnerRestaurantDashboard() {
+export function useOwnerRestaurantDashboard(orderScope = "all") {
   const state = useAsyncState({
     restaurant: null,
     metrics: {
@@ -479,7 +479,7 @@ export function useOwnerRestaurantDashboard() {
           return
         }
 
-        const dashboard = await getOwnerRestaurantDashboard(restaurant.id)
+        const dashboard = await getOwnerRestaurantDashboard(restaurant.id, orderScope)
         if (isMounted) {
           state.setData(dashboard)
           state.setError("")
@@ -500,7 +500,7 @@ export function useOwnerRestaurantDashboard() {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [orderScope])
 
   return state
 }

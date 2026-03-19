@@ -7,8 +7,10 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from apps.accounts.models import UserRole
+from apps.core.permissions import IsOwnerObjectOrAdminRole
+from apps.core.permissions import is_admin_user
 from apps.orders.models import OrderItem
+from apps.orders.services import filter_orders_by_scope
 from apps.restaurants.api.serializers import OwnerMenuCategorySerializer
 from apps.restaurants.api.serializers import OwnerDashboardRecentOrderSerializer
 from apps.restaurants.api.serializers import OwnerRestaurantReviewReplySerializer
@@ -26,22 +28,6 @@ from apps.restaurants.models import RestaurantTable
 from apps.restaurants.services import ensure_menu_qr_code
 from apps.restaurants.services import ensure_qr_catalogs
 from apps.restaurants.services import ensure_table_qr_code
-
-
-def _user_has_any_role(user, *role_codes: str) -> bool:
-    if not user.is_authenticated:
-        return False
-    return UserRole.objects.filter(user=user, role__code__in=role_codes).exists()
-
-
-class IsOwnerOrAdmin(permissions.BasePermission):
-    def has_permission(self, request, view) -> bool:
-        return _user_has_any_role(request.user, "restaurante", "admin")
-
-    def has_object_permission(self, request, view, obj: Restaurant) -> bool:
-        return (
-            _user_has_any_role(request.user, "admin") or obj.owner_id == request.user.id
-        )
 
 
 class PublicRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
@@ -99,7 +85,7 @@ class PublicRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
-    permission_classes = [IsOwnerOrAdmin]
+    permission_classes = [IsOwnerObjectOrAdminRole]
     serializer_class = RestaurantDetailSerializer
 
     def get_queryset(self):
@@ -116,7 +102,7 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
             "tables__status",
             "menu_categories__menu_items__images",
         )
-        if _user_has_any_role(self.request.user, "admin"):
+        if is_admin_user(self.request.user):
             return queryset.order_by("display_name")
         return queryset.filter(owner=self.request.user).order_by("display_name")
 
@@ -144,9 +130,13 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
     def dashboard(self, request, pk=None):
         restaurant = self.get_object()
         today = timezone.localdate()
-        orders_queryset = restaurant.orders.select_related(
-            "status", "order_type", "user"
-        ).prefetch_related("items")
+        order_scope = request.query_params.get("order_scope", "all").strip()
+        orders_queryset = filter_orders_by_scope(
+            restaurant.orders.select_related(
+                "status", "order_type", "user"
+            ).prefetch_related("items"),
+            order_scope,
+        )
 
         sales_today = (
             orders_queryset.filter(created_at__date=today).aggregate(
@@ -193,6 +183,7 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
                     "monthly_sales": monthly_sales,
                     "new_orders_count": new_orders_count,
                 },
+                "order_scope": order_scope,
                 "recent_orders": OwnerDashboardRecentOrderSerializer(
                     recent_orders, many=True
                 ).data,
@@ -210,20 +201,20 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=["get"])
     def customers(self, request, pk=None):
         restaurant = self.get_object()
-        customer_rows = (
-            restaurant.orders.select_related("user")
-            .values(
-                "user_id",
-                "user__name",
-                "user__email",
-                "customer_name",
-                "customer_email",
-            )
-            .annotate(
-                total_orders=Count("id"),
-                total_spent=Sum("total_amount"),
-                last_order=Max("created_at"),
-            )
+        order_scope = request.query_params.get("order_scope", "all").strip()
+        scoped_orders = filter_orders_by_scope(
+            restaurant.orders.select_related("user"), order_scope
+        )
+        customer_rows = scoped_orders.values(
+            "user_id",
+            "user__name",
+            "user__email",
+            "customer_name",
+            "customer_email",
+        ).annotate(
+            total_orders=Count("id"),
+            total_spent=Sum("total_amount"),
+            last_order=Max("created_at"),
         )
 
         customers = []
@@ -233,7 +224,7 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
             total_spent = row["total_spent"] or 0
             average_ticket = total_spent / total_orders if total_orders else 0
             order_user = (
-                restaurant.orders.filter(user_id=row["user_id"]).first().user
+                scoped_orders.filter(user_id=row["user_id"]).first().user
                 if row["user_id"]
                 else None
             )
@@ -244,7 +235,7 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
                 vip_count += 1
             favorite_items = list(
                 OrderItem.objects.filter(
-                    order__restaurant=restaurant, order__user_id=row["user_id"]
+                    order__in=scoped_orders, order__user_id=row["user_id"]
                 )
                 .values("item_name_snapshot")
                 .annotate(total=Sum("quantity"))
@@ -281,7 +272,7 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
             {
                 "metrics": {
                     "total_customers": len(customers),
-                    "new_customers_this_month": restaurant.orders.filter(
+                    "new_customers_this_month": scoped_orders.filter(
                         created_at__year=timezone.localdate().year,
                         created_at__month=timezone.localdate().month,
                     )
@@ -291,6 +282,7 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
                     "average_ticket": average_ticket,
                     "vip_customers": vip_count,
                 },
+                "order_scope": order_scope,
                 "customers": customers,
             }
         )
@@ -299,15 +291,26 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
     def analytics(self, request, pk=None):
         restaurant = self.get_object()
         today = timezone.localdate()
+        order_scope = request.query_params.get("order_scope", "all").strip()
         periods = {
-            "today": restaurant.orders.filter(created_at__date=today),
-            "week": restaurant.orders.filter(
-                created_at__date__gte=today - timezone.timedelta(days=6)
+            "today": filter_orders_by_scope(
+                restaurant.orders.filter(created_at__date=today), order_scope
             ),
-            "month": restaurant.orders.filter(
-                created_at__year=today.year, created_at__month=today.month
+            "week": filter_orders_by_scope(
+                restaurant.orders.filter(
+                    created_at__date__gte=today - timezone.timedelta(days=6)
+                ),
+                order_scope,
             ),
-            "year": restaurant.orders.filter(created_at__year=today.year),
+            "month": filter_orders_by_scope(
+                restaurant.orders.filter(
+                    created_at__year=today.year, created_at__month=today.month
+                ),
+                order_scope,
+            ),
+            "year": filter_orders_by_scope(
+                restaurant.orders.filter(created_at__year=today.year), order_scope
+            ),
         }
 
         sales = {}
@@ -324,26 +327,23 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
 
         hourly_data = []
         for hour in range(11, 22):
-            count = restaurant.orders.filter(
-                created_at__date=today, created_at__hour=hour
-            ).count()
+            count = periods["today"].filter(created_at__hour=hour).count()
             hourly_data.append({"hour": f"{hour:02d}:00", "orders": count})
 
         top_products = list(
             OrderItem.objects.filter(
-                order__restaurant=restaurant,
-                order__created_at__year=today.year,
-                order__created_at__month=today.month,
+                order__in=periods["month"],
             )
             .values("item_name_snapshot")
             .annotate(orders=Sum("quantity"), revenue=Sum("line_total_amount"))
             .order_by("-orders", "item_name_snapshot")[:5]
         )
 
-        total_customers = restaurant.orders.values("user_id").distinct().count()
+        total_customers = periods["year"].values("user_id").distinct().count()
         new_this_month = periods["month"].values("user_id").distinct().count()
         returning_customers = (
-            restaurant.orders.values("user_id")
+            periods["year"]
+            .values("user_id")
             .annotate(total=Count("id"))
             .filter(total__gt=1)
             .count()
@@ -371,6 +371,7 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
                     "returning": round(returning_rate),
                     "average_ticket": sales["month"]["average_ticket"],
                 },
+                "order_scope": order_scope,
             }
         )
 

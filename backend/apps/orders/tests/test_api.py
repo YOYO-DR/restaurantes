@@ -1,6 +1,7 @@
 import pytest
 from django.urls import reverse
 from django.core import mail
+from django.core.cache import cache
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -26,6 +27,7 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture
 def api_client() -> APIClient:
+    cache.clear()
     return APIClient()
 
 

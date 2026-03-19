@@ -4,14 +4,14 @@ import { useAuth } from "@/context/auth-context"
 import { dashboardPathByRole } from "@/lib/auth-routing"
 
 export function PublicOnlyRoute({ children }) {
-  const { user, isLoading } = useAuth()
+  const { user, activeRole, isLoading } = useAuth()
 
   if (isLoading) {
     return <AuthScreenSkeleton />
   }
 
   if (user) {
-    return <Navigate to={dashboardPathByRole(user.role)} replace />
+    return <Navigate to={dashboardPathByRole(activeRole)} replace />
   }
 
   return children

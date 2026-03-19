@@ -283,7 +283,7 @@ export function useGuestOrderCancellation() {
   }
 }
 
-export function useCustomerDashboard() {
+export function useCustomerDashboard(orderScope = "all") {
   const [data, setData] = useState({
     user_name: "",
     metrics: {
@@ -300,7 +300,7 @@ export function useCustomerDashboard() {
   const [error, setError] = useState("")
 
   useEffect(() => {
-    getCustomerDashboard()
+    getCustomerDashboard(orderScope)
       .then((payload) => {
         setData(payload)
         setError("")
@@ -309,12 +309,12 @@ export function useCustomerDashboard() {
         setError(loadError.message || "No fue posible cargar el dashboard")
       })
       .finally(() => setIsLoading(false))
-  }, [])
+  }, [orderScope])
 
   return { data, isLoading, error }
 }
 
-export function useOwnerCustomers() {
+export function useOwnerCustomers(orderScope = "all") {
   const [data, setData] = useState({
     metrics: {
       total_customers: 0,
@@ -344,7 +344,7 @@ export function useOwnerCustomers() {
           })
           return
         }
-        const payload = await getOwnerCustomers(restaurant.id)
+        const payload = await getOwnerCustomers(restaurant.id, orderScope)
         setData(payload)
         setError("")
       } catch (loadError) {
@@ -355,12 +355,12 @@ export function useOwnerCustomers() {
     }
 
     load()
-  }, [])
+  }, [orderScope])
 
   return { data, isLoading, error }
 }
 
-export function useOwnerAnalytics() {
+export function useOwnerAnalytics(orderScope = "all") {
   const [data, setData] = useState({
     sales: {},
     hourly_data: [],
@@ -383,7 +383,7 @@ export function useOwnerAnalytics() {
         if (!restaurant) {
           return
         }
-        const payload = await getOwnerAnalytics(restaurant.id)
+        const payload = await getOwnerAnalytics(restaurant.id, orderScope)
         setData(payload)
         setError("")
       } catch (loadError) {
@@ -394,7 +394,7 @@ export function useOwnerAnalytics() {
     }
 
     load()
-  }, [])
+  }, [orderScope])
 
   return { data, isLoading, error }
 }

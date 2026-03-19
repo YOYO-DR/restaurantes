@@ -12,6 +12,11 @@ from apps.accounts.models import UserStatus
 from apps.restaurants.services import ensure_owner_restaurant
 
 User = get_user_model()
+ROLE_PRIORITY = {
+    "admin": 0,
+    "restaurante": 1,
+    "cliente": 2,
+}
 
 
 def _get_active_user_status() -> UserStatus:
@@ -20,6 +25,43 @@ def _get_active_user_status() -> UserStatus:
         defaults={"name": "Activo"},
     )
     return status
+
+
+def _get_or_create_role(code: str, name: str | None = None) -> Role:
+    role, _ = Role.objects.get_or_create(
+        code=code,
+        defaults={"name": name or code.capitalize()},
+    )
+    return role
+
+
+def _ensure_companion_customer_role(user) -> None:
+    existing_codes = set(
+        UserRole.objects.filter(user=user).values_list("role__code", flat=True)
+    )
+    if (
+        existing_codes.intersection({"admin", "restaurante"})
+        and "cliente" not in existing_codes
+    ):
+        UserRole.objects.get_or_create(
+            user=user, role=_get_or_create_role("cliente", "Cliente")
+        )
+
+
+def get_user_role_codes(user) -> list[str]:
+    _ensure_companion_customer_role(user)
+    role_codes = list(
+        UserRole.objects.filter(user=user)
+        .select_related("role")
+        .values_list("role__code", flat=True)
+    )
+    if not role_codes:
+        return ["cliente"]
+    return sorted(set(role_codes), key=lambda code: (ROLE_PRIORITY.get(code, 99), code))
+
+
+def get_primary_role(user) -> str:
+    return get_user_role_codes(user)[0]
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -80,16 +122,18 @@ class RegisterSerializer(serializers.ModelSerializer):
         password = validated_data.pop("password")
         user = User.objects.create_user(password=password, **validated_data)
 
-        role_code = (
-            "restaurante"
-            if user_type in {"dueno", "owner", "restaurante"}
-            else "cliente"
+        UserRole.objects.get_or_create(
+            user=user,
+            role=_get_or_create_role("cliente", "Cliente"),
         )
-        role_obj, _ = Role.objects.get_or_create(
-            code=role_code,
-            defaults={"name": role_code.capitalize()},
-        )
-        UserRole.objects.get_or_create(user=user, role=role_obj)
+
+        role_code = "cliente"
+        if user_type in {"dueno", "owner", "restaurante"}:
+            role_code = "restaurante"
+            UserRole.objects.get_or_create(
+                user=user,
+                role=_get_or_create_role("restaurante", "Restaurante"),
+            )
 
         profile, _ = UserProfile.objects.get_or_create(
             user=user,
@@ -158,19 +202,37 @@ class LogoutSerializer(serializers.Serializer):
 
 class UserMeSerializer(serializers.ModelSerializer):
     role = serializers.SerializerMethodField()
+    roles = serializers.SerializerMethodField()
+    available_roles = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ["id", "email", "name", "is_active", "role"]
+        fields = [
+            "id",
+            "email",
+            "name",
+            "is_active",
+            "role",
+            "roles",
+            "available_roles",
+        ]
 
     def get_role(self, obj):
-        user_role = (
-            UserRole.objects.select_related("role")
-            .filter(user=obj)
-            .order_by("created_at")
-            .first()
-        )
-        return user_role.role.code if user_role else "cliente"
+        return get_primary_role(obj)
+
+    def get_roles(self, obj):
+        return get_user_role_codes(obj)
+
+    def get_available_roles(self, obj):
+        labels = {
+            "cliente": "Cliente",
+            "restaurante": "Dueno de restaurante",
+            "admin": "Administrador",
+        }
+        return [
+            {"code": code, "label": labels.get(code, code.capitalize())}
+            for code in get_user_role_codes(obj)
+        ]
 
 
 def build_token_payload(user):

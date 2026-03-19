@@ -12,6 +12,7 @@ django-stubs[compatible-mypy]==5.2.9  # https://github.com/typeddjango/django-st
 pytest==9.0.2  # https://github.com/pytest-dev/pytest
 pytest-sugar==1.1.1  # https://github.com/Teemu/pytest-sugar
 djangorestframework-stubs==3.16.8  # https://github.com/typeddjango/djangorestframework-stubs
+daphne==4.2.1  # https://github.com/django/daphne
 
 # Documentation
 # ------------------------------------------------------------------------------

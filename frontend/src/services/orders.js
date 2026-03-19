@@ -25,8 +25,13 @@ export function deleteCustomerAddress(addressId) {
   })
 }
 
-export function getCustomerDashboard() {
-  return apiJson("/api/customer/dashboard/")
+export function getCustomerDashboard(orderScope = "all") {
+  const params = new URLSearchParams()
+  if (orderScope && orderScope !== "all") {
+    params.set("order_scope", orderScope)
+  }
+  const queryString = params.toString()
+  return apiJson(`/api/customer/dashboard/${queryString ? `?${queryString}` : ""}`)
 }
 
 export function getCustomerFavorites() {
@@ -99,12 +104,22 @@ export function cancelCheckoutOrder(orderId, reason = "") {
   })
 }
 
-export function getOwnerCustomers(restaurantId) {
-  return apiJson(`/api/owner/restaurants/${restaurantId}/customers/`)
+export function getOwnerCustomers(restaurantId, orderScope = "all") {
+  const params = new URLSearchParams()
+  if (orderScope && orderScope !== "all") {
+    params.set("order_scope", orderScope)
+  }
+  const queryString = params.toString()
+  return apiJson(`/api/owner/restaurants/${restaurantId}/customers/${queryString ? `?${queryString}` : ""}`)
 }
 
-export function getOwnerAnalytics(restaurantId) {
-  return apiJson(`/api/owner/restaurants/${restaurantId}/analytics/`)
+export function getOwnerAnalytics(restaurantId, orderScope = "all") {
+  const params = new URLSearchParams()
+  if (orderScope && orderScope !== "all") {
+    params.set("order_scope", orderScope)
+  }
+  const queryString = params.toString()
+  return apiJson(`/api/owner/restaurants/${restaurantId}/analytics/${queryString ? `?${queryString}` : ""}`)
 }
 
 export function getOwnerReviews(restaurantId) {

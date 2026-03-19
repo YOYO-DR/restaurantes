@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from apps.core.permissions import IsAuthenticatedUser
 from .serializers import LoginSerializer
 from .serializers import LogoutSerializer
 from .serializers import RefreshCookieSerializer
@@ -110,7 +111,7 @@ class LogoutView(APIView):
 
 
 class MeView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedUser]
 
     def get(self, request):
         serializer = UserMeSerializer(request.user)

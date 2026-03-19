@@ -1,6 +1,7 @@
 from django.utils.text import slugify
 from rest_framework import serializers
 
+from apps.core.permissions import is_admin_user
 from apps.menu.models import InventoryItem
 from apps.menu.models import InventoryMovementType
 from apps.menu.models import InventoryStockMovement
@@ -48,7 +49,7 @@ class OwnerMenuCategoryWriteSerializer(serializers.ModelSerializer):
 
     def validate_restaurant(self, value: Restaurant) -> Restaurant:
         request = self.context["request"]
-        if request.user.account_roles.filter(role__code="admin").exists():
+        if is_admin_user(request.user):
             return value
         if value.owner_id != request.user.id:
             raise serializers.ValidationError(
@@ -129,7 +130,7 @@ class OwnerMenuItemWriteSerializer(serializers.ModelSerializer):
 
     def validate_restaurant(self, value: Restaurant) -> Restaurant:
         request = self.context["request"]
-        if request.user.account_roles.filter(role__code="admin").exists():
+        if is_admin_user(request.user):
             return value
         if value.owner_id != request.user.id:
             raise serializers.ValidationError(
@@ -317,7 +318,7 @@ class InventoryItemSerializer(serializers.ModelSerializer):
 
     def validate_restaurant(self, value: Restaurant) -> Restaurant:
         request = self.context["request"]
-        if request.user.account_roles.filter(role__code="admin").exists():
+        if is_admin_user(request.user):
             return value
         if value.owner_id != request.user.id:
             raise serializers.ValidationError(

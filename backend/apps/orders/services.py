@@ -198,5 +198,13 @@ def build_order_code(order: Order) -> str:
     return f"ORD-{next_count:04d}"
 
 
+def filter_orders_by_scope(queryset, order_scope: str):
+    if order_scope == "completed":
+        return queryset.filter(status__code="delivered")
+    if order_scope == "non_completed":
+        return queryset.exclude(status__code__in=["delivered", "cancelled"])
+    return queryset
+
+
 def decimal_to_string(value: Decimal) -> str:
     return format(value, ".2f")

@@ -179,7 +179,29 @@ EMAIL_USE_SSL=False
 
 - API principal: JWT con refresh token por cookie `HttpOnly`
 - refresh configurado para durar 24 horas
-- `django-allauth` queda disponible para flujos web de cuentas, verificacion de correo, MFA y posibles logins sociales
+- autenticacion API centralizada en `backend/apps/custom_auth`
+- `django-allauth` fue removido del proyecto
+
+## Permisos y alcance
+
+- permisos reutilizables viven en `backend/apps/core/permissions.py`
+- `IsAuthenticatedUser` centraliza acceso autenticado basico para endpoints de cuenta, cliente y loyalty
+- `IsOwnerOrAdminRole` permite acceso a recursos operativos de restaurante solo a duenos y admin
+- `IsOwnerObjectOrAdminRole` protege objetos cuyo propietario directo vive en `owner_id`
+- `IsOwnerOfRestaurantResourceOrAdminRole` protege recursos ligados a un restaurante y evita que un dueno vea o modifique recursos de otro restaurante
+
+Roles usados por la API:
+
+- `cliente`: puede operar solo sobre sus propios recursos, pedidos y favoritos
+- `restaurante`: puede operar solo sobre recursos de restaurantes cuyo `owner` coincide con el usuario autenticado
+- `admin`: puede atravesar restricciones de ownership en endpoints administrativos y operativos
+
+Notas de seguridad:
+
+- los querysets de vistas owner se filtran por `restaurant__owner=request.user` cuando el usuario no es `admin`
+- los serializers de menu e inventario validan que el restaurante enviado pertenezca al usuario autenticado, salvo `admin`
+- los websockets privados de pedidos validan identidad y ownership antes de aceptar la conexion
+- los clientes autenticados no pueden consultar pedidos de otros usuarios y los duenos no pueden consultar paneles ni recursos de otros restaurantes
 
 ## Notas
 

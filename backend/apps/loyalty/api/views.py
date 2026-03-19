@@ -1,14 +1,14 @@
-from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
+from apps.core.permissions import IsAuthenticatedUser
 from apps.customers.models import Favorite
 from apps.loyalty.models import LoyaltyAccount
 from apps.loyalty.models import LoyaltyReward
 
 
 class CustomerLoyaltyViewSet(GenericViewSet):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedUser]
 
     def list(self, request):
         loyalty_account = (

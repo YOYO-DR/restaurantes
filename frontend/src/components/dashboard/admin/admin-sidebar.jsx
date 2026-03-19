@@ -41,7 +41,7 @@ export function AdminSidebar() {
       </button>
 
       {/* Sidebar */}
-      <aside className={`fixed md:relative w-64 h-screen bg-sidebar border-r border-sidebar-border transition-transform duration-300 md:translate-x-0 z-40 flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed md:sticky md:top-0 md:self-start w-64 h-screen bg-sidebar border-r border-sidebar-border transition-transform duration-300 md:translate-x-0 z-40 flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6 border-b border-sidebar-border mt-16 md:mt-0">
           <h1 className="text-2xl font-display font-bold text-sidebar-primary">
             FoodHub Admin
@@ -49,7 +49,7 @@ export function AdminSidebar() {
           <p className="text-sm text-sidebar-accent-foreground">Gestión</p>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 space-y-2 overflow-y-auto p-4">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);

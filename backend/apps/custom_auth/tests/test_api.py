@@ -33,6 +33,7 @@ def test_register_success(api_client: APIClient):
     assert "access" in response.data
     assert response.data["user"]["email"] == payload["email"]
     assert response.data["user"]["role"] == "cliente"
+    assert response.data["user"]["roles"] == ["cliente"]
     assert settings.JWT_REFRESH_COOKIE_NAME in response.cookies
     assert User.objects.filter(email=payload["email"]).exists()
 
@@ -156,6 +157,7 @@ def test_register_owner_maps_to_restaurant_role(api_client: APIClient):
 
     assert response.status_code == status.HTTP_201_CREATED
     assert response.data["user"]["role"] == "restaurante"
+    assert response.data["user"]["roles"] == ["restaurante", "cliente"]
     restaurant = Restaurant.objects.get(owner__email=payload["email"])
     profile = UserProfile.objects.get(user__email=payload["email"])
     assert restaurant.display_name == payload["restaurant_name"]
@@ -206,3 +208,18 @@ def test_me_authenticated(api_client: APIClient):
 
     assert response.status_code == status.HTTP_200_OK
     assert response.data["email"] == user.email
+
+
+def test_me_includes_multiple_roles_for_admin_user(api_client: APIClient):
+    user = UserFactory.create()
+    from apps.accounts.models import Role
+    from apps.accounts.models import UserRole
+
+    admin_role, _ = Role.objects.get_or_create(code="admin", defaults={"name": "Admin"})
+    UserRole.objects.get_or_create(user=user, role=admin_role)
+    api_client.force_authenticate(user=user)
+
+    response = api_client.get(reverse("custom_auth:me"))
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["roles"] == ["admin", "cliente"]

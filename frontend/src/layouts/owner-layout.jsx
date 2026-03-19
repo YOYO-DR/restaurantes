@@ -7,20 +7,20 @@ import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 
 export function OwnerLayout() {
-  const { user } = useAuth()
+  const { user, activeRole } = useAuth()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   return (
     <OwnerOrdersProvider>
-      <div className="flex min-h-screen w-full overflow-x-hidden">
-        <OwnerSidebar className="hidden lg:flex" />
+      <div className="flex h-screen w-full overflow-hidden">
+        <OwnerSidebar className="sticky top-0 hidden h-screen self-start lg:flex" />
         <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
           <DashboardHeader
             userName={user?.name || "Dueno FoodHub"}
-            userType="dueno"
+            userType={activeRole === "cliente" ? "cliente" : "dueno"}
             onMobileMenuClick={() => setIsSidebarOpen(true)}
           />
-          <main className="min-w-0 flex-1 overflow-x-hidden bg-muted/30 p-4 sm:p-6">
+          <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto bg-muted/30 p-4 sm:p-6">
             <Outlet />
           </main>
         </div>

@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DashboardShellSkeleton } from "@/components/ui/app-skeletons"
@@ -14,13 +15,25 @@ const PERIOD_LABELS = {
 }
 
 export default function OwnerAnalyticsPage() {
-  const { data, isLoading, error } = useOwnerAnalytics()
+  const [orderScope, setOrderScope] = useState("all")
+  const { data, isLoading, error } = useOwnerAnalytics(orderScope)
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <h2 className="text-2xl font-bold tracking-tight">Analiticas</h2>
-        <p className="text-muted-foreground">Metricas y estadisticas de tu restaurante</p>
+        <div className="space-y-2">
+          <p className="text-muted-foreground">Metricas y estadisticas de tu restaurante</p>
+          <select
+            value={orderScope}
+            onChange={(event) => setOrderScope(event.target.value)}
+            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="all">Todas las ordenes</option>
+            <option value="completed">Completadas</option>
+            <option value="non_completed">No finalizadas</option>
+          </select>
+        </div>
       </div>
 
       {isLoading ? <DashboardShellSkeleton /> : null}

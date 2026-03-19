@@ -1,226 +1,436 @@
-import { useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Search, MoreVertical, Eye, Edit, } from 'lucide-react';
-const mockRestaurants = [
-    {
-        id: '1',
-        name: 'Restaurante Casa del Mar',
-        owner: 'Carlos Mendez',
-        category: 'Mariscos',
-        status: 'activo',
-        rating: 4.8,
-        totalOrders: 1250,
-        revenue: 85000,
-        joinDate: '2023-11-10',
-        subscriptionPlan: 'Premium',
-    },
-    {
-        id: '2',
-        name: 'Pizzería Italia',
-        owner: 'Roberto González',
-        category: 'Italiana',
-        status: 'activo',
-        rating: 4.6,
-        totalOrders: 980,
-        revenue: 62000,
-        joinDate: '2024-01-25',
-        subscriptionPlan: 'Professional',
-    },
-    {
-        id: '3',
-        name: 'Burguer House',
-        owner: 'Ana Martínez',
-        category: 'Hamburguesas',
-        status: 'activo',
-        rating: 4.4,
-        totalOrders: 1500,
-        revenue: 95000,
-        joinDate: '2023-09-15',
-        subscriptionPlan: 'Premium',
-    },
-    {
-        id: '4',
-        name: 'Sushi Bar Premium',
-        owner: 'Kenji Tanaka',
-        category: 'Sushi',
-        status: 'inactivo',
-        rating: 4.7,
-        totalOrders: 450,
-        revenue: 28000,
-        joinDate: '2024-02-01',
-        subscriptionPlan: 'Starter',
-    },
-    {
-        id: '5',
-        name: 'Comidas Criollas Mama Rosa',
-        owner: 'Rosa García',
-        category: 'Comida Criolla',
-        status: 'suspendido',
-        rating: 3.9,
-        totalOrders: 320,
-        revenue: 15000,
-        joinDate: '2024-03-10',
-        subscriptionPlan: 'Starter',
-    },
-];
+import { useEffect, useMemo, useState } from "react"
+import { toast } from "sonner"
+import {
+  ChevronDown,
+  ChevronUp,
+  ChevronsUpDown,
+  Loader2,
+  Search,
+  Settings2,
+} from "lucide-react"
+
+import { DashboardShellSkeleton } from "@/components/ui/app-skeletons"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { useAdminRestaurantEditor, useAdminRestaurants } from "@/hooks/use-admin"
+import { formatCurrency } from "@/lib/format"
+
+const STATUS_META = {
+  active: { label: "Activo", className: "bg-emerald-100 text-emerald-800" },
+  inactive: { label: "Inactivo", className: "bg-slate-100 text-slate-700" },
+}
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50]
+
+const COLUMNS = [
+  { key: "name", label: "Restaurante" },
+  { key: "owner", label: "Propietario" },
+  { key: "category", label: "Categoria" },
+  { key: "status", label: "Estado" },
+  { key: "subscription_plan", label: "Plan" },
+  { key: "orders_count", label: "Pedidos" },
+  { key: "revenue", label: "Ingresos" },
+  { key: "joined_at", label: "Registro" },
+]
+
+function useDebouncedValue(value, delay = 300) {
+  const [debouncedValue, setDebouncedValue] = useState(value)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedValue(value), delay)
+    return () => window.clearTimeout(timer)
+  }, [value, delay])
+
+  return debouncedValue
+}
+
+function createEditForm(payload) {
+  return {
+    display_name: payload.display_name || "",
+    slug: payload.slug || "",
+    legal_name: payload.legal_name || "",
+    nit: payload.nit || "",
+    email: payload.email || "",
+    phone: payload.phone || "",
+    currency_code: payload.currency_code || "COP",
+    description: payload.description || "",
+    category: payload.category || "",
+    status: payload.status || "active",
+    subscription_plan: payload.subscription_plan || "",
+    delivery_enabled: Boolean(payload.delivery_enabled),
+    pickup_enabled: Boolean(payload.pickup_enabled),
+    table_order_enabled: Boolean(payload.table_order_enabled),
+    delivery_fee_amount: payload.delivery_fee_amount || "0.00",
+    min_order_amount: payload.min_order_amount || "",
+    estimated_min_minutes: payload.estimated_min_minutes || "",
+    estimated_max_minutes: payload.estimated_max_minutes || "",
+  }
+}
+
 export default function AdminRestaurants() {
-    const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState('todos');
-    const filteredRestaurants = mockRestaurants.filter((restaurant) => {
-        const matchesSearch = restaurant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            restaurant.owner.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesFilter = statusFilter === 'todos' || restaurant.status === statusFilter;
-        return matchesSearch && matchesFilter;
-    });
-    const getStatusBadge = (status) => {
-        const baseClass = 'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium';
-        switch (status) {
-            case 'activo':
-                return `${baseClass} bg-green-100 text-green-800`;
-            case 'inactivo':
-                return `${baseClass} bg-gray-100 text-gray-800`;
-            case 'suspendido':
-                return `${baseClass} bg-red-100 text-red-800`;
-            default:
-                return baseClass;
-        }
-    };
-    const getRatingColor = (rating) => {
-        if (rating >= 4.7)
-            return 'text-green-600';
-        if (rating >= 4.0)
-            return 'text-blue-600';
-        if (rating >= 3.5)
-            return 'text-orange-600';
-        return 'text-red-600';
-    };
-    return (<div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-4xl font-display font-bold text-foreground">
-            Gestión de Restaurantes
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Administra todos los restaurantes de la plataforma
-          </p>
-        </div>
-        <Button>Nuevo Restaurante</Button>
+  const [filters, setFilters] = useState({
+    name: "",
+    owner: "",
+    category: "",
+    status: "todos",
+    subscriptionPlan: "",
+    ordersCount: "",
+    revenue: "",
+    joinedAt: "",
+  })
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [ordering, setOrdering] = useState("-joined_at")
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState("")
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isDialogLoading, setIsDialogLoading] = useState(false)
+  const [editForm, setEditForm] = useState(null)
+
+  const debouncedName = useDebouncedValue(filters.name)
+  const debouncedOwner = useDebouncedValue(filters.owner)
+  const debouncedCategory = useDebouncedValue(filters.category)
+  const debouncedSubscriptionPlan = useDebouncedValue(filters.subscriptionPlan)
+  const debouncedOrdersCount = useDebouncedValue(filters.ordersCount)
+  const debouncedRevenue = useDebouncedValue(filters.revenue)
+  const debouncedJoinedAt = useDebouncedValue(filters.joinedAt)
+
+  const query = useMemo(
+    () => ({
+      page,
+      pageSize,
+      ordering,
+      name: debouncedName.trim(),
+      owner: debouncedOwner.trim(),
+      category: debouncedCategory.trim(),
+      status: filters.status,
+      subscriptionPlan: debouncedSubscriptionPlan.trim(),
+      ordersCount: debouncedOrdersCount.trim(),
+      revenue: debouncedRevenue.trim(),
+      joinedAt: debouncedJoinedAt,
+    }),
+    [
+      debouncedCategory,
+      debouncedJoinedAt,
+      debouncedName,
+      debouncedOrdersCount,
+      debouncedOwner,
+      debouncedRevenue,
+      debouncedSubscriptionPlan,
+      filters.status,
+      ordering,
+      page,
+      pageSize,
+    ],
+  )
+
+  const { data, isLoading, error } = useAdminRestaurants(query)
+  const { loadRestaurant, saveRestaurant, isSaving } = useAdminRestaurantEditor()
+
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedCategory, debouncedJoinedAt, debouncedName, debouncedOrdersCount, debouncedOwner, debouncedRevenue, debouncedSubscriptionPlan, filters.status, ordering, pageSize])
+
+  const toggleOrdering = (columnKey) => {
+    setOrdering((current) => {
+      if (current === columnKey) return `-${columnKey}`
+      if (current === `-${columnKey}`) return columnKey
+      return columnKey
+    })
+  }
+
+  const openSettings = async (restaurantId) => {
+    setSelectedRestaurantId(restaurantId)
+    setIsDialogOpen(true)
+    setIsDialogLoading(true)
+    try {
+      const payload = await loadRestaurant(restaurantId)
+      setEditForm(createEditForm(payload))
+    } catch (loadError) {
+      toast.error(loadError.message || "No fue posible cargar la configuracion del restaurante")
+      setIsDialogOpen(false)
+    } finally {
+      setIsDialogLoading(false)
+    }
+  }
+
+  const handleSave = async () => {
+    try {
+      const updated = await saveRestaurant(selectedRestaurantId, {
+        ...editForm,
+        delivery_fee_amount: editForm.delivery_fee_amount || "0.00",
+        min_order_amount: editForm.min_order_amount === "" ? null : editForm.min_order_amount,
+        estimated_min_minutes: editForm.estimated_min_minutes === "" ? null : Number(editForm.estimated_min_minutes),
+        estimated_max_minutes: editForm.estimated_max_minutes === "" ? null : Number(editForm.estimated_max_minutes),
+      })
+      toast.success(`Restaurante ${updated.display_name} actualizado`)
+      setIsDialogOpen(false)
+    } catch (saveError) {
+      toast.error(saveError.message || "No fue posible guardar los cambios del restaurante")
+    }
+  }
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Gestion de restaurantes</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Tabla responsiva con filtros, paginacion y acceso a ajustes administrativos para editar o inactivar restaurantes.
+        </p>
       </div>
 
-      {/* Filters & Search */}
-      <Card className="p-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5"/>
-            <Input placeholder="Buscar por nombre o propietario..." className="pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}/>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <SummaryCard title="Total filtrado" value={data?.counts?.total ?? 0} />
+        <SummaryCard title="Activos" value={data?.counts?.active ?? 0} />
+        <SummaryCard title="Inactivos u otros" value={(data?.counts?.inactive ?? 0) + (data?.counts?.other ?? 0)} />
+      </div>
+
+      {isLoading && !data ? <DashboardShellSkeleton /> : null}
+      {error ? <div className="text-sm text-destructive">{error}</div> : null}
+
+      {!isLoading || data ? (
+        <>
+          <div className="hidden lg:block">
+            <DesktopRestaurantsTable
+              data={data}
+              filters={filters}
+              isLoading={isLoading}
+              ordering={ordering}
+              onFilterChange={setFilters}
+              onOrderingChange={toggleOrdering}
+              pageSize={pageSize}
+              onPageSizeChange={setPageSize}
+              onPageChange={setPage}
+              onOpenSettings={openSettings}
+            />
           </div>
-          <div className="flex gap-2">
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-4 py-2 border border-border rounded-lg bg-background">
-              <option value="todos">Todos los estados</option>
-              <option value="activo">Activos</option>
-              <option value="inactivo">Inactivos</option>
-              <option value="suspendido">Suspendidos</option>
-            </select>
+          <div className="lg:hidden">
+            <MobileRestaurantsList
+              data={data}
+              filters={filters}
+              isLoading={isLoading}
+              onFilterChange={setFilters}
+              pageSize={pageSize}
+              onPageSizeChange={setPageSize}
+              onPageChange={setPage}
+              onOpenSettings={openSettings}
+            />
           </div>
-        </div>
-      </Card>
+        </>
+      ) : null}
 
-      {/* Restaurants Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredRestaurants.map((restaurant) => (<Card key={restaurant.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-            <div className="p-6">
-              {/* Header */}
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="font-semibold text-foreground text-lg">
-                    {restaurant.name}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {restaurant.category}
-                  </p>
-                </div>
-                <button className="p-2 rounded-lg hover:bg-muted">
-                  <MoreVertical className="w-4 h-4 text-muted-foreground"/>
-                </button>
-              </div>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Ajustes del restaurante</DialogTitle>
+            <DialogDescription>
+              Modifica datos operativos del restaurante, cambia su plan o inactivalo si necesitas pausarlo.
+            </DialogDescription>
+          </DialogHeader>
 
-              {/* Owner */}
-              <p className="text-sm text-muted-foreground mb-4">
-                Propietario: <span className="font-medium text-foreground">{restaurant.owner}</span>
-              </p>
+          {isDialogLoading || !editForm ? (
+            <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Cargando ajustes...
+            </div>
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-2">
+              <Field label="Nombre comercial"><Input value={editForm.display_name} onChange={(event) => setEditForm((current) => ({ ...current, display_name: event.target.value }))} /></Field>
+              <Field label="Slug"><Input value={editForm.slug} onChange={(event) => setEditForm((current) => ({ ...current, slug: event.target.value }))} /></Field>
+              <Field label="Razon social"><Input value={editForm.legal_name} onChange={(event) => setEditForm((current) => ({ ...current, legal_name: event.target.value }))} /></Field>
+              <Field label="NIT"><Input value={editForm.nit} onChange={(event) => setEditForm((current) => ({ ...current, nit: event.target.value }))} /></Field>
+              <Field label="Email"><Input type="email" value={editForm.email} onChange={(event) => setEditForm((current) => ({ ...current, email: event.target.value }))} /></Field>
+              <Field label="Telefono"><Input value={editForm.phone} onChange={(event) => setEditForm((current) => ({ ...current, phone: event.target.value }))} /></Field>
+              <Field label="Moneda"><Input value={editForm.currency_code} onChange={(event) => setEditForm((current) => ({ ...current, currency_code: event.target.value.toUpperCase() }))} /></Field>
+              <Field label="Estado">
+                <select value={editForm.status} onChange={(event) => setEditForm((current) => ({ ...current, status: event.target.value }))} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  {(data?.catalogs?.statuses || []).map((option) => <option key={option.code} value={option.code}>{option.name}</option>)}
+                </select>
+              </Field>
+              <Field label="Categoria">
+                <select value={editForm.category} onChange={(event) => setEditForm((current) => ({ ...current, category: event.target.value }))} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  {(data?.catalogs?.categories || []).map((option) => <option key={option.code} value={option.code}>{option.name}</option>)}
+                </select>
+              </Field>
+              <Field label="Plan">
+                <select value={editForm.subscription_plan} onChange={(event) => setEditForm((current) => ({ ...current, subscription_plan: event.target.value }))} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  {(data?.catalogs?.subscription_plans || []).map((option) => <option key={option.code} value={option.code}>{option.name}</option>)}
+                </select>
+              </Field>
+              <Field label="Tarifa de domicilio"><Input type="number" value={editForm.delivery_fee_amount} onChange={(event) => setEditForm((current) => ({ ...current, delivery_fee_amount: event.target.value }))} /></Field>
+              <Field label="Pedido minimo"><Input type="number" value={editForm.min_order_amount} onChange={(event) => setEditForm((current) => ({ ...current, min_order_amount: event.target.value }))} /></Field>
+              <Field label="Minutos estimados min"><Input type="number" value={editForm.estimated_min_minutes} onChange={(event) => setEditForm((current) => ({ ...current, estimated_min_minutes: event.target.value }))} /></Field>
+              <Field label="Minutos estimados max"><Input type="number" value={editForm.estimated_max_minutes} onChange={(event) => setEditForm((current) => ({ ...current, estimated_max_minutes: event.target.value }))} /></Field>
+              <Field label="Descripcion" className="lg:col-span-2"><textarea value={editForm.description} onChange={(event) => setEditForm((current) => ({ ...current, description: event.target.value }))} className="min-h-28 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" /></Field>
 
-              {/* Status */}
-              <div className="mb-4">
-                <span className={getStatusBadge(restaurant.status)}>
-                  {restaurant.status === 'activo'
-                ? 'Activo'
-                : restaurant.status === 'inactivo'
-                    ? 'Inactivo'
-                    : 'Suspendido'}
-                </span>
-              </div>
-
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                <div className="bg-muted p-3 rounded-lg text-center">
-                  <p className="text-xs text-muted-foreground mb-1">Rating</p>
-                  <p className={`text-lg font-bold ${getRatingColor(restaurant.rating)}`}>
-                    {restaurant.rating}
-                  </p>
-                </div>
-                <div className="bg-muted p-3 rounded-lg text-center">
-                  <p className="text-xs text-muted-foreground mb-1">Órdenes</p>
-                  <p className="text-lg font-bold text-foreground">
-                    {restaurant.totalOrders}
-                  </p>
-                </div>
-                <div className="bg-muted p-3 rounded-lg text-center">
-                  <p className="text-xs text-muted-foreground mb-1">Ingresos</p>
-                  <p className="text-lg font-bold text-foreground">
-                    ${(restaurant.revenue / 1000).toFixed(0)}k
-                  </p>
-                </div>
-              </div>
-
-              {/* Plan & Date */}
-              <div className="border-t border-border pt-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Plan:</span>
-                  <span className="font-medium text-foreground">
-                    {restaurant.subscriptionPlan}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Registro:</span>
-                  <span className="font-medium text-foreground">
-                    {new Date(restaurant.joinDate).toLocaleDateString('es-CO')}
-                  </span>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-2 mt-4">
-                <Button size="sm" variant="outline" className="flex-1">
-                  <Eye className="w-4 h-4 mr-2"/>
-                  Ver
-                </Button>
-                <Button size="sm" variant="outline" className="flex-1">
-                  <Edit className="w-4 h-4 mr-2"/>
-                  Editar
-                </Button>
+              <div className="lg:col-span-2 grid gap-3 sm:grid-cols-3">
+                <ToggleCard title="Domicilio" checked={editForm.delivery_enabled} onChange={(checked) => setEditForm((current) => ({ ...current, delivery_enabled: checked }))} />
+                <ToggleCard title="Recoger en tienda" checked={editForm.pickup_enabled} onChange={(checked) => setEditForm((current) => ({ ...current, pickup_enabled: checked }))} />
+                <ToggleCard title="Pedidos por mesa" checked={editForm.table_order_enabled} onChange={(checked) => setEditForm((current) => ({ ...current, table_order_enabled: checked }))} />
               </div>
             </div>
-          </Card>))}
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditForm((current) => ({ ...current, status: "inactive" }))} disabled={!editForm || isSaving}>Marcar como inactivo</Button>
+            <Button onClick={handleSave} disabled={isDialogLoading || !editForm || isSaving}>
+              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Settings2 className="mr-2 h-4 w-4" />}
+              Guardar ajustes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+function DesktopRestaurantsTable({ data, filters, isLoading, ordering, onFilterChange, onOrderingChange, pageSize, onPageSizeChange, onPageChange, onOpenSettings }) {
+  return (
+    <Card className="overflow-hidden">
+      <div className="relative">
+        <table className="w-full table-fixed">
+          <thead className="bg-muted/70">
+            <tr className="border-b border-border">
+              {COLUMNS.map((column) => (
+                <th key={column.key} className="px-4 py-3 text-left text-sm font-semibold text-foreground">
+                  <button type="button" onClick={() => onOrderingChange(column.key)} className="inline-flex items-center gap-2">
+                    {column.label}
+                    <OrderingIcon ordering={ordering} columnKey={column.key} />
+                  </button>
+                </th>
+              ))}
+              <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Ajustes</th>
+            </tr>
+            <tr className="border-b border-border bg-background">
+              <th className="px-4 py-3"><FilterInput value={filters.name} onChange={(value) => onFilterChange((current) => ({ ...current, name: value }))} placeholder="Restaurante" icon={<Search className="h-4 w-4" />} /></th>
+              <th className="px-4 py-3"><FilterInput value={filters.owner} onChange={(value) => onFilterChange((current) => ({ ...current, owner: value }))} placeholder="Propietario" /></th>
+              <th className="px-4 py-3"><FilterInput value={filters.category} onChange={(value) => onFilterChange((current) => ({ ...current, category: value }))} placeholder="Categoria" /></th>
+              <th className="px-4 py-3"><select value={filters.status} onChange={(event) => onFilterChange((current) => ({ ...current, status: event.target.value }))} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="todos">Todos</option><option value="active">Activo</option><option value="inactive">Inactivo</option></select></th>
+              <th className="px-4 py-3"><FilterInput value={filters.subscriptionPlan} onChange={(value) => onFilterChange((current) => ({ ...current, subscriptionPlan: value }))} placeholder="Plan" /></th>
+              <th className="px-4 py-3"><FilterInput value={filters.ordersCount} onChange={(value) => onFilterChange((current) => ({ ...current, ordersCount: value }))} placeholder="Pedidos" /></th>
+              <th className="px-4 py-3"><FilterInput value={filters.revenue} onChange={(value) => onFilterChange((current) => ({ ...current, revenue: value }))} placeholder="Ingresos exactos" /></th>
+              <th className="px-4 py-3"><Input type="date" value={filters.joinedAt} onChange={(event) => onFilterChange((current) => ({ ...current, joinedAt: event.target.value }))} className="h-9" /></th>
+              <th className="px-4 py-3" />
+            </tr>
+          </thead>
+          <tbody className={isLoading ? "opacity-35 transition-opacity" : "transition-opacity"}>
+            {data?.results?.map((restaurant) => {
+              const statusMeta = STATUS_META[restaurant.status] || { label: restaurant.status_label, className: "bg-amber-100 text-amber-800" }
+              return (
+                <tr key={restaurant.id} className="border-b border-border/70 align-top last:border-b-0">
+                  <td className="px-4 py-4"><p className="font-medium text-foreground">{restaurant.name}</p><p className="text-xs text-muted-foreground">Rating {restaurant.rating.toFixed(1)}</p></td>
+                  <td className="px-4 py-4 text-sm text-muted-foreground">{restaurant.owner_name}</td>
+                  <td className="px-4 py-4 text-sm text-muted-foreground">{restaurant.category}</td>
+                  <td className="px-4 py-4"><Badge className={statusMeta.className}>{statusMeta.label}</Badge></td>
+                  <td className="px-4 py-4 text-sm text-muted-foreground">{restaurant.subscription_plan}</td>
+                  <td className="px-4 py-4 text-sm text-foreground">{restaurant.orders_count}</td>
+                  <td className="px-4 py-4 text-sm text-foreground">{formatCurrency(restaurant.revenue)}</td>
+                  <td className="px-4 py-4 text-sm text-muted-foreground">{new Date(restaurant.joined_at).toLocaleDateString("es-CO")}</td>
+                  <td className="px-4 py-4"><Button variant="outline" size="sm" onClick={() => onOpenSettings(restaurant.id)}><Settings2 className="mr-2 h-4 w-4" />Ajustes</Button></td>
+                </tr>
+              )
+            })}
+            {!isLoading && data?.results?.length === 0 ? <tr><td colSpan={9} className="px-4 py-10 text-center text-sm text-muted-foreground">No se encontraron restaurantes con esos filtros.</td></tr> : null}
+          </tbody>
+        </table>
+
+        {isLoading ? <FilteringOverlay /> : null}
       </div>
 
-      {/* Empty State */}
-      {filteredRestaurants.length === 0 && (<Card className="p-12 text-center">
-          <p className="text-muted-foreground">
-            No se encontraron restaurantes con los filtros aplicados
-          </p>
-        </Card>)}
-    </div>);
+      <PaginationFooter data={data} isLoading={isLoading} pageSize={pageSize} onPageSizeChange={onPageSizeChange} onPageChange={onPageChange} />
+    </Card>
+  )
+}
+
+function MobileRestaurantsList({ data, filters, isLoading, onFilterChange, pageSize, onPageSizeChange, onPageChange, onOpenSettings }) {
+  return (
+    <Card className="overflow-hidden">
+      <CardContent className="space-y-4 p-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <FilterInput value={filters.name} onChange={(value) => onFilterChange((current) => ({ ...current, name: value }))} placeholder="Restaurante" icon={<Search className="h-4 w-4" />} />
+          <FilterInput value={filters.owner} onChange={(value) => onFilterChange((current) => ({ ...current, owner: value }))} placeholder="Propietario" />
+          <FilterInput value={filters.category} onChange={(value) => onFilterChange((current) => ({ ...current, category: value }))} placeholder="Categoria" />
+          <FilterInput value={filters.subscriptionPlan} onChange={(value) => onFilterChange((current) => ({ ...current, subscriptionPlan: value }))} placeholder="Plan" />
+          <FilterInput value={filters.ordersCount} onChange={(value) => onFilterChange((current) => ({ ...current, ordersCount: value }))} placeholder="Pedidos" />
+          <FilterInput value={filters.revenue} onChange={(value) => onFilterChange((current) => ({ ...current, revenue: value }))} placeholder="Ingresos" />
+          <select value={filters.status} onChange={(event) => onFilterChange((current) => ({ ...current, status: event.target.value }))} className="h-10 rounded-md border border-input bg-background px-3 text-sm"><option value="todos">Todos los estados</option><option value="active">Activo</option><option value="inactive">Inactivo</option></select>
+          <Input type="date" value={filters.joinedAt} onChange={(event) => onFilterChange((current) => ({ ...current, joinedAt: event.target.value }))} />
+        </div>
+
+        <div className="relative space-y-3">
+          <div className={isLoading ? "space-y-3 opacity-35 transition-opacity" : "space-y-3 transition-opacity"}>
+            {data?.results?.map((restaurant) => {
+              const statusMeta = STATUS_META[restaurant.status] || { label: restaurant.status_label, className: "bg-amber-100 text-amber-800" }
+              return (
+                <div key={restaurant.id} className="rounded-2xl border border-border/70 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-foreground">{restaurant.name}</p>
+                      <p className="text-sm text-muted-foreground">{restaurant.category}</p>
+                    </div>
+                    <Badge className={statusMeta.className}>{statusMeta.label}</Badge>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <MobileStat label="Propietario" value={restaurant.owner_name} />
+                    <MobileStat label="Plan" value={restaurant.subscription_plan} />
+                    <MobileStat label="Pedidos" value={String(restaurant.orders_count)} />
+                    <MobileStat label="Ingresos" value={formatCurrency(restaurant.revenue)} />
+                    <MobileStat label="Registro" value={new Date(restaurant.joined_at).toLocaleDateString("es-CO")} />
+                    <MobileStat label="Rating" value={restaurant.rating.toFixed(1)} />
+                  </div>
+                  <Button variant="outline" className="mt-4 w-full" onClick={() => onOpenSettings(restaurant.id)}><Settings2 className="mr-2 h-4 w-4" />Ajustes</Button>
+                </div>
+              )
+            })}
+            {!isLoading && data?.results?.length === 0 ? <div className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">No se encontraron restaurantes con esos filtros.</div> : null}
+          </div>
+
+          {isLoading ? <FilteringOverlay compact /> : null}
+        </div>
+      </CardContent>
+
+      <PaginationFooter data={data} isLoading={isLoading} pageSize={pageSize} onPageSizeChange={onPageSizeChange} onPageChange={onPageChange} compact />
+    </Card>
+  )
+}
+
+function SummaryCard({ title, value }) {
+  return <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-foreground">{value}</p></CardContent></Card>
+}
+
+function Field({ label, children, className = "" }) {
+  return <div className={className}><label className="mb-2 block text-sm font-medium text-foreground">{label}</label>{children}</div>
+}
+
+function ToggleCard({ title, checked, onChange }) {
+  return (
+    <div className="flex items-center justify-between rounded-xl border border-border/70 p-4">
+      <p className="font-medium text-foreground">{title}</p>
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="h-5 w-5 rounded" />
+    </div>
+  )
+}
+
+function FilterInput({ value, onChange, placeholder, icon = null }) {
+  return <div className="relative">{icon ? <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{icon}</div> : null}<Input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className={icon ? "h-9 pl-9" : "h-9"} /></div>
+}
+
+function PaginationFooter({ data, isLoading, pageSize, onPageSizeChange, onPageChange, compact = false }) {
+  return <div className={`flex flex-col gap-4 border-t border-border p-4 ${compact ? "" : "md:flex-row md:items-center md:justify-between"}`}><div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"><p className="text-sm text-muted-foreground">Pagina {data?.page ?? 1} de {data?.total_pages ?? 1}</p><select value={pageSize} onChange={(event) => onPageSizeChange(Number(event.target.value))} className="h-9 rounded-md border border-input bg-background px-3 text-sm">{PAGE_SIZE_OPTIONS.map((option) => <option key={option} value={option}>{option} por pagina</option>)}</select></div><div className="flex gap-2"><Button variant="outline" disabled={!data || data.page <= 1 || isLoading} onClick={() => onPageChange((current) => Math.max(current - 1, 1))}>Anterior</Button><Button variant="outline" disabled={!data || data.page >= data.total_pages || isLoading} onClick={() => onPageChange((current) => current + 1)}>Siguiente</Button></div></div>
+}
+
+function OrderingIcon({ ordering, columnKey }) {
+  if (ordering === columnKey) return <ChevronUp className="h-4 w-4" />
+  if (ordering === `-${columnKey}`) return <ChevronDown className="h-4 w-4" />
+  return <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
+}
+
+function FilteringOverlay({ compact = false }) {
+  return <div className={`absolute inset-x-0 bottom-0 flex items-center justify-center bg-background/35 backdrop-blur-[1px] ${compact ? "top-0 rounded-xl" : "top-[86px]"}`}><div className="flex items-center gap-2 rounded-full bg-background/95 px-4 py-2 text-sm font-medium text-foreground shadow-sm"><Loader2 className="h-4 w-4 animate-spin" />Filtrando...</div></div>
+}
+
+function MobileStat({ label, value }) {
+  return <div><p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-1 text-sm font-medium text-foreground">{value}</p></div>
 }

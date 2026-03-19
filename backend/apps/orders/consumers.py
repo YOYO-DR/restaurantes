@@ -1,5 +1,7 @@
+from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
+from apps.core.permissions import user_id_has_role
 from apps.orders.services import build_guest_order_group_name
 from apps.orders.services import build_owner_order_group_name
 from apps.orders.services import build_user_order_group_name
@@ -30,9 +32,18 @@ class OwnerOrderConsumer(BaseOrderConsumer):
     event_type = "owner.order.created"
 
     async def connect(self):
+        user = self.scope.get("user")
         owner_id = self.scope["url_route"]["kwargs"].get("owner_id")
-        if not owner_id:
+        if not owner_id or not user or not user.is_authenticated:
             await self.close(code=4001)
+            return
+
+        is_admin = await database_sync_to_async(user_id_has_role)(user.id, "admin")
+        is_owner = await database_sync_to_async(user_id_has_role)(
+            user.id, "restaurante"
+        )
+        if not is_admin and (not is_owner or str(user.id) != owner_id):
+            await self.close(code=4003)
             return
 
         self.group_name = build_owner_order_group_name(owner_id)

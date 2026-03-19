@@ -4,7 +4,7 @@ import { useAuth } from "@/context/auth-context"
 import { dashboardPathByRole } from "@/lib/auth-routing"
 
 export function ProtectedRoute({ allowedRoles, children }) {
-  const { user, isAuthenticated, isLoading } = useAuth()
+  const { activeRole, isAuthenticated, isLoading } = useAuth()
 
   if (isLoading) {
     return <AuthScreenSkeleton />
@@ -14,8 +14,8 @@ export function ProtectedRoute({ allowedRoles, children }) {
     return <Navigate to="/login" replace />
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to={dashboardPathByRole(user.role)} replace />
+  if (allowedRoles && !allowedRoles.includes(activeRole)) {
+    return <Navigate to={dashboardPathByRole(activeRole)} replace />
   }
 
   return children

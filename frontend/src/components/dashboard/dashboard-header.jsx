@@ -1,12 +1,22 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Bell, Settings, LogOut, User, Menu } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { useAuth } from "@/context/auth-context";
+function dashboardPath(role) {
+    if (role === "admin") {
+        return "/dashboard/admin";
+    }
+    if (role === "restaurante" || role === "dueno") {
+        return "/dashboard/restaurante";
+    }
+    return "/dashboard/cliente";
+}
 export function DashboardHeader({ userName, userType, onMobileMenuClick }) {
-    const { logout } = useAuth();
+    const navigate = useNavigate();
+    const { logout, activeRole, availableRoles, switchRole } = useAuth();
     const initials = userName
         .split(" ")
         .map((n) => n[0])
@@ -37,6 +47,16 @@ export function DashboardHeader({ userName, userType, onMobileMenuClick }) {
       </div>
 
       <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
+        {availableRoles.length > 1 ? (<select
+            value={activeRole}
+            onChange={(event) => {
+                    const nextRole = switchRole(event.target.value);
+                    navigate(dashboardPath(nextRole));
+                }}
+            className="hidden h-9 rounded-md border border-input bg-background px-3 text-sm md:block"
+          >
+            {availableRoles.map((role) => <option key={role.code} value={role.code}>{role.label}</option>)}
+          </select>) : null}
         <ThemeToggle />
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5"/>
@@ -60,12 +80,26 @@ export function DashboardHeader({ userName, userType, onMobileMenuClick }) {
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none">{userName}</p>
                 <p className="text-xs leading-none text-muted-foreground">
-                  {userType === "cliente" && "Cliente"}
-                  {userType === "dueno" && "Dueno de restaurante"}
-                  {userType === "admin" && "Administrador"}
+                   {availableRoles.find((role) => role.code === activeRole)?.label || (userType === "cliente" ? "Cliente" : userType === "dueno" ? "Dueno de restaurante" : "Administrador")}
                 </p>
               </div>
             </DropdownMenuLabel>
+            {availableRoles.length > 1 ? (<>
+                <DropdownMenuSeparator />
+                <div className="px-2 py-1.5">
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Perfil activo</p>
+                  <select
+                    value={activeRole}
+                    onChange={(event) => {
+                                            const nextRole = switchRole(event.target.value);
+                                            navigate(dashboardPath(nextRole));
+                                        }}
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    {availableRoles.map((role) => <option key={role.code} value={role.code}>{role.label}</option>)}
+                  </select>
+                </div>
+              </>) : null}
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <Link to={`${dashboardPath}/perfil`}>

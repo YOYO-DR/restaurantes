@@ -21,7 +21,8 @@ const tierStyles = {
 }
 
 export default function ClientesRestaurantePage() {
-  const { data, isLoading, error } = useOwnerCustomers()
+  const [orderScope, setOrderScope] = useState("all")
+  const { data, isLoading, error } = useOwnerCustomers(orderScope)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedClient, setSelectedClient] = useState(null)
 
@@ -37,9 +38,20 @@ export default function ClientesRestaurantePage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Clientes</h1>
-        <p className="text-muted-foreground">Gestiona y conoce a tus clientes</p>
+        <div className="space-y-2">
+          <p className="text-muted-foreground">Gestiona y conoce a tus clientes</p>
+          <select
+            value={orderScope}
+            onChange={(event) => setOrderScope(event.target.value)}
+            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="all">Todas las ordenes</option>
+            <option value="completed">Completadas</option>
+            <option value="non_completed">No finalizadas</option>
+          </select>
+        </div>
       </div>
 
       {isLoading ? <TableSkeleton /> : null}
