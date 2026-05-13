@@ -7,7 +7,7 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 COPY package.json pnpm-lock.yaml ./
 # Cambia a npm install para incluir devDependencies
-RUN pnpm install --prefer-offline
+RUN pnpm install --prefer-offline --ignore-scripts
 
 # Etapa 2: Construcción de React - Fase de build
 FROM node:24.12.0-alpine3.23 AS build
