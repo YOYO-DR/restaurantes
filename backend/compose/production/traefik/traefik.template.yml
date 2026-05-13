@@ -73,7 +73,7 @@ http:
 providers:
   file:
     filename: /etc/traefik/traefik.yml
-    watch: true
+    watch: false
 
 tls:
   options:
