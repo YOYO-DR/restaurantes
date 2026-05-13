@@ -1,211 +1,237 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
-import { Bell, Mail, Smartphone, Shield, Eye, EyeOff, CreditCard, Trash2, LogOut } from "lucide-react";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, } from "@/components/ui/alert-dialog";
+import { useMemo, useState } from "react"
+import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
+import { Switch } from "@/components/ui/switch"
+import { DashboardShellSkeleton } from "@/components/ui/app-skeletons"
+import { useCustomerSettings } from "@/hooks/use-orders"
+import { Bell, CreditCard, LogOut, Mail, Plus, Shield, Smartphone, Trash2 } from "lucide-react"
+
+const PREFERENCE_MAP = {
+  "email:order_updates": {
+    key: "email_order_updates",
+    title: "Correo electronico",
+    description: "Recibe notificaciones por email sobre pedidos",
+    icon: Mail,
+  },
+  "push:order_updates": {
+    key: "push_order_updates",
+    title: "Notificaciones push",
+    description: "Notificaciones del estado de tus pedidos",
+    icon: Smartphone,
+  },
+  "sms:order_updates": {
+    key: "sms_order_updates",
+    title: "SMS",
+    description: "Mensajes de texto para cambios importantes",
+    icon: Smartphone,
+  },
+  "email:promotions": {
+    key: "email_promotions",
+    title: "Promociones y ofertas",
+    description: "Descuentos exclusivos y cupones",
+    icon: Bell,
+  },
+  "push:promotions": {
+    key: "push_promotions",
+    title: "Push de promociones",
+    description: "Alertas de promociones en tiempo real",
+    icon: Bell,
+  },
+  "email:newsletter": {
+    key: "email_newsletter",
+    title: "Newsletter",
+    description: "Novedades y restaurantes nuevos",
+    icon: Mail,
+  },
+}
+
 export default function ClienteConfiguracionPage() {
-    const [showPassword, setShowPassword] = useState(false);
-    const [notifications, setNotifications] = useState({
-        email: true,
-        push: true,
-        sms: false,
-        promotions: true,
-        orderUpdates: true,
-        newsletter: false
-    });
-    return (<div className="space-y-6">
+  const { preferences, paymentMethods, isLoading, isSaving, error, updatePreference, addPaymentMethod, removePaymentMethod } = useCustomerSettings()
+  const [newPayment, setNewPayment] = useState({
+    brand: "VISA",
+    masked_number: "",
+    expires_month: "",
+    expires_year: "",
+  })
+
+  const groupedPreferences = useMemo(() => {
+    return preferences
+      .map((preference) => {
+        const meta = PREFERENCE_MAP[`${preference.channel_code}:${preference.type_code}`]
+        return { ...preference, meta }
+      })
+      .filter((preference) => Boolean(preference.meta))
+  }, [preferences])
+
+  if (isLoading) {
+    return <DashboardShellSkeleton />
+  }
+
+  return (
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Configuracion</h1>
-        <p className="text-muted-foreground">
-          Administra las preferencias de tu cuenta
-        </p>
+        <p className="text-muted-foreground">Administra las preferencias reales de tu cuenta</p>
       </div>
 
+      {error ? <div className="text-sm text-destructive">{error}</div> : null}
+
       <div className="grid gap-6">
-        {/* Notificaciones */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Bell className="h-5 w-5"/>
+              <Bell className="h-5 w-5" />
               Notificaciones
             </CardTitle>
-            <CardDescription>
-              Configura como quieres recibir notificaciones
-            </CardDescription>
+            <CardDescription>Estas opciones se guardan en backend y se aplican en la cuenta.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium">Canales de notificacion</h4>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Mail className="h-4 w-4 text-muted-foreground"/>
-                    <div>
-                      <p className="text-sm font-medium">Correo electronico</p>
-                      <p className="text-xs text-muted-foreground">Recibe notificaciones por email</p>
-                    </div>
+          <CardContent className="space-y-4">
+            {groupedPreferences.map((preference) => (
+              <div key={preference.id} className="flex items-center justify-between gap-4 rounded-lg border border-border p-4">
+                <div className="flex items-center gap-3">
+                  <preference.meta.icon className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">{preference.meta.title}</p>
+                    <p className="text-xs text-muted-foreground">{preference.meta.description}</p>
                   </div>
-                  <Switch checked={notifications.email} onCheckedChange={(checked) => setNotifications(prev => ({ ...prev, email: Boolean(checked) }))}/>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Smartphone className="h-4 w-4 text-muted-foreground"/>
-                    <div>
-                      <p className="text-sm font-medium">Notificaciones push</p>
-                      <p className="text-xs text-muted-foreground">Notificaciones en tu dispositivo</p>
-                    </div>
-                  </div>
-                  <Switch checked={notifications.push} onCheckedChange={(checked) => setNotifications(prev => ({ ...prev, push: Boolean(checked) }))}/>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Smartphone className="h-4 w-4 text-muted-foreground"/>
-                    <div>
-                      <p className="text-sm font-medium">SMS</p>
-                      <p className="text-xs text-muted-foreground">Mensajes de texto a tu celular</p>
-                    </div>
-                  </div>
-                  <Switch checked={notifications.sms} onCheckedChange={(checked) => setNotifications(prev => ({ ...prev, sms: Boolean(checked) }))}/>
-                </div>
+                <Switch
+                  checked={preference.is_enabled}
+                  disabled={isSaving}
+                  onCheckedChange={async (checked) => {
+                    try {
+                      await updatePreference(preference.id, Boolean(checked))
+                      toast.success("Preferencia actualizada")
+                    } catch (saveError) {
+                      toast.error(saveError.message || "No fue posible actualizar la preferencia")
+                    }
+                  }}
+                />
               </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Metodos de pago
+            </CardTitle>
+            <CardDescription>Datos gestionados por API interna mientras se integra pasarela externa.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              {paymentMethods.map((method) => (
+                <div key={method.id} className="flex items-center justify-between rounded-lg border border-border p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-14 items-center justify-center rounded bg-muted text-xs font-bold">
+                      {method.brand || "CARD"}
+                    </div>
+                    <div>
+                      <p className="font-medium">{method.masked_number}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {method.expires_at ? `Vence ${new Date(method.expires_at).toLocaleDateString("es-CO", { month: "2-digit", year: "2-digit" })}` : "Sin fecha de expiracion"}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    disabled={isSaving}
+                    onClick={async () => {
+                      try {
+                        await removePaymentMethod(method.id)
+                        toast.success("Metodo eliminado")
+                      } catch (deleteError) {
+                        toast.error(deleteError.message || "No fue posible eliminar el metodo")
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
             </div>
 
             <Separator />
 
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium">Tipos de notificacion</h4>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Actualizaciones de pedidos</p>
-                    <p className="text-xs text-muted-foreground">Estado de preparacion y envio</p>
-                  </div>
-                  <Switch checked={notifications.orderUpdates} onCheckedChange={(checked) => setNotifications(prev => ({ ...prev, orderUpdates: Boolean(checked) }))}/>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Promociones y ofertas</p>
-                    <p className="text-xs text-muted-foreground">Descuentos exclusivos y cupones</p>
-                  </div>
-                  <Switch checked={notifications.promotions} onCheckedChange={(checked) => setNotifications(prev => ({ ...prev, promotions: Boolean(checked) }))}/>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Newsletter</p>
-                    <p className="text-xs text-muted-foreground">Novedades y restaurantes nuevos</p>
-                  </div>
-                  <Switch checked={notifications.newsletter} onCheckedChange={(checked) => setNotifications(prev => ({ ...prev, newsletter: Boolean(checked) }))}/>
+            <div className="grid gap-3 sm:grid-cols-4">
+              <div className="space-y-2">
+                <Label>Marca</Label>
+                <Input value={newPayment.brand} onChange={(event) => setNewPayment((current) => ({ ...current, brand: event.target.value.toUpperCase() }))} placeholder="VISA" />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label>Numero enmascarado</Label>
+                <Input value={newPayment.masked_number} onChange={(event) => setNewPayment((current) => ({ ...current, masked_number: event.target.value }))} placeholder="**** **** **** 4242" />
+              </div>
+              <div className="space-y-2">
+                <Label>Vencimiento</Label>
+                <div className="flex gap-2">
+                  <Input value={newPayment.expires_month} onChange={(event) => setNewPayment((current) => ({ ...current, expires_month: event.target.value }))} placeholder="MM" />
+                  <Input value={newPayment.expires_year} onChange={(event) => setNewPayment((current) => ({ ...current, expires_year: event.target.value }))} placeholder="YY" />
                 </div>
               </div>
             </div>
+
+            <Button
+              variant="outline"
+              className="gap-2"
+              disabled={isSaving || !newPayment.masked_number}
+              onClick={async () => {
+                try {
+                  const month = (newPayment.expires_month || "").padStart(2, "0")
+                  const year = (newPayment.expires_year || "").padStart(2, "0")
+                  const expiresAt = month && year ? `20${year}-${month}-01T00:00:00Z` : null
+                  await addPaymentMethod({
+                    brand: newPayment.brand,
+                    masked_number: newPayment.masked_number,
+                    expires_at: expiresAt,
+                  })
+                  setNewPayment({ brand: "VISA", masked_number: "", expires_month: "", expires_year: "" })
+                  toast.success("Metodo agregado")
+                } catch (saveError) {
+                  toast.error(saveError.message || "No fue posible agregar el metodo")
+                }
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              Agregar metodo de pago
+            </Button>
           </CardContent>
         </Card>
 
-        {/* Seguridad */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5"/>
+              <Shield className="h-5 w-5" />
               Seguridad
             </CardTitle>
-            <CardDescription>
-              Protege tu cuenta con una contrasena segura
-            </CardDescription>
+            <CardDescription>La actualizacion de contrasena se mantiene por flujo de autenticacion.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="current-password">Contrasena actual</Label>
-                <div className="relative">
-                  <Input id="current-password" type={showPassword ? "text" : "password"} placeholder="********"/>
-                  <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-full px-3 hover:bg-transparent" onClick={() => setShowPassword(!showPassword)}>
-                    {showPassword ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
-                  </Button>
-                </div>
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="new-password">Nueva contrasena</Label>
-                <Input id="new-password" type="password" placeholder="********"/>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirm-password">Confirmar contrasena</Label>
-                <Input id="confirm-password" type="password" placeholder="********"/>
-              </div>
-            </div>
-            <Button>Actualizar contrasena</Button>
+          <CardContent>
+            <Button disabled>Actualizar contrasena (proximamente)</Button>
           </CardContent>
         </Card>
 
-        {/* Metodos de pago */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5"/>
-              Metodos de pago
-            </CardTitle>
-            <CardDescription>
-              Administra tus tarjetas y metodos de pago guardados
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between rounded-lg border border-border p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-14 items-center justify-center rounded bg-muted text-xs font-bold">
-                    VISA
-                  </div>
-                  <div>
-                    <p className="font-medium">**** **** **** 4532</p>
-                    <p className="text-xs text-muted-foreground">Vence 12/26</p>
-                  </div>
-                </div>
-                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                  <Trash2 className="h-4 w-4"/>
-                </Button>
-              </div>
-              <div className="flex items-center justify-between rounded-lg border border-border p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-14 items-center justify-center rounded bg-muted text-xs font-bold">
-                    MC
-                  </div>
-                  <div>
-                    <p className="font-medium">**** **** **** 8721</p>
-                    <p className="text-xs text-muted-foreground">Vence 08/25</p>
-                  </div>
-                </div>
-                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                  <Trash2 className="h-4 w-4"/>
-                </Button>
-              </div>
-            </div>
-            <Button variant="outline">Agregar metodo de pago</Button>
-          </CardContent>
-        </Card>
-
-        {/* Zona de peligro */}
         <Card className="border-destructive/50">
           <CardHeader>
             <CardTitle className="text-destructive">Zona de peligro</CardTitle>
-            <CardDescription>
-              Acciones irreversibles para tu cuenta
-            </CardDescription>
+            <CardDescription>Acciones sensibles de la cuenta.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="font-medium">Cerrar sesion en todos los dispositivos</p>
-                <p className="text-sm text-muted-foreground">
-                  Cierra sesion en todos los dispositivos donde hayas iniciado sesion
-                </p>
+                <p className="text-sm text-muted-foreground">Funcion pendiente de implementacion.</p>
               </div>
-              <Button variant="outline" className="shrink-0">
-                <LogOut className="mr-2 h-4 w-4"/>
+              <Button variant="outline" className="shrink-0" disabled>
+                <LogOut className="mr-2 h-4 w-4" />
                 Cerrar sesiones
               </Button>
             </div>
@@ -215,36 +241,16 @@ export default function ClienteConfiguracionPage() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="font-medium text-destructive">Eliminar cuenta</p>
-                <p className="text-sm text-muted-foreground">
-                  Esta accion es permanente y no se puede deshacer
-                </p>
+                <p className="text-sm text-muted-foreground">Esta accion es permanente y no se puede deshacer.</p>
               </div>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" className="shrink-0">
-                    <Trash2 className="mr-2 h-4 w-4"/>
-                    Eliminar cuenta
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Estas seguro?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Esta accion no se puede deshacer. Se eliminaran permanentemente tu cuenta 
-                      y todos los datos asociados, incluyendo historial de pedidos y puntos de lealtad.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                      Eliminar cuenta
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <Button variant="destructive" className="shrink-0" disabled>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Eliminar cuenta
+              </Button>
             </div>
           </CardContent>
         </Card>
       </div>
-    </div>);
+    </div>
+  )
 }

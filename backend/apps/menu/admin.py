@@ -11,7 +11,6 @@ from apps.menu.models import MenuItemTag
 from apps.menu.models import MenuTag
 from apps.menu.models import UnitType
 
-
 admin.site.register(InventoryItem)
 admin.site.register(InventoryMovementType)
 admin.site.register(InventoryStockMovement)

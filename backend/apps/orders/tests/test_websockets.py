@@ -1,13 +1,12 @@
 import pytest
-from channels.testing import WebsocketCommunicator
 from channels.db import database_sync_to_async
+from channels.testing import WebsocketCommunicator
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.accounts.models import Role
 from apps.accounts.models import UserRole
-from config.asgi import application
 from apps.users.tests.factories import UserFactory
-
+from config.asgi import application
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.anyio]
 

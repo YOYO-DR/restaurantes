@@ -1,6 +1,7 @@
 from django.utils.text import slugify
 from rest_framework import serializers
 
+from apps.core.permissions import get_operator_restaurant_id
 from apps.core.permissions import is_admin_user
 from apps.menu.models import InventoryItem
 from apps.menu.models import InventoryMovementType
@@ -52,15 +53,19 @@ class OwnerMenuCategoryWriteSerializer(serializers.ModelSerializer):
         if is_admin_user(request.user):
             return value
         if value.owner_id != request.user.id:
-            raise serializers.ValidationError(
-                "No puedes gestionar categorias de este restaurante."
-            )
+            operator_restaurant_id = get_operator_restaurant_id(request.user)
+            if value.id != operator_restaurant_id:
+                raise serializers.ValidationError(
+                    "No puedes gestionar categorias de este restaurante.",
+                )
         return value
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
         restaurant = attrs.get("restaurant") or getattr(
-            self.instance, "restaurant", None
+            self.instance,
+            "restaurant",
+            None,
         )
         name = attrs.get("name") or getattr(self.instance, "name", "")
 
@@ -75,10 +80,14 @@ class OwnerMenuCategoryWriteSerializer(serializers.ModelSerializer):
 
 class OwnerMenuItemWriteSerializer(serializers.ModelSerializer):
     primary_image = serializers.FileField(
-        required=False, allow_null=True, write_only=True
+        required=False,
+        allow_null=True,
+        write_only=True,
     )
     gallery_images = serializers.ListField(
-        child=serializers.FileField(), required=False, write_only=True
+        child=serializers.FileField(),
+        required=False,
+        write_only=True,
     )
     remove_primary_image = serializers.BooleanField(required=False, write_only=True)
     remove_gallery_image_ids = serializers.ListField(
@@ -133,18 +142,24 @@ class OwnerMenuItemWriteSerializer(serializers.ModelSerializer):
         if is_admin_user(request.user):
             return value
         if value.owner_id != request.user.id:
-            raise serializers.ValidationError(
-                "No puedes gestionar platos de este restaurante."
-            )
+            operator_restaurant_id = get_operator_restaurant_id(request.user)
+            if value.id != operator_restaurant_id:
+                raise serializers.ValidationError(
+                    "No puedes gestionar platos de este restaurante.",
+                )
         return value
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
         restaurant = attrs.get("restaurant") or getattr(
-            self.instance, "restaurant", None
+            self.instance,
+            "restaurant",
+            None,
         )
         menu_category = attrs.get("menu_category") or getattr(
-            self.instance, "menu_category", None
+            self.instance,
+            "menu_category",
+            None,
         )
         name = attrs.get("name") or getattr(self.instance, "name", "")
 
@@ -155,8 +170,8 @@ class OwnerMenuItemWriteSerializer(serializers.ModelSerializer):
         ):
             raise serializers.ValidationError(
                 {
-                    "menu_category": "La categoria no pertenece al restaurante seleccionado."
-                }
+                    "menu_category": "La categoria no pertenece al restaurante seleccionado.",
+                },
             )
 
         if restaurant and name:
@@ -176,7 +191,8 @@ class OwnerMenuItemWriteSerializer(serializers.ModelSerializer):
         if primary_image:
             menu_item.images.update(is_primary=False)
             primary_record = menu_item.images.order_by(
-                "sort_order", "created_at"
+                "sort_order",
+                "created_at",
             ).first()
 
             if primary_record:
@@ -190,7 +206,7 @@ class OwnerMenuItemWriteSerializer(serializers.ModelSerializer):
                         "image_url",
                         "is_primary",
                         "sort_order",
-                    ]
+                    ],
                 )
             else:
                 MenuItemImage.objects.create(
@@ -280,10 +296,16 @@ class InventoryUnitSerializer(serializers.ModelSerializer):
 class InventoryItemSerializer(serializers.ModelSerializer):
     current_stock = serializers.DecimalField(max_digits=14, decimal_places=2)
     min_stock = serializers.DecimalField(
-        max_digits=14, decimal_places=2, allow_null=True, required=False
+        max_digits=14,
+        decimal_places=2,
+        allow_null=True,
+        required=False,
     )
     max_stock = serializers.DecimalField(
-        max_digits=14, decimal_places=2, allow_null=True, required=False
+        max_digits=14,
+        decimal_places=2,
+        allow_null=True,
+        required=False,
     )
     unit = serializers.CharField(source="unit_type.name", read_only=True)
     unit_code = serializers.CharField(source="unit_type.code", read_only=True)
@@ -321,23 +343,35 @@ class InventoryItemSerializer(serializers.ModelSerializer):
         if is_admin_user(request.user):
             return value
         if value.owner_id != request.user.id:
-            raise serializers.ValidationError(
-                "No puedes gestionar inventario de este restaurante."
-            )
+            operator_restaurant_id = get_operator_restaurant_id(request.user)
+            if value.id != operator_restaurant_id:
+                raise serializers.ValidationError(
+                    "No puedes gestionar inventario de este restaurante.",
+                )
         return value
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
         restaurant = attrs.get("restaurant") or getattr(
-            self.instance, "restaurant", None
+            self.instance,
+            "restaurant",
+            None,
         )
 
         if restaurant is None:
             owner_restaurant = Restaurant.objects.filter(
-                owner=self.context["request"].user
+                owner=self.context["request"].user,
             ).first()
             if owner_restaurant:
                 attrs["restaurant"] = owner_restaurant
+            else:
+                operator_restaurant_id = get_operator_restaurant_id(
+                    self.context["request"].user,
+                )
+                if operator_restaurant_id:
+                    attrs["restaurant"] = Restaurant.objects.get(
+                        id=operator_restaurant_id,
+                    )
 
         return attrs
 
@@ -361,7 +395,8 @@ class InventoryItemSerializer(serializers.ModelSerializer):
                 "created_by": movement.created_by.name if movement.created_by else "",
             }
             for movement in obj.movements.select_related(
-                "movement_type", "created_by"
+                "movement_type",
+                "created_by",
             ).order_by("-created_at")[:10]
         ]
 
@@ -369,14 +404,14 @@ class InventoryItemSerializer(serializers.ModelSerializer):
 class InventoryMovementCreateSerializer(serializers.Serializer):
     quantity = serializers.DecimalField(max_digits=14, decimal_places=2)
     movement_type_code = serializers.ChoiceField(
-        choices=("stock_in", "stock_out", "stock_adjustment")
+        choices=("stock_in", "stock_out", "stock_adjustment"),
     )
     reason = serializers.CharField(required=False, allow_blank=True)
 
     def save(self, **kwargs):
         inventory_item: InventoryItem = self.context["inventory_item"]
         movement_type = InventoryMovementType.objects.get(
-            code=self.validated_data["movement_type_code"]
+            code=self.validated_data["movement_type_code"],
         )
         quantity = self.validated_data["quantity"]
         movement_type_code = self.validated_data["movement_type_code"]

@@ -11,7 +11,7 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 COPY package.json pnpm-lock.yaml ./
 
 # Instala las dependencias
-RUN pnpm install
+RUN pnpm install --ignore-scripts
 
 # Copia el resto del código fuente
 COPY . .

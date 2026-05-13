@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
 import { useOwnerInventory } from "@/hooks/use-restaurants"
 import { AlertTriangle, Loader2, Package, Plus, Search, TrendingDown } from "lucide-react"
@@ -87,18 +88,18 @@ function InventoryItemDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Unidad</Label>
-              <select
-                className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                value={form.unit_type}
-                onChange={(event) => setForm((current) => ({ ...current, unit_type: event.target.value }))}
-              >
-                <option value="">Selecciona una unidad</option>
-                {units.map((unit) => (
-                  <option key={unit.id} value={unit.id}>
-                    {unit.name}
-                  </option>
-                ))}
-              </select>
+              <Select value={form.unit_type} onValueChange={(value) => setForm((current) => ({ ...current, unit_type: value }))}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Selecciona una unidad" />
+                </SelectTrigger>
+                <SelectContent>
+                  {units.map((unit) => (
+                    <SelectItem key={unit.id} value={unit.id}>
+                      {unit.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <Field label="Stock actual" type="number" value={form.current_stock} onChange={(value) => setForm((current) => ({ ...current, current_stock: value }))} />
           </div>
@@ -158,15 +159,16 @@ function MovementDialog({ open, onOpenChange, item, isSaving, onSubmit }) {
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>Tipo de movimiento</Label>
-            <select
-              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-              value={form.movement_type_code}
-              onChange={(event) => setForm((current) => ({ ...current, movement_type_code: event.target.value }))}
-            >
-              <option value="stock_in">Entrada</option>
-              <option value="stock_out">Salida</option>
-              <option value="stock_adjustment">Ajuste</option>
-            </select>
+            <Select value={form.movement_type_code} onValueChange={(value) => setForm((current) => ({ ...current, movement_type_code: value }))}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Tipo de movimiento" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="stock_in">Entrada</SelectItem>
+                <SelectItem value="stock_out">Salida</SelectItem>
+                <SelectItem value="stock_adjustment">Ajuste</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <Field label="Cantidad" type="number" value={form.quantity} onChange={(value) => setForm((current) => ({ ...current, quantity: value }))} />
           <div className="space-y-2">

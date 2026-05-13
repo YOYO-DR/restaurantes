@@ -15,7 +15,8 @@ User = get_user_model()
 ROLE_PRIORITY = {
     "admin": 0,
     "restaurante": 1,
-    "cliente": 2,
+    "operador": 2,
+    "cliente": 3,
 }
 
 
@@ -37,14 +38,15 @@ def _get_or_create_role(code: str, name: str | None = None) -> Role:
 
 def _ensure_companion_customer_role(user) -> None:
     existing_codes = set(
-        UserRole.objects.filter(user=user).values_list("role__code", flat=True)
+        UserRole.objects.filter(user=user).values_list("role__code", flat=True),
     )
     if (
-        existing_codes.intersection({"admin", "restaurante"})
+        existing_codes.intersection({"admin", "restaurante", "operador"})
         and "cliente" not in existing_codes
     ):
         UserRole.objects.get_or_create(
-            user=user, role=_get_or_create_role("cliente", "Cliente")
+            user=user,
+            role=_get_or_create_role("cliente", "Cliente"),
         )
 
 
@@ -53,7 +55,7 @@ def get_user_role_codes(user) -> list[str]:
     role_codes = list(
         UserRole.objects.filter(user=user)
         .select_related("role")
-        .values_list("role__code", flat=True)
+        .values_list("role__code", flat=True),
     )
     if not role_codes:
         return ["cliente"]
@@ -75,10 +77,16 @@ class RegisterSerializer(serializers.ModelSerializer):
         write_only=True,
     )
     restaurant_name = serializers.CharField(
-        max_length=180, required=False, allow_blank=True, write_only=True
+        max_length=180,
+        required=False,
+        allow_blank=True,
+        write_only=True,
     )
     restaurant_address = serializers.CharField(
-        max_length=220, required=False, allow_blank=True, write_only=True
+        max_length=220,
+        required=False,
+        allow_blank=True,
+        write_only=True,
     )
 
     class Meta:
@@ -97,18 +105,18 @@ class RegisterSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if attrs["password"] != attrs["password_confirm"]:
             raise serializers.ValidationError(
-                {"password_confirm": "Passwords do not match."}
+                {"password_confirm": "Passwords do not match."},
             )
 
         user_type = attrs.get("user_type", "cliente")
         if user_type in {"dueno", "owner", "restaurante"}:
             if not attrs.get("restaurant_name", "").strip():
                 raise serializers.ValidationError(
-                    {"restaurant_name": "Restaurant name is required."}
+                    {"restaurant_name": "Restaurant name is required."},
                 )
             if not attrs.get("restaurant_address", "").strip():
                 raise serializers.ValidationError(
-                    {"restaurant_address": "Restaurant address is required."}
+                    {"restaurant_address": "Restaurant address is required."},
                 )
 
         return attrs
@@ -227,6 +235,7 @@ class UserMeSerializer(serializers.ModelSerializer):
         labels = {
             "cliente": "Cliente",
             "restaurante": "Dueno de restaurante",
+            "operador": "Operador",
             "admin": "Administrador",
         }
         return [

@@ -11,54 +11,67 @@ class CustomerLoyaltyViewSet(GenericViewSet):
     permission_classes = [IsAuthenticatedUser]
 
     def list(self, request):
-        loyalty_account = (
-            LoyaltyAccount.objects.filter(user=request.user)
-            .select_related("tier")
-            .first()
-        )
+        restaurant_id = request.query_params.get("restaurant_id")
+
+        accounts_qs = LoyaltyAccount.objects.filter(user=request.user).select_related("tier", "restaurant")
+        if restaurant_id:
+            accounts_qs = accounts_qs.filter(restaurant_id=restaurant_id)
+
+        accounts = list(accounts_qs)
+
+        current_points = sum(acc.current_points for acc in accounts)
+        total_earned = sum(acc.lifetime_points for acc in accounts)
+
+        if len(accounts) == 1 and restaurant_id:
+            current_level = accounts[0].tier.name
+        else:
+            current_level = "Varios" if accounts else "Base"
+
         favorite_restaurants = Favorite.objects.filter(
-            user=request.user
+            user=request.user,
         ).select_related("restaurant")
-        restaurant_ids = [favorite.restaurant_id for favorite in favorite_restaurants]
+        fav_restaurant_ids = [favorite.restaurant_id for favorite in favorite_restaurants]
+        if restaurant_id and restaurant_id not in fav_restaurant_ids:
+            fav_restaurant_ids.append(restaurant_id)
+
         available_rewards = LoyaltyReward.objects.filter(
-            restaurant_id__in=restaurant_ids,
+            restaurant_id__in=fav_restaurant_ids,
             is_active=True,
         ).select_related("restaurant")[:8]
 
-        transactions = []
-        if loyalty_account:
-            transactions = [
-                {
-                    "id": str(transaction.id),
-                    "date": transaction.created_at.date().isoformat(),
-                    "description": transaction.description
-                    or (
-                        f"Pedido {transaction.order.order_code}"
-                        if transaction.order
-                        else transaction.tx_type.name
-                    ),
-                    "points": transaction.points_delta,
-                    "type": "redeemed" if transaction.points_delta < 0 else "earned",
-                }
-                for transaction in loyalty_account.transactions.select_related(
-                    "tx_type", "order"
-                ).order_by("-created_at")[:10]
-            ]
+        from apps.loyalty.models import LoyaltyTransaction
+        tx_qs = LoyaltyTransaction.objects.filter(
+            loyalty_account__in=accounts,
+        ).select_related("tx_type", "order", "loyalty_account__restaurant").order_by("-created_at")[:20]
+
+        transactions = [
+            {
+                "id": str(transaction.id),
+                "restaurant_name": transaction.loyalty_account.restaurant.display_name,
+                "date": transaction.created_at.date().isoformat(),
+                "description": transaction.description
+                or (
+                    f"Pedido {transaction.order.order_code}"
+                    if transaction.order
+                    else transaction.tx_type.name
+                ),
+                "points": transaction.points_delta,
+                "type": "redeemed" if transaction.points_delta < 0 else "earned",
+            }
+            for transaction in tx_qs
+        ]
+
+        rewards_redeemed = LoyaltyTransaction.objects.filter(
+            loyalty_account__in=accounts,
+            points_delta__lt=0,
+        ).count()
 
         return Response(
             {
-                "current_points": loyalty_account.current_points
-                if loyalty_account
-                else 0,
-                "total_earned": loyalty_account.lifetime_points
-                if loyalty_account
-                else 0,
-                "current_level": loyalty_account.tier.name
-                if loyalty_account
-                else "Base",
-                "rewards_redeemed": len(
-                    [tx for tx in transactions if tx["points"] < 0]
-                ),
+                "current_points": current_points,
+                "total_earned": total_earned,
+                "current_level": current_level,
+                "rewards_redeemed": rewards_redeemed,
                 "available_rewards": [
                     {
                         "id": str(reward.id),
@@ -70,5 +83,6 @@ class CustomerLoyaltyViewSet(GenericViewSet):
                     for reward in available_rewards
                 ],
                 "history": transactions,
-            }
+            },
         )
+

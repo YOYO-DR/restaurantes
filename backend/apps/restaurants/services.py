@@ -2,9 +2,11 @@ from django.utils.text import slugify
 
 from apps.platform_config.models import BillingPeriod
 from apps.platform_config.models import SubscriptionPlan
-from apps.restaurants.models import CategoryNavigationStyle
 from apps.restaurants.models import CartPosition
+from apps.restaurants.models import CategoryNavigationStyle
 from apps.restaurants.models import MenuLayoutOption
+from apps.restaurants.models import QrCode
+from apps.restaurants.models import QrTargetType
 from apps.restaurants.models import Restaurant
 from apps.restaurants.models import RestaurantAddress
 from apps.restaurants.models import RestaurantBranding
@@ -12,8 +14,6 @@ from apps.restaurants.models import RestaurantCategory
 from apps.restaurants.models import RestaurantDeliverySetting
 from apps.restaurants.models import RestaurantHour
 from apps.restaurants.models import RestaurantOrderCapability
-from apps.restaurants.models import QrCode
-from apps.restaurants.models import QrTargetType
 from apps.restaurants.models import RestaurantStatus
 from apps.restaurants.models import RestaurantTable
 from apps.restaurants.models import TableStatus
@@ -62,7 +62,7 @@ def ensure_owner_restaurant(
         if not existing_restaurant.currency_code:
             existing_restaurant.currency_code = "COP"
         existing_restaurant.save(
-            update_fields=["display_name", "phone", "email", "currency_code"]
+            update_fields=["display_name", "phone", "email", "currency_code"],
         )
 
         if address_line1:
@@ -151,29 +151,37 @@ def ensure_qr_catalogs() -> None:
 
 def ensure_branding_catalogs() -> None:
     MenuLayoutOption.objects.get_or_create(
-        code="cards", defaults={"name": "Tarjetas con imagen"}
+        code="cards",
+        defaults={"name": "Tarjetas con imagen"},
     )
     MenuLayoutOption.objects.get_or_create(
-        code="list", defaults={"name": "Lista compacta"}
+        code="list",
+        defaults={"name": "Lista compacta"},
     )
     MenuLayoutOption.objects.get_or_create(code="grid", defaults={"name": "Cuadricula"})
     CategoryNavigationStyle.objects.get_or_create(
-        code="tabs", defaults={"name": "Pestanas horizontales"}
+        code="tabs",
+        defaults={"name": "Pestanas horizontales"},
     )
     CategoryNavigationStyle.objects.get_or_create(
-        code="sidebar", defaults={"name": "Barra lateral"}
+        code="sidebar",
+        defaults={"name": "Barra lateral"},
     )
     CategoryNavigationStyle.objects.get_or_create(
-        code="dropdown", defaults={"name": "Menu desplegable"}
+        code="dropdown",
+        defaults={"name": "Menu desplegable"},
     )
     CartPosition.objects.get_or_create(
-        code="sidebar", defaults={"name": "Barra lateral"}
+        code="sidebar",
+        defaults={"name": "Barra lateral"},
     )
     CartPosition.objects.get_or_create(
-        code="bottom", defaults={"name": "Barra inferior"}
+        code="bottom",
+        defaults={"name": "Barra inferior"},
     )
     CartPosition.objects.get_or_create(
-        code="floating", defaults={"name": "Boton flotante"}
+        code="floating",
+        defaults={"name": "Boton flotante"},
     )
 
 
@@ -202,7 +210,9 @@ def build_menu_qr_url(base_url: str, restaurant: Restaurant) -> str:
 
 
 def build_table_qr_url(
-    base_url: str, restaurant: Restaurant, table: RestaurantTable
+    base_url: str,
+    restaurant: Restaurant,
+    table: RestaurantTable,
 ) -> str:
     return f"{base_url}/restaurantes/{restaurant.slug}?table={table.table_number}"
 
@@ -223,7 +233,9 @@ def ensure_menu_qr_code(base_url: str, restaurant: Restaurant) -> QrCode:
 
 
 def ensure_table_qr_code(
-    base_url: str, restaurant: Restaurant, table: RestaurantTable
+    base_url: str,
+    restaurant: Restaurant,
+    table: RestaurantTable,
 ) -> QrCode:
     ensure_qr_catalogs()
     target_type = QrTargetType.objects.get(code="table")

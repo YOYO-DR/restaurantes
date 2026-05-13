@@ -13,8 +13,12 @@ const LEVELS = [
   { name: "Platino", minPoints: 2501, maxPoints: 5000 },
 ]
 
+import { useSearchParams, Link } from "react-router-dom"
+
 export default function ClientPointsPage() {
-  const { data, isLoading, error } = useCustomerLoyalty()
+  const [searchParams] = useSearchParams()
+  const restaurantId = searchParams.get("restaurant_id")
+  const { data, isLoading, error } = useCustomerLoyalty(restaurantId)
   const currentLevel = LEVELS.find((level) => level.name === data.current_level) || LEVELS[0]
   const nextLevel = LEVELS[LEVELS.indexOf(currentLevel) + 1]
   const progressToNextLevel = nextLevel
@@ -23,9 +27,16 @@ export default function ClientPointsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Mis Puntos</h2>
-        <p className="text-muted-foreground">Acumula puntos y canjealos por recompensas</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Mis Puntos</h2>
+          <p className="text-muted-foreground">Acumula puntos y canjéalos por recompensas</p>
+        </div>
+        {restaurantId && (
+          <Button variant="outline" asChild>
+            <Link to="/dashboard/cliente">Volver al resumen</Link>
+          </Button>
+        )}
       </div>
 
       {isLoading ? <DashboardShellSkeleton /> : null}

@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DashboardShellSkeleton } from "@/components/ui/app-skeletons"
 import { useOwnerAnalytics } from "@/hooks/use-orders"
 import { formatCurrency } from "@/lib/format"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DollarSign, ShoppingBag, TrendingUp, Users } from "lucide-react"
 
 const PERIODS = ["today", "week", "month", "year"]
@@ -24,15 +25,16 @@ export default function OwnerAnalyticsPage() {
         <h2 className="text-2xl font-bold tracking-tight">Analiticas</h2>
         <div className="space-y-2">
           <p className="text-muted-foreground">Metricas y estadisticas de tu restaurante</p>
-          <select
-            value={orderScope}
-            onChange={(event) => setOrderScope(event.target.value)}
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-          >
-            <option value="all">Todas las ordenes</option>
-            <option value="completed">Completadas</option>
-            <option value="non_completed">No finalizadas</option>
-          </select>
+          <Select value={orderScope} onValueChange={(value) => setOrderScope(value)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Todas las ordenes" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las ordenes</SelectItem>
+              <SelectItem value="completed">Completadas</SelectItem>
+              <SelectItem value="non_completed">No finalizadas</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

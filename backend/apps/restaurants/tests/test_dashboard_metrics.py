@@ -11,13 +11,13 @@ from apps.restaurants.tests.factories import OrderTypeFactory
 from apps.restaurants.tests.factories import RestaurantFactory
 from apps.users.tests.factories import UserFactory
 
-
 pytestmark = pytest.mark.django_db
 
 
 def assign_owner_role(user):
     role, _ = Role.objects.get_or_create(
-        code="restaurante", defaults={"name": "Restaurante"}
+        code="restaurante",
+        defaults={"name": "Restaurante"},
     )
     UserRole.objects.get_or_create(user=user, role=role)
 

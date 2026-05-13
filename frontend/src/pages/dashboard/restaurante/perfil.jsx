@@ -52,10 +52,16 @@ export default function PerfilRestaurantePage() {
               </Button>
               <h2 className="mt-4 text-xl font-semibold">{form.name}</h2>
               <p className="text-sm text-muted-foreground">Propietario</p>
-              <Badge variant="secondary" className="mt-2">
-                <Check className="mr-1 h-3 w-3" />
-                Cuenta verificada
-              </Badge>
+              {profile?.is_verified ? (
+                <Badge variant="secondary" className="mt-2">
+                  <Check className="mr-1 h-3 w-3" />
+                  Cuenta verificada
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="mt-2">
+                  Cuenta pendiente de verificacion
+                </Badge>
+              )}
             </div>
           </CardContent>
         </Card>

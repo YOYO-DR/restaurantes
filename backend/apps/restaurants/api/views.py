@@ -8,23 +8,22 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from apps.core.permissions import IsOwnerObjectOrAdminRole
+from apps.core.permissions import get_user_owned_or_operated_restaurant_ids
 from apps.core.permissions import is_admin_user
 from apps.orders.models import OrderItem
 from apps.orders.services import filter_orders_by_scope
-from apps.restaurants.api.serializers import OwnerMenuCategorySerializer
 from apps.restaurants.api.serializers import OwnerDashboardRecentOrderSerializer
+from apps.restaurants.api.serializers import OwnerMenuCategorySerializer
 from apps.restaurants.api.serializers import OwnerRestaurantReviewReplySerializer
 from apps.restaurants.api.serializers import OwnerRestaurantReviewSerializer
 from apps.restaurants.api.serializers import OwnerRestaurantTableSerializer
 from apps.restaurants.api.serializers import OwnerRestaurantTableWriteSerializer
 from apps.restaurants.api.serializers import PublicMenuCategorySerializer
-from apps.restaurants.api.serializers import RestaurantPersonalizationSerializer
-from apps.restaurants.api.serializers import RestaurantSettingsSerializer
 from apps.restaurants.api.serializers import RestaurantDetailSerializer
 from apps.restaurants.api.serializers import RestaurantListSerializer
+from apps.restaurants.api.serializers import RestaurantPersonalizationSerializer
+from apps.restaurants.api.serializers import RestaurantSettingsSerializer
 from apps.restaurants.models import Restaurant
-from apps.restaurants.models import RestaurantReview
-from apps.restaurants.models import RestaurantTable
 from apps.restaurants.services import ensure_menu_qr_code
 from apps.restaurants.services import ensure_qr_catalogs
 from apps.restaurants.services import ensure_table_qr_code
@@ -64,7 +63,7 @@ class PublicRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
     def menu(self, request, slug=None):
         restaurant = self.get_object()
         categories = restaurant.menu_categories.filter(is_active=True).prefetch_related(
-            "menu_items__images"
+            "menu_items__images",
         )
         serializer = PublicMenuCategorySerializer(
             categories,
@@ -80,7 +79,7 @@ class PublicRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
                     "currency_code": restaurant.currency_code,
                 },
                 "categories": serializer.data,
-            }
+            },
         )
 
 
@@ -104,7 +103,8 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
         )
         if is_admin_user(self.request.user):
             return queryset.order_by("display_name")
-        return queryset.filter(owner=self.request.user).order_by("display_name")
+        restaurant_ids = get_user_owned_or_operated_restaurant_ids(self.request.user)
+        return queryset.filter(id__in=restaurant_ids).order_by("display_name")
 
     @action(detail=True, methods=["get"])
     def menu(self, request, pk=None):
@@ -123,7 +123,7 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
                     "name": restaurant.display_name,
                 },
                 "categories": serializer.data,
-            }
+            },
         )
 
     @action(detail=True, methods=["get"])
@@ -133,21 +133,23 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
         order_scope = request.query_params.get("order_scope", "all").strip()
         orders_queryset = filter_orders_by_scope(
             restaurant.orders.select_related(
-                "status", "order_type", "user"
+                "status",
+                "order_type",
+                "user",
             ).prefetch_related("items"),
             order_scope,
         )
 
         sales_today = (
             orders_queryset.filter(created_at__date=today).aggregate(
-                total=Sum("total_amount")
+                total=Sum("total_amount"),
             )["total"]
             or 0
         )
         orders_today = orders_queryset.filter(created_at__date=today).count()
         new_customers_this_week = (
             orders_queryset.filter(
-                created_at__date__gte=today - timezone.timedelta(days=6)
+                created_at__date__gte=today - timezone.timedelta(days=6),
             )
             .values("user_id")
             .distinct()
@@ -162,7 +164,8 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
         )
         monthly_sales = (
             orders_queryset.filter(
-                created_at__year=today.year, created_at__month=today.month
+                created_at__year=today.year,
+                created_at__month=today.month,
             ).aggregate(total=Sum("total_amount"))["total"]
             or 0
         )
@@ -185,7 +188,8 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
                 },
                 "order_scope": order_scope,
                 "recent_orders": OwnerDashboardRecentOrderSerializer(
-                    recent_orders, many=True
+                    recent_orders,
+                    many=True,
                 ).data,
                 "top_products": [
                     {
@@ -195,7 +199,7 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
                     }
                     for product in top_products
                 ],
-            }
+            },
         )
 
     @action(detail=True, methods=["get"])
@@ -203,7 +207,8 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
         restaurant = self.get_object()
         order_scope = request.query_params.get("order_scope", "all").strip()
         scoped_orders = filter_orders_by_scope(
-            restaurant.orders.select_related("user"), order_scope
+            restaurant.orders.select_related("user"),
+            order_scope,
         )
         customer_rows = scoped_orders.values(
             "user_id",
@@ -217,34 +222,37 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
             last_order=Max("created_at"),
         )
 
+        user_ids = [row["user_id"] for row in customer_rows if row["user_id"]]
+        from apps.loyalty.models import LoyaltyAccount
+        loyalty_dict = {
+            acc.user_id: acc
+            for acc in LoyaltyAccount.objects.filter(restaurant=restaurant, user_id__in=user_ids).select_related("tier")
+        }
+
         customers = []
         vip_count = 0
         for row in customer_rows:
             total_orders = row["total_orders"] or 0
             total_spent = row["total_spent"] or 0
             average_ticket = total_spent / total_orders if total_orders else 0
-            order_user = (
-                scoped_orders.filter(user_id=row["user_id"]).first().user
-                if row["user_id"]
-                else None
-            )
-            loyalty_account = getattr(order_user, "loyalty_account", None)
+            loyalty_account = loyalty_dict.get(row["user_id"]) if row["user_id"] else None
             points = loyalty_account.current_points if loyalty_account else 0
             tier = loyalty_account.tier.name if loyalty_account else "Base"
             if points >= 1000:
                 vip_count += 1
             favorite_items = list(
                 OrderItem.objects.filter(
-                    order__in=scoped_orders, order__user_id=row["user_id"]
+                    order__in=scoped_orders,
+                    order__user_id=row["user_id"],
                 )
                 .values("item_name_snapshot")
                 .annotate(total=Sum("quantity"))
-                .order_by("-total", "item_name_snapshot")[:3]
+                .order_by("-total", "item_name_snapshot")[:3],
             )
             customers.append(
                 {
                     "id": str(
-                        row["user_id"] or row["customer_email"] or row["customer_name"]
+                        row["user_id"] or row["customer_email"] or row["customer_name"],
                     ),
                     "name": row["user__name"]
                     or row["user__email"]
@@ -258,7 +266,7 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
                     "favorite_items": [
                         item["item_name_snapshot"] for item in favorite_items
                     ],
-                }
+                },
             )
 
         customers.sort(key=lambda item: item["total_spent"], reverse=True)
@@ -284,7 +292,7 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
                 },
                 "order_scope": order_scope,
                 "customers": customers,
-            }
+            },
         )
 
     @action(detail=True, methods=["get"])
@@ -294,22 +302,25 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
         order_scope = request.query_params.get("order_scope", "all").strip()
         periods = {
             "today": filter_orders_by_scope(
-                restaurant.orders.filter(created_at__date=today), order_scope
+                restaurant.orders.filter(created_at__date=today),
+                order_scope,
             ),
             "week": filter_orders_by_scope(
                 restaurant.orders.filter(
-                    created_at__date__gte=today - timezone.timedelta(days=6)
+                    created_at__date__gte=today - timezone.timedelta(days=6),
                 ),
                 order_scope,
             ),
             "month": filter_orders_by_scope(
                 restaurant.orders.filter(
-                    created_at__year=today.year, created_at__month=today.month
+                    created_at__year=today.year,
+                    created_at__month=today.month,
                 ),
                 order_scope,
             ),
             "year": filter_orders_by_scope(
-                restaurant.orders.filter(created_at__year=today.year), order_scope
+                restaurant.orders.filter(created_at__year=today.year),
+                order_scope,
             ),
         }
 
@@ -336,7 +347,7 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
             )
             .values("item_name_snapshot")
             .annotate(orders=Sum("quantity"), revenue=Sum("line_total_amount"))
-            .order_by("-orders", "item_name_snapshot")[:5]
+            .order_by("-orders", "item_name_snapshot")[:5],
         )
 
         total_customers = periods["year"].values("user_id").distinct().count()
@@ -372,11 +383,14 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
                     "average_ticket": sales["month"]["average_ticket"],
                 },
                 "order_scope": order_scope,
-            }
+            },
         )
 
     @action(
-        detail=True, methods=["get", "patch"], url_path="settings", url_name="settings"
+        detail=True,
+        methods=["get", "patch"],
+        url_path="settings",
+        url_name="settings",
     )
     def restaurant_settings(self, request, pk=None):
         restaurant = self.get_object()
@@ -385,7 +399,9 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
             return Response(RestaurantSettingsSerializer(restaurant).data)
 
         serializer = RestaurantSettingsSerializer(
-            restaurant, data=request.data, partial=True
+            restaurant,
+            data=request.data,
+            partial=True,
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -407,7 +423,7 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
             count = reviews_queryset.filter(rating=rating).count()
             percentage = round((count / total_reviews * 100), 0) if total_reviews else 0
             distribution.append(
-                {"rating": rating, "count": count, "percentage": percentage}
+                {"rating": rating, "count": count, "percentage": percentage},
             )
 
         this_month = reviews_queryset.filter(
@@ -429,11 +445,13 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
                     reviews_queryset,
                     many=True,
                 ).data,
-            }
+            },
         )
 
     @action(
-        detail=True, methods=["post"], url_path="reviews/(?P<review_id>[^/.]+)/reply"
+        detail=True,
+        methods=["post"],
+        url_path="reviews/(?P<review_id>[^/.]+)/reply",
     )
     def reply_review(self, request, pk=None, review_id=None):
         restaurant = self.get_object()
@@ -452,20 +470,25 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
         if request.method == "GET":
             return Response(
                 RestaurantPersonalizationSerializer(
-                    restaurant, context={"request": request}
-                ).data
+                    restaurant,
+                    context={"request": request},
+                ).data,
             )
 
         serializer = RestaurantPersonalizationSerializer(
-            restaurant, data=request.data, partial=True, context={"request": request}
+            restaurant,
+            data=request.data,
+            partial=True,
+            context={"request": request},
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
         refreshed_restaurant = self.get_queryset().get(pk=restaurant.pk)
         return Response(
             RestaurantPersonalizationSerializer(
-                refreshed_restaurant, context={"request": request}
-            ).data
+                refreshed_restaurant,
+                context={"request": request},
+            ).data,
         )
 
     @action(detail=True, methods=["get"])
@@ -488,7 +511,7 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
                 },
                 "menu_qr": {"url": menu_qr.qr_url, "is_active": menu_qr.is_active},
                 "tables": OwnerRestaurantTableSerializer(tables, many=True).data,
-            }
+            },
         )
 
     @action(detail=True, methods=["post"], url_path="tables")
@@ -509,7 +532,9 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
         )
 
     @action(
-        detail=True, methods=["patch", "delete"], url_path="tables/(?P<table_id>[^/.]+)"
+        detail=True,
+        methods=["patch", "delete"],
+        url_path="tables/(?P<table_id>[^/.]+)",
     )
     def update_table(self, request, pk=None, table_id=None):
         restaurant = self.get_object()
@@ -521,7 +546,9 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
             return Response(status=204)
 
         serializer = OwnerRestaurantTableWriteSerializer(
-            table, data=request.data, partial=True
+            table,
+            data=request.data,
+            partial=True,
         )
         serializer.is_valid(raise_exception=True)
         table = serializer.save()

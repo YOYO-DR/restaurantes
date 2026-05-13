@@ -1,7 +1,6 @@
 from apps.menu.models import InventoryMovementType
 from apps.menu.models import UnitType
 
-
 DEFAULT_UNIT_TYPES = [
     ("g", "Gramos"),
     ("kg", "Kilogramos"),

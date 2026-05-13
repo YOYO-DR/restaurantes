@@ -10,7 +10,6 @@ from apps.restaurants.models import Restaurant
 from apps.users.models import User
 from apps.users.tests.factories import UserFactory
 
-
 pytestmark = pytest.mark.django_db
 
 
@@ -181,7 +180,9 @@ def test_refresh_rotates_cookie_and_blacklists_previous(api_client: APIClient):
     api_client.cookies[settings.JWT_REFRESH_COOKIE_NAME] = old_refresh
 
     first_refresh_response = api_client.post(
-        reverse("custom_auth:refresh"), {}, format="json"
+        reverse("custom_auth:refresh"),
+        {},
+        format="json",
     )
     assert first_refresh_response.status_code == status.HTTP_200_OK
 
@@ -190,7 +191,9 @@ def test_refresh_rotates_cookie_and_blacklists_previous(api_client: APIClient):
 
     api_client.cookies[settings.JWT_REFRESH_COOKIE_NAME] = old_refresh
     second_refresh_response = api_client.post(
-        reverse("custom_auth:refresh"), {}, format="json"
+        reverse("custom_auth:refresh"),
+        {},
+        format="json",
     )
     assert second_refresh_response.status_code == status.HTTP_400_BAD_REQUEST
 

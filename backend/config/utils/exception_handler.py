@@ -1,12 +1,13 @@
-from rest_framework.views import exception_handler
-from rest_framework.response import Response
-from rest_framework import status
-from django.db import IntegrityError
 import logging
 import sys
 
+from django.db import IntegrityError
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import exception_handler
+
 # Usar el logger de django para asegurar que salga en los logs configurados
-logger = logging.getLogger('django')
+logger = logging.getLogger("django")
 
 
 def custom_exception_handler(exc, context):
@@ -21,11 +22,11 @@ def custom_exception_handler(exc, context):
         return response
 
     # Excepciones no controladas → 500 JSON
-    
+
     # Loguear el error antes de devolver la respuesta genérica
     error_msg = f"Unhandled exception in {context['view'].__class__.__name__}: {exc}"
     logger.error(error_msg, exc_info=True)
-    print(error_msg, file=sys.stderr) # Fallback a stderr
+    print(error_msg, file=sys.stderr)  # Fallback a stderr
 
     if isinstance(exc, IntegrityError):
         return Response(

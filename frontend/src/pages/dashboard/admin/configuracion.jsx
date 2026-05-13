@@ -6,6 +6,7 @@ import { DashboardShellSkeleton } from "@/components/ui/app-skeletons"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAdminSettings } from "@/hooks/use-admin"
 
 const TABS = [
@@ -74,6 +75,7 @@ export default function AdminSettings() {
       </div>
 
       <div className="flex gap-2 overflow-x-auto border-b border-border">
+        {/* eslint-disable-next-line no-unused-vars */}
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -173,15 +175,16 @@ export default function AdminSettings() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <Field label="Frecuencia de backup">
-                    <select
-                      value={form.security.backup_frequency}
-                      onChange={(event) => setForm((current) => ({ ...current, security: { ...current.security, backup_frequency: event.target.value } }))}
-                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                    >
-                      {data.catalogs.backup_frequencies.map((option) => (
-                        <option key={option.code} value={option.code}>{option.name}</option>
-                      ))}
-                    </select>
+                    <Select value={form.security.backup_frequency} onValueChange={(value) => setForm((current) => ({ ...current, security: { ...current.security, backup_frequency: value } }))}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Frecuencia de backup" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {data.catalogs.backup_frequencies.map((option) => (
+                          <SelectItem key={option.code} value={option.code}>{option.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </Field>
                   <Field label="Dias de retencion">
                     <Input

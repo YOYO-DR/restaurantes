@@ -13,7 +13,6 @@ from apps.notifications.models import NotificationEvent
 from apps.notifications.models import NotificationType
 from apps.orders.models import Order
 
-
 OWNER_ORDER_GROUP_PREFIX = "owner-orders"
 USER_ORDER_GROUP_PREFIX = "user-orders"
 GUEST_ORDER_GROUP_PREFIX = "guest-orders"
@@ -25,7 +24,8 @@ def build_guest_tracking_code() -> uuid.UUID:
 
 def ensure_new_order_notification_type() -> NotificationType:
     owner_role, _ = Role.objects.get_or_create(
-        code="restaurante", defaults={"name": "Restaurante"}
+        code="restaurante",
+        defaults={"name": "Restaurante"},
     )
     notification_type, _ = NotificationType.objects.get_or_create(
         code="new_order",
@@ -40,7 +40,8 @@ def ensure_new_order_notification_type() -> NotificationType:
 
 def ensure_order_cancelled_notification_type() -> NotificationType:
     owner_role, _ = Role.objects.get_or_create(
-        code="restaurante", defaults={"name": "Restaurante"}
+        code="restaurante",
+        defaults={"name": "Restaurante"},
     )
     notification_type, _ = NotificationType.objects.get_or_create(
         code="order_cancelled",
@@ -86,7 +87,9 @@ def build_guest_order_group_name(order_id) -> str:
 
 
 def send_realtime_event(
-    group_name: str, event_type: str, payload: dict[str, object]
+    group_name: str,
+    event_type: str,
+    payload: dict[str, object],
 ) -> None:
     channel_layer = get_channel_layer()
     if channel_layer is None:
@@ -187,7 +190,7 @@ def send_order_confirmation_email(order: Order) -> None:
 
 def create_guest_customer_name(email: str, phone: str) -> str:
     if email:
-        return email.split("@")[0]
+        return email.split("@", maxsplit=1)[0]
     if phone:
         return phone
     return "Cliente invitado"

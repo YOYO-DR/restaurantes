@@ -1,19 +1,20 @@
+from rest_framework import permissions
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
-from rest_framework import permissions
-
 from apps.core.permissions import IsAuthenticatedUser
 from apps.core.permissions import IsOwnerOrAdminRole
+from apps.core.permissions import get_user_owned_or_operated_restaurant_ids
 from apps.core.permissions import is_admin_user
+from apps.loyalty.services import assign_points_for_order
 from apps.orders.api.serializers import CheckoutSerializer
-from apps.orders.api.throttles import CheckoutOrderRateThrottle
 from apps.orders.api.serializers import OrderCancelSerializer
 from apps.orders.api.serializers import OrderSerializer
 from apps.orders.api.serializers import OwnerOrderStatusUpdateSerializer
+from apps.orders.api.throttles import CheckoutOrderRateThrottle
 from apps.orders.models import Order
 from apps.orders.models import OrderStatus
 from apps.orders.models import OrderStatusHistory
@@ -48,7 +49,8 @@ class CheckoutViewSet(GenericViewSet):
 
     def create(self, request):
         serializer = self.get_serializer(
-            data=request.data, context={"request": request}
+            data=request.data,
+            context={"request": request},
         )
         serializer.is_valid(raise_exception=True)
         order = serializer.save()
@@ -76,7 +78,8 @@ class CheckoutViewSet(GenericViewSet):
         )
         if not order:
             return Response(
-                {"detail": "Pedido no encontrado."}, status=status.HTTP_404_NOT_FOUND
+                {"detail": "Pedido no encontrado."},
+                status=status.HTTP_404_NOT_FOUND,
             )
         return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)
 
@@ -97,7 +100,8 @@ class CheckoutViewSet(GenericViewSet):
         )
         if not order:
             return Response(
-                {"detail": "Pedido no encontrado."}, status=status.HTTP_404_NOT_FOUND
+                {"detail": "Pedido no encontrado."},
+                status=status.HTTP_404_NOT_FOUND,
             )
 
         if order.user_id is None:
@@ -138,7 +142,8 @@ class CheckoutViewSet(GenericViewSet):
         )
         if not order:
             return Response(
-                {"detail": "Pedido no encontrado."}, status=status.HTTP_404_NOT_FOUND
+                {"detail": "Pedido no encontrado."},
+                status=status.HTTP_404_NOT_FOUND,
             )
 
         if order.user_id is None:
@@ -197,7 +202,8 @@ class OwnerOrderViewSet(ReadOnlyModelViewSet):
         )
         if is_admin_user(self.request.user):
             return queryset
-        return queryset.filter(restaurant__owner=self.request.user)
+        restaurant_ids = get_user_owned_or_operated_restaurant_ids(self.request.user)
+        return queryset.filter(restaurant_id__in=restaurant_ids)
 
     @action(detail=True, methods=["patch"])
     def status(self, request, pk=None):
@@ -206,13 +212,18 @@ class OwnerOrderViewSet(ReadOnlyModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         next_status = OrderStatus.objects.get(
-            code=serializer.validated_data["status_code"]
+            code=serializer.validated_data["status_code"],
         )
         order.status = next_status
         order.save(update_fields=["status", "updated_at"])
         OrderStatusHistory.objects.create(
-            order=order, status=next_status, changed_by=request.user
+            order=order,
+            status=next_status,
+            changed_by=request.user,
         )
+        if next_status.code == "delivered":
+            assign_points_for_order(order)
+
         notify_order_status_updated(order)
 
         return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)

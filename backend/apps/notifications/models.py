@@ -11,7 +11,9 @@ class NotificationChannel(BaseCatalogModel):
 
 class NotificationType(BaseCatalogModel):
     audience_role = models.ForeignKey(
-        "accounts.Role", on_delete=models.PROTECT, related_name="notification_types"
+        "accounts.Role",
+        on_delete=models.PROTECT,
+        related_name="notification_types",
     )
     description = models.TextField(blank=True)
 
@@ -28,7 +30,9 @@ class UserNotificationPreference(BaseModel):
         related_name="user_preferences",
     )
     notification_type = models.ForeignKey(
-        NotificationType, on_delete=models.PROTECT, related_name="user_preferences"
+        NotificationType,
+        on_delete=models.PROTECT,
+        related_name="user_preferences",
     )
     is_enabled = models.BooleanField(default=True)
 
@@ -49,7 +53,9 @@ class NotificationEvent(BaseModel):
         related_name="notification_events",
     )
     notification_type = models.ForeignKey(
-        NotificationType, on_delete=models.PROTECT, related_name="events"
+        NotificationType,
+        on_delete=models.PROTECT,
+        related_name="events",
     )
     payload_json = models.JSONField(default=dict)
     sent_at = models.DateTimeField(blank=True, null=True)

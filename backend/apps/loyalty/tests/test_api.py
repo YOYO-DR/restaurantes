@@ -10,7 +10,6 @@ from apps.loyalty.models import LoyaltyTier
 from apps.restaurants.tests.factories import RestaurantFactory
 from apps.users.tests.factories import UserFactory
 
-
 pytestmark = pytest.mark.django_db
 
 
@@ -66,5 +65,5 @@ def test_customer_loyalty_returns_authenticated_user_data(api_client: APIClient)
     assert response.data["total_earned"] == 300
     assert response.data["current_level"] == "Base"
     assert [reward["name"] for reward in response.data["available_rewards"]] == [
-        "Postre gratis"
+        "Postre gratis",
     ]

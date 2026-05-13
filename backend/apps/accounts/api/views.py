@@ -17,13 +17,15 @@ from django.utils import timezone
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
-from apps.accounts.api.serializers import AdminRestaurantSerializer
+from apps.accounts.api.serializers import AccountProfileSerializer
 from apps.accounts.api.serializers import AdminPlatformSecuritySettingSerializer
 from apps.accounts.api.serializers import AdminPlatformSettingSerializer
-from apps.accounts.api.serializers import AccountProfileSerializer
+from apps.accounts.api.serializers import AdminRestaurantSerializer
 from apps.accounts.models import UserRole
 from apps.core.permissions import IsAdminRole
 from apps.core.permissions import IsAuthenticatedUser
+from apps.notifications.api.views import ensure_default_notification_preferences
+from apps.notifications.models import NotificationEvent
 from apps.orders.models import Order
 from apps.orders.services import filter_orders_by_scope
 from apps.platform_config.models import BackupFrequency
@@ -35,7 +37,6 @@ from apps.restaurants.models import Restaurant
 from apps.restaurants.models import RestaurantCategory
 from apps.restaurants.models import RestaurantReview
 from apps.restaurants.models import RestaurantStatus
-
 
 User = get_user_model()
 MONTH_LABELS = [
@@ -73,7 +74,7 @@ def shift_month(value: date, months: int) -> date:
 
 def get_or_create_platform_setting() -> PlatformSetting:
     return PlatformSetting.objects.order_by(
-        "created_at"
+        "created_at",
     ).first() or PlatformSetting.objects.create(
         platform_name="FoodHub",
         support_email="support@foodhub.com",
@@ -91,7 +92,7 @@ def get_or_create_platform_security_setting() -> PlatformSecuritySetting:
         defaults={"name": "Diaria"},
     )
     return PlatformSecuritySetting.objects.order_by(
-        "created_at"
+        "created_at",
     ).first() or PlatformSecuritySetting.objects.create(
         require_2fa_admin=False,
         require_restaurant_verification=True,
@@ -125,8 +126,16 @@ class AccountProfileViewSet(GenericViewSet):
     serializer_class = AccountProfileSerializer
 
     def list(self, request):
+        ensure_default_notification_preferences(request.user)
+        unread_notifications = NotificationEvent.objects.filter(
+            user=request.user,
+            read_at__isnull=True,
+        ).count()
         serializer = self.get_serializer(request.user)
-        return Response(serializer.data)
+        payload = serializer.data
+        payload["unread_notifications_count"] = unread_notifications
+        payload["is_verified"] = bool(getattr(request.user, "is_staff", False))
+        return Response(payload)
 
     def partial_update(self, request, pk=None):
         serializer = self.get_serializer(request.user, data=request.data, partial=True)
@@ -148,18 +157,18 @@ class AdminDashboardViewSet(GenericViewSet):
 
         users_total = User.objects.count()
         users_current = User.objects.filter(
-            date_joined__date__gte=current_period_start
+            date_joined__date__gte=current_period_start,
         ).count()
         users_previous = User.objects.filter(
-            date_joined__date__range=(previous_period_start, previous_period_end)
+            date_joined__date__range=(previous_period_start, previous_period_end),
         ).count()
 
         active_restaurants = Restaurant.objects.filter(status__code="active").count()
         restaurants_current = Restaurant.objects.filter(
-            created_at__date__gte=current_period_start
+            created_at__date__gte=current_period_start,
         ).count()
         restaurants_previous = Restaurant.objects.filter(
-            created_at__date__range=(previous_period_start, previous_period_end)
+            created_at__date__range=(previous_period_start, previous_period_end),
         ).count()
 
         base_orders_queryset = filter_orders_by_scope(Order.objects.all(), order_scope)
@@ -170,7 +179,7 @@ class AdminDashboardViewSet(GenericViewSet):
         )
         previous_orders_queryset = filter_orders_by_scope(
             Order.objects.filter(
-                created_at__date__range=(previous_period_start, previous_period_end)
+                created_at__date__range=(previous_period_start, previous_period_end),
             ),
             order_scope,
         )
@@ -205,13 +214,13 @@ class AdminDashboardViewSet(GenericViewSet):
                     "month": MONTH_LABELS[current_month.month - 1],
                     "orders": month_orders_queryset.count(),
                     "revenue": to_float(month_revenue),
-                }
+                },
             )
 
         category_distribution_rows = list(
             Restaurant.objects.values("category__name")
             .annotate(value=Count("id"))
-            .order_by("-value", "category__name")[:6]
+            .order_by("-value", "category__name")[:6],
         )
         category_distribution = [
             {
@@ -233,17 +242,29 @@ class AdminDashboardViewSet(GenericViewSet):
                     filter=Q(account_roles__role__code="restaurante"),
                     distinct=True,
                 ),
-            ).values("admin_roles", "owner_roles")
+                operator_roles=Count(
+                    "account_roles",
+                    filter=Q(account_roles__role__code="operador"),
+                    distinct=True,
+                ),
+            ).values("admin_roles", "owner_roles", "operator_roles"),
         )
         total_admins = sum(1 for row in role_distribution_rows if row["admin_roles"])
         total_owners = sum(1 for row in role_distribution_rows if row["owner_roles"])
+        total_operators = sum(
+            1 for row in role_distribution_rows if row["operator_roles"]
+        )
         role_distribution = [
             {
                 "code": "cliente",
                 "label": "Clientes",
-                "count": max(users_total - total_admins - total_owners, 0),
+                "count": max(
+                    users_total - total_admins - total_owners - total_operators,
+                    0,
+                ),
             },
             {"code": "restaurante", "label": "Restaurantes", "count": total_owners},
+            {"code": "operador", "label": "Operadores", "count": total_operators},
             {"code": "admin", "label": "Admins", "count": total_admins},
         ]
 
@@ -259,7 +280,7 @@ class AdminDashboardViewSet(GenericViewSet):
             Restaurant.objects.filter(orders__in=delayed_orders_queryset)
             .values_list("display_name", flat=True)
             .distinct()
-            .order_by("display_name")[:3]
+            .order_by("display_name")[:3],
         )
         pending_review_replies = RestaurantReview.objects.filter(owner_reply="").count()
         restaurants_without_menu = (
@@ -279,7 +300,7 @@ class AdminDashboardViewSet(GenericViewSet):
                         if delayed_restaurants
                         else "Revisa los flujos operativos de los restaurantes con demora."
                     ),
-                }
+                },
             )
         if pending_review_replies:
             alerts.append(
@@ -287,7 +308,7 @@ class AdminDashboardViewSet(GenericViewSet):
                     "severity": "medium",
                     "title": f"{pending_review_replies} resenas esperan respuesta del restaurante",
                     "description": "Puede afectar la percepcion de soporte y confianza en la plataforma.",
-                }
+                },
             )
         if restaurants_without_menu:
             alerts.append(
@@ -295,7 +316,7 @@ class AdminDashboardViewSet(GenericViewSet):
                     "severity": "low",
                     "title": f"{restaurants_without_menu} restaurantes aun no publican menu",
                     "description": "Son candidatos a onboarding asistido para activar ventas mas rapido.",
-                }
+                },
             )
         if not alerts:
             alerts.append(
@@ -303,7 +324,7 @@ class AdminDashboardViewSet(GenericViewSet):
                     "severity": "info",
                     "title": "Sin alertas operativas relevantes",
                     "description": "Los indicadores actuales no muestran bloqueos importantes en la plataforma.",
-                }
+                },
             )
 
         top_restaurants_rows = list(
@@ -313,7 +334,7 @@ class AdminDashboardViewSet(GenericViewSet):
                 total_orders=Count("orders"),
                 total_revenue=Sum("orders__total_amount"),
             )
-            .order_by("-total_revenue", "-total_orders", "display_name")[:5]
+            .order_by("-total_revenue", "-total_orders", "display_name")[:5],
         )
 
         average_order_value = (
@@ -327,13 +348,15 @@ class AdminDashboardViewSet(GenericViewSet):
                     "users_growth": calculate_growth(users_current, users_previous),
                     "active_restaurants": active_restaurants,
                     "restaurants_growth": calculate_growth(
-                        restaurants_current, restaurants_previous
+                        restaurants_current,
+                        restaurants_previous,
                     ),
                     "total_orders": orders_total,
                     "orders_growth": calculate_growth(orders_current, orders_previous),
                     "total_revenue": to_float(revenue_total),
                     "revenue_growth": calculate_growth(
-                        to_float(revenue_current), to_float(revenue_previous)
+                        to_float(revenue_current),
+                        to_float(revenue_previous),
                     ),
                 },
                 "order_scope": order_scope,
@@ -357,7 +380,7 @@ class AdminDashboardViewSet(GenericViewSet):
                     for row in top_restaurants_rows
                 ],
                 "alerts": alerts,
-            }
+            },
         )
 
 
@@ -366,10 +389,16 @@ class AdminUsersViewSet(GenericViewSet):
 
     def list(self, request):
         admin_role_exists = UserRole.objects.filter(
-            user=OuterRef("pk"), role__code="admin"
+            user=OuterRef("pk"),
+            role__code="admin",
         )
         owner_role_exists = UserRole.objects.filter(
-            user=OuterRef("pk"), role__code="restaurante"
+            user=OuterRef("pk"),
+            role__code="restaurante",
+        )
+        operator_role_exists = UserRole.objects.filter(
+            user=OuterRef("pk"),
+            role__code="operador",
         )
         queryset = (
             User.objects.all()
@@ -377,16 +406,19 @@ class AdminUsersViewSet(GenericViewSet):
             .annotate(
                 has_admin_role=Exists(admin_role_exists),
                 has_owner_role=Exists(owner_role_exists),
+                has_operator_role=Exists(operator_role_exists),
                 orders_count=Count("orders", distinct=True),
                 role_code=Case(
                     When(has_admin_role=True, then=Value("admin")),
                     When(has_owner_role=True, then=Value("restaurante")),
+                    When(has_operator_role=True, then=Value("operador")),
                     default=Value("cliente"),
                 ),
                 role_sort=Case(
                     When(has_admin_role=True, then=Value(0)),
                     When(has_owner_role=True, then=Value(1)),
-                    default=Value(2),
+                    When(has_operator_role=True, then=Value(2)),
+                    default=Value(3),
                     output_field=IntegerField(),
                 ),
             )
@@ -409,7 +441,8 @@ class AdminUsersViewSet(GenericViewSet):
             page = 1
         try:
             page_size = min(
-                max(int(request.query_params.get("page_size", 10) or 10), 1), 100
+                max(int(request.query_params.get("page_size", 10) or 10), 1),
+                100,
             )
         except ValueError:
             page_size = 10
@@ -430,12 +463,12 @@ class AdminUsersViewSet(GenericViewSet):
             if status_filter == "active":
                 queryset = queryset.filter(
                     Q(profile__status__code="active")
-                    | Q(profile__isnull=True, is_active=True)
+                    | Q(profile__isnull=True, is_active=True),
                 )
             elif status_filter == "inactive":
                 queryset = queryset.filter(
                     Q(profile__status__code="inactive")
-                    | Q(profile__isnull=True, is_active=False)
+                    | Q(profile__isnull=True, is_active=False),
                 )
             else:
                 queryset = queryset.filter(profile__status__code=status_filter)
@@ -466,13 +499,12 @@ class AdminUsersViewSet(GenericViewSet):
             "-joined_at": ["-date_joined", "-name"],
         }
         queryset = queryset.order_by(
-            *ordering_map.get(ordering, ordering_map["-joined_at"])
+            *ordering_map.get(ordering, ordering_map["-joined_at"]),
         )
 
         total_count = queryset.count()
         total_pages = max(ceil(total_count / page_size), 1)
-        if page > total_pages:
-            page = total_pages
+        page = min(page, total_pages)
         start = (page - 1) * page_size
         end = start + page_size
 
@@ -489,13 +521,14 @@ class AdminUsersViewSet(GenericViewSet):
                     "status_label": get_user_status_label(user),
                     "joined_at": user.date_joined.isoformat(),
                     "orders_count": user.orders_count,
-                }
+                },
             )
 
         counts = {
             "total": total_count,
             "clientes": queryset.filter(role_code="cliente").count(),
             "restaurantes": queryset.filter(role_code="restaurante").count(),
+            "operadores": queryset.filter(role_code="operador").count(),
             "admins": queryset.filter(role_code="admin").count(),
         }
         return Response(
@@ -506,7 +539,7 @@ class AdminUsersViewSet(GenericViewSet):
                 "total_pages": total_pages,
                 "ordering": ordering,
                 "results": users,
-            }
+            },
         )
 
 
@@ -545,7 +578,8 @@ class AdminRestaurantsViewSet(GenericViewSet):
             page = 1
         try:
             page_size = min(
-                max(int(request.query_params.get("page_size", 10) or 10), 1), 100
+                max(int(request.query_params.get("page_size", 10) or 10), 1),
+                100,
             )
         except ValueError:
             page_size = 10
@@ -556,7 +590,7 @@ class AdminRestaurantsViewSet(GenericViewSet):
         if owner_filter:
             queryset = queryset.filter(
                 Q(owner__name__icontains=owner_filter)
-                | Q(owner__email__icontains=owner_filter)
+                | Q(owner__email__icontains=owner_filter),
             )
 
         if category_filter:
@@ -604,13 +638,12 @@ class AdminRestaurantsViewSet(GenericViewSet):
             "-joined_at": ["-created_at", "-display_name"],
         }
         queryset = queryset.order_by(
-            *ordering_map.get(ordering, ordering_map["-joined_at"])
+            *ordering_map.get(ordering, ordering_map["-joined_at"]),
         )
 
         total_count = queryset.count()
         total_pages = max(ceil(total_count / page_size), 1)
-        if page > total_pages:
-            page = total_pages
+        page = min(page, total_pages)
         start = (page - 1) * page_size
         end = start + page_size
 
@@ -651,19 +684,19 @@ class AdminRestaurantsViewSet(GenericViewSet):
                     "statuses": [
                         {"code": status.code, "name": status.name}
                         for status in RestaurantStatus.objects.filter(
-                            is_active=True
+                            is_active=True,
                         ).order_by("name")
                     ],
                     "categories": [
                         {"code": category.code, "name": category.name}
                         for category in RestaurantCategory.objects.filter(
-                            is_active=True
+                            is_active=True,
                         ).order_by("name")
                     ],
                     "subscription_plans": [
                         {"code": plan.code, "name": plan.name}
                         for plan in SubscriptionPlan.objects.filter(
-                            is_active=True
+                            is_active=True,
                         ).order_by("name")
                     ],
                 },
@@ -672,7 +705,7 @@ class AdminRestaurantsViewSet(GenericViewSet):
                 "total_pages": total_pages,
                 "ordering": ordering,
                 "results": results,
-            }
+            },
         )
 
     def retrieve(self, request, pk=None):
@@ -725,7 +758,7 @@ class AdminReportsViewSet(GenericViewSet):
                     "label": current_day.strftime("%d %b"),
                     "orders": day_queryset.count(),
                     "revenue": to_float(day_revenue),
-                }
+                },
             )
 
         category_performance = list(
@@ -735,13 +768,13 @@ class AdminReportsViewSet(GenericViewSet):
                 total_revenue=Sum("orders__total_amount"),
                 total_restaurants=Count("id"),
             )
-            .order_by("-total_orders", "category__name")[:6]
+            .order_by("-total_orders", "category__name")[:6],
         )
 
         order_type_distribution = list(
             Order.objects.values("order_type__code", "order_type__name")
             .annotate(value=Count("id"))
-            .order_by("-value", "order_type__name")
+            .order_by("-value", "order_type__name"),
         )
         total_order_types = sum(item["value"] for item in order_type_distribution) or 1
 
@@ -752,7 +785,7 @@ class AdminReportsViewSet(GenericViewSet):
                 {
                     "title": "Pico reciente de ordenes",
                     "description": f"El mejor dia reciente fue {best_day['label']} con {best_day['orders']} ordenes.",
-                }
+                },
             )
         if category_performance:
             best_category = category_performance[0]
@@ -760,7 +793,7 @@ class AdminReportsViewSet(GenericViewSet):
                 {
                     "title": "Categoria con mayor traccion",
                     "description": f"{best_category['category__name'] or 'Sin categoria'} lidera con {best_category['total_orders']} ordenes.",
-                }
+                },
             )
         delayed_orders = Order.objects.filter(
             status__code__in=["new", "preparing"],
@@ -770,7 +803,7 @@ class AdminReportsViewSet(GenericViewSet):
             {
                 "title": "Pedidos con demora operativa",
                 "description": f"Actualmente hay {delayed_orders} pedidos con mas de 2 horas sin cerrar.",
-            }
+            },
         )
 
         return Response(
@@ -795,7 +828,7 @@ class AdminReportsViewSet(GenericViewSet):
                     for row in order_type_distribution
                 ],
                 "insights": insights,
-            }
+            },
         )
 
 
@@ -806,18 +839,18 @@ class AdminSettingsViewSet(GenericViewSet):
         platform_setting = get_or_create_platform_setting()
         security_setting = get_or_create_platform_security_setting()
         backup_frequencies = BackupFrequency.objects.filter(is_active=True).order_by(
-            "name"
+            "name",
         )
         billing_periods = BillingPeriod.objects.filter(is_active=True).order_by("name")
         subscription_plans = SubscriptionPlan.objects.select_related(
-            "billing_period"
+            "billing_period",
         ).order_by("name")
 
         return Response(
             {
                 "general": AdminPlatformSettingSerializer(platform_setting).data,
                 "security": AdminPlatformSecuritySettingSerializer(
-                    security_setting
+                    security_setting,
                 ).data,
                 "catalogs": {
                     "backup_frequencies": [
@@ -839,7 +872,7 @@ class AdminSettingsViewSet(GenericViewSet):
                         for plan in subscription_plans
                     ],
                 },
-            }
+            },
         )
 
     def partial_update(self, request, pk=None):
@@ -865,7 +898,7 @@ class AdminSettingsViewSet(GenericViewSet):
             {
                 "general": AdminPlatformSettingSerializer(platform_setting).data,
                 "security": AdminPlatformSecuritySettingSerializer(
-                    security_setting
+                    security_setting,
                 ).data,
-            }
+            },
         )

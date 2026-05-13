@@ -42,7 +42,9 @@ class Restaurant(BaseModel):
         related_name="owned_restaurants",
     )
     category = models.ForeignKey(
-        RestaurantCategory, on_delete=models.PROTECT, related_name="restaurants"
+        RestaurantCategory,
+        on_delete=models.PROTECT,
+        related_name="restaurants",
     )
     subscription_plan = models.ForeignKey(
         "platform_config.SubscriptionPlan",
@@ -50,7 +52,9 @@ class Restaurant(BaseModel):
         related_name="restaurants",
     )
     status = models.ForeignKey(
-        RestaurantStatus, on_delete=models.PROTECT, related_name="restaurants"
+        RestaurantStatus,
+        on_delete=models.PROTECT,
+        related_name="restaurants",
     )
     slug = models.SlugField(max_length=160, unique=True)
     display_name = models.CharField(max_length=180)
@@ -73,7 +77,9 @@ class Restaurant(BaseModel):
 
 class RestaurantAddress(BaseModel):
     restaurant = models.ForeignKey(
-        Restaurant, on_delete=models.CASCADE, related_name="addresses"
+        Restaurant,
+        on_delete=models.CASCADE,
+        related_name="addresses",
     )
     line1 = models.CharField(max_length=220)
     line2 = models.CharField(max_length=220, blank=True)
@@ -82,10 +88,16 @@ class RestaurantAddress(BaseModel):
     country = models.CharField(max_length=120)
     postal_code = models.CharField(max_length=20, blank=True)
     latitude = models.DecimalField(
-        max_digits=10, decimal_places=7, blank=True, null=True
+        max_digits=10,
+        decimal_places=7,
+        blank=True,
+        null=True,
     )
     longitude = models.DecimalField(
-        max_digits=10, decimal_places=7, blank=True, null=True
+        max_digits=10,
+        decimal_places=7,
+        blank=True,
+        null=True,
     )
     is_primary = models.BooleanField(default=True)
 
@@ -95,10 +107,12 @@ class RestaurantAddress(BaseModel):
 
 class RestaurantHour(BaseModel):
     restaurant = models.ForeignKey(
-        Restaurant, on_delete=models.CASCADE, related_name="hours"
+        Restaurant,
+        on_delete=models.CASCADE,
+        related_name="hours",
     )
     weekday = models.PositiveSmallIntegerField(
-        validators=[MinValueValidator(0), MaxValueValidator(6)]
+        validators=[MinValueValidator(0), MaxValueValidator(6)],
     )
     open_time = models.TimeField(blank=True, null=True)
     close_time = models.TimeField(blank=True, null=True)
@@ -108,14 +122,17 @@ class RestaurantHour(BaseModel):
         db_table = "restaurant_hours"
         constraints = [
             models.UniqueConstraint(
-                fields=("restaurant", "weekday"), name="uniq_restaurant_weekday"
+                fields=("restaurant", "weekday"),
+                name="uniq_restaurant_weekday",
             ),
         ]
 
 
 class RestaurantOrderCapability(BaseModel):
     restaurant = models.OneToOneField(
-        Restaurant, on_delete=models.CASCADE, related_name="order_capability"
+        Restaurant,
+        on_delete=models.CASCADE,
+        related_name="order_capability",
     )
     delivery_enabled = models.BooleanField(default=True)
     pickup_enabled = models.BooleanField(default=True)
@@ -127,21 +144,34 @@ class RestaurantOrderCapability(BaseModel):
 
 class RestaurantDeliverySetting(BaseModel):
     restaurant = models.OneToOneField(
-        Restaurant, on_delete=models.CASCADE, related_name="delivery_setting"
+        Restaurant,
+        on_delete=models.CASCADE,
+        related_name="delivery_setting",
     )
     delivery_fee_amount = models.DecimalField(
-        max_digits=12, decimal_places=2, default=0
+        max_digits=12,
+        decimal_places=2,
+        default=0,
     )
     free_delivery_from_amount = models.DecimalField(
-        max_digits=12, decimal_places=2, blank=True, null=True
+        max_digits=12,
+        decimal_places=2,
+        blank=True,
+        null=True,
     )
     min_order_amount = models.DecimalField(
-        max_digits=12, decimal_places=2, blank=True, null=True
+        max_digits=12,
+        decimal_places=2,
+        blank=True,
+        null=True,
     )
     estimated_min_minutes = models.PositiveIntegerField(blank=True, null=True)
     estimated_max_minutes = models.PositiveIntegerField(blank=True, null=True)
     coverage_radius_km = models.DecimalField(
-        max_digits=6, decimal_places=2, blank=True, null=True
+        max_digits=6,
+        decimal_places=2,
+        blank=True,
+        null=True,
     )
 
     class Meta:
@@ -150,7 +180,9 @@ class RestaurantDeliverySetting(BaseModel):
 
 class RestaurantReview(BaseModel):
     restaurant = models.ForeignKey(
-        Restaurant, on_delete=models.CASCADE, related_name="reviews"
+        Restaurant,
+        on_delete=models.CASCADE,
+        related_name="reviews",
     )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -167,7 +199,7 @@ class RestaurantReview(BaseModel):
         related_name="reviews",
     )
     rating = models.PositiveSmallIntegerField(
-        validators=[MinValueValidator(1), MaxValueValidator(5)]
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
     )
     comment = models.TextField(blank=True)
     owner_reply = models.TextField(blank=True)
@@ -183,7 +215,9 @@ class RestaurantReview(BaseModel):
 
 class RestaurantPaymentSetting(BaseModel):
     restaurant = models.OneToOneField(
-        Restaurant, on_delete=models.CASCADE, related_name="payment_setting"
+        Restaurant,
+        on_delete=models.CASCADE,
+        related_name="payment_setting",
     )
     card_enabled = models.BooleanField(default=True)
     pse_enabled = models.BooleanField(default=False)
@@ -198,7 +232,9 @@ class RestaurantPaymentSetting(BaseModel):
 
 class RestaurantBranding(BaseModel):
     restaurant = models.OneToOneField(
-        Restaurant, on_delete=models.CASCADE, related_name="branding"
+        Restaurant,
+        on_delete=models.CASCADE,
+        related_name="branding",
     )
     logo_url = models.URLField(blank=True)
     logo_file = models.FileField(upload_to="restaurant-branding/", blank=True)
@@ -209,7 +245,9 @@ class RestaurantBranding(BaseModel):
     slogan = models.CharField(max_length=180, blank=True)
     welcome_message = models.TextField(blank=True)
     menu_layout_option = models.ForeignKey(
-        MenuLayoutOption, on_delete=models.PROTECT, related_name="brandings"
+        MenuLayoutOption,
+        on_delete=models.PROTECT,
+        related_name="brandings",
     )
     category_navigation_style = models.ForeignKey(
         CategoryNavigationStyle,
@@ -217,7 +255,9 @@ class RestaurantBranding(BaseModel):
         related_name="brandings",
     )
     cart_position = models.ForeignKey(
-        CartPosition, on_delete=models.PROTECT, related_name="brandings"
+        CartPosition,
+        on_delete=models.PROTECT,
+        related_name="brandings",
     )
     image_size = models.CharField(max_length=20, default="medium")
     show_prices = models.BooleanField(default=True)
@@ -233,7 +273,9 @@ class RestaurantBranding(BaseModel):
 
 class RestaurantSocialLink(BaseModel):
     restaurant = models.OneToOneField(
-        Restaurant, on_delete=models.CASCADE, related_name="social_links"
+        Restaurant,
+        on_delete=models.CASCADE,
+        related_name="social_links",
     )
     instagram_url = models.URLField(blank=True)
     facebook_url = models.URLField(blank=True)
@@ -246,12 +288,16 @@ class RestaurantSocialLink(BaseModel):
 
 class RestaurantTable(BaseModel):
     restaurant = models.ForeignKey(
-        Restaurant, on_delete=models.CASCADE, related_name="tables"
+        Restaurant,
+        on_delete=models.CASCADE,
+        related_name="tables",
     )
     table_number = models.CharField(max_length=20)
     capacity = models.PositiveIntegerField()
     status = models.ForeignKey(
-        TableStatus, on_delete=models.PROTECT, related_name="tables"
+        TableStatus,
+        on_delete=models.PROTECT,
+        related_name="tables",
     )
 
     class Meta:
@@ -266,10 +312,14 @@ class RestaurantTable(BaseModel):
 
 class QrCode(BaseModel):
     restaurant = models.ForeignKey(
-        Restaurant, on_delete=models.CASCADE, related_name="qr_codes"
+        Restaurant,
+        on_delete=models.CASCADE,
+        related_name="qr_codes",
     )
     target_type = models.ForeignKey(
-        QrTargetType, on_delete=models.PROTECT, related_name="qr_codes"
+        QrTargetType,
+        on_delete=models.PROTECT,
+        related_name="qr_codes",
     )
     target_id = models.UUIDField(blank=True, null=True)
     qr_url = models.URLField()
@@ -277,3 +327,22 @@ class QrCode(BaseModel):
 
     class Meta:
         db_table = "restaurant_qr_codes"
+
+
+class Operador(BaseModel):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="operador",
+    )
+    restaurante = models.ForeignKey(
+        Restaurant,
+        on_delete=models.CASCADE,
+        related_name="operadores",
+    )
+
+    class Meta:
+        db_table = "restaurant_operadores"
+
+    def __str__(self):
+        return f"Operador {self.user.username} para {self.restaurante.display_name}"

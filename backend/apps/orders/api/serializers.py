@@ -25,7 +25,7 @@ def get_order_type_by_code(code: str) -> OrderType:
     order_type = OrderType.objects.filter(code=code).first()
     if order_type is None:
         raise serializers.ValidationError(
-            {"order_type": "La configuracion de tipos de pedido no esta disponible."}
+            {"order_type": "La configuracion de tipos de pedido no esta disponible."},
         )
     return order_type
 
@@ -34,7 +34,7 @@ def get_new_order_status() -> OrderStatus:
     status = OrderStatus.objects.filter(code="new").first()
     if status is None:
         raise serializers.ValidationError(
-            {"detail": "La configuracion de estados de pedido no esta disponible."}
+            {"detail": "La configuracion de estados de pedido no esta disponible."},
         )
     return status
 
@@ -49,39 +49,53 @@ class CheckoutSerializer(serializers.Serializer):
     order_type = serializers.ChoiceField(choices=("delivery", "pickup", "table"))
     items = CheckoutItemSerializer(many=True)
     customer_notes = serializers.CharField(
-        required=False, allow_blank=True, allow_null=True
+        required=False,
+        allow_blank=True,
+        allow_null=True,
     )
     delivery_address_id = serializers.UUIDField(required=False, allow_null=True)
     table_id = serializers.UUIDField(required=False, allow_null=True)
     customer_name = serializers.CharField(
-        required=False, allow_blank=True, allow_null=True, max_length=255
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        max_length=255,
     )
     customer_email = serializers.EmailField(
-        required=False, allow_blank=True, allow_null=True
+        required=False,
+        allow_blank=True,
+        allow_null=True,
     )
     customer_phone = serializers.CharField(
-        required=False, allow_blank=True, allow_null=True, max_length=30
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        max_length=30,
     )
     delivery_address_text = serializers.CharField(
-        required=False, allow_blank=True, allow_null=True, max_length=255
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        max_length=255,
     )
 
     def validate(self, attrs):
         request = self.context["request"]
         is_authenticated = bool(request.user and request.user.is_authenticated)
         restaurant = Restaurant.objects.select_related(
-            "delivery_setting", "order_capability"
+            "delivery_setting",
+            "order_capability",
         ).get(id=attrs["restaurant_id"])
         items = []
         subtotal = Decimal("0.00")
 
         for raw_item in attrs["items"]:
             menu_item = restaurant.menu_items.filter(
-                id=raw_item["menu_item_id"]
+                id=raw_item["menu_item_id"],
             ).first()
             if menu_item is None or not menu_item.is_available:
                 raise serializers.ValidationError(
-                    "Uno de los productos no esta disponible."
+                    "Uno de los productos no esta disponible.",
                 )
 
             quantity = raw_item["quantity"]
@@ -92,7 +106,7 @@ class CheckoutSerializer(serializers.Serializer):
                     "menu_item": menu_item,
                     "quantity": quantity,
                     "line_total": line_total,
-                }
+                },
             )
 
         delivery_fee = Decimal("0.00")
@@ -103,15 +117,15 @@ class CheckoutSerializer(serializers.Serializer):
         if order_type == "delivery":
             if not capability or not capability.delivery_enabled:
                 raise serializers.ValidationError(
-                    "Este restaurante no tiene delivery activo."
+                    "Este restaurante no tiene delivery activo.",
                 )
             if is_authenticated:
                 delivery_address_id = attrs.get("delivery_address_id")
                 if not delivery_address_id:
                     raise serializers.ValidationError(
                         {
-                            "delivery_address_id": "Selecciona una direccion para delivery."
-                        }
+                            "delivery_address_id": "Selecciona una direccion para delivery.",
+                        },
                     )
                 delivery_address = CustomerAddress.objects.filter(
                     id=delivery_address_id,
@@ -119,7 +133,7 @@ class CheckoutSerializer(serializers.Serializer):
                 ).first()
                 if delivery_address is None:
                     raise serializers.ValidationError(
-                        {"delivery_address_id": "La direccion seleccionada no existe."}
+                        {"delivery_address_id": "La direccion seleccionada no existe."},
                     )
                 attrs["delivery_address"] = delivery_address
                 attrs["delivery_address_text"] = delivery_address.line1
@@ -129,11 +143,13 @@ class CheckoutSerializer(serializers.Serializer):
                 ).strip()
                 if not delivery_address_text:
                     raise serializers.ValidationError(
-                        {"delivery_address_text": "Ingresa la direccion de entrega."}
+                        {"delivery_address_text": "Ingresa la direccion de entrega."},
                     )
                 attrs["delivery_address_text"] = delivery_address_text
             delivery_fee = getattr(
-                restaurant.delivery_setting, "delivery_fee_amount", Decimal("0.00")
+                restaurant.delivery_setting,
+                "delivery_fee_amount",
+                Decimal("0.00"),
             )
         elif order_type == "pickup":
             if not capability or not capability.pickup_enabled:
@@ -141,13 +157,14 @@ class CheckoutSerializer(serializers.Serializer):
         elif order_type == "table":
             if not capability or not capability.table_order_enabled:
                 raise serializers.ValidationError(
-                    "Este restaurante no permite pedidos en mesa."
+                    "Este restaurante no permite pedidos en mesa.",
                 )
             table_id = attrs.get("table_id")
             if not table_id:
                 raise serializers.ValidationError({"table_id": "Selecciona una mesa."})
             table = RestaurantTable.objects.filter(
-                id=table_id, restaurant=restaurant
+                id=table_id,
+                restaurant=restaurant,
             ).first()
             if table is None:
                 raise serializers.ValidationError({"table_id": "La mesa no existe."})
@@ -158,11 +175,11 @@ class CheckoutSerializer(serializers.Serializer):
             customer_phone = (attrs.get("customer_phone") or "").strip()
             if not customer_email:
                 raise serializers.ValidationError(
-                    {"customer_email": "Ingresa un correo para continuar."}
+                    {"customer_email": "Ingresa un correo para continuar."},
                 )
             if not customer_phone:
                 raise serializers.ValidationError(
-                    {"customer_phone": "Ingresa un numero de telefono para continuar."}
+                    {"customer_phone": "Ingresa un numero de telefono para continuar."},
                 )
 
         customer_name = (attrs.get("customer_name") or "").strip()
@@ -176,7 +193,8 @@ class CheckoutSerializer(serializers.Serializer):
             customer_phone = customer_phone or (profile.phone if profile else "")
         else:
             customer_name = customer_name or create_guest_customer_name(
-                customer_email, customer_phone
+                customer_email,
+                customer_phone,
             )
 
         attrs["customer_name"] = customer_name
@@ -276,7 +294,8 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     restaurant_name = serializers.CharField(
-        source="restaurant.display_name", read_only=True
+        source="restaurant.display_name",
+        read_only=True,
     )
     status_code = serializers.CharField(source="status.code", read_only=True)
     status_name = serializers.CharField(source="status.name", read_only=True)

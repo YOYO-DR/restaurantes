@@ -45,8 +45,60 @@ export function deleteCustomerFavorite(favoriteId) {
   })
 }
 
-export function getCustomerLoyalty() {
-  return apiJson("/api/customer/loyalty/")
+export function getCustomerLoyalty(restaurantId) {
+  const params = new URLSearchParams()
+  if (restaurantId) {
+    params.set("restaurant_id", restaurantId)
+  }
+  const queryString = params.toString()
+  return apiJson(`/api/customer/loyalty/${queryString ? `?${queryString}` : ""}`)
+}
+
+export function getCustomerNotificationPreferences() {
+  return apiJson("/api/customer/notification-preferences/")
+}
+
+export function updateCustomerNotificationPreference(preferenceId, payload) {
+  return apiJson(`/api/customer/notification-preferences/${preferenceId}/`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  })
+}
+
+export function getCustomerPaymentMethods() {
+  return apiJson("/api/customer/payment-methods/")
+}
+
+export function createCustomerPaymentMethod(payload) {
+  return apiJson("/api/customer/payment-methods/", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+}
+
+export function deleteCustomerPaymentMethod(paymentMethodId) {
+  return apiJson(`/api/customer/payment-methods/${paymentMethodId}/`, {
+    method: "DELETE",
+    headers: {},
+  })
+}
+
+export function getNotificationCenter() {
+  return apiJson("/api/notifications/center/")
+}
+
+export function createNotificationEvent(payload) {
+  return apiJson("/api/notifications/center/", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+}
+
+export function markAllNotificationsRead() {
+  return apiJson("/api/notifications/center/mark-all-read/", {
+    method: "PATCH",
+    body: JSON.stringify({}),
+  })
 }
 
 export function getAccountProfile() {

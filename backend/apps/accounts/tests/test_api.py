@@ -22,7 +22,6 @@ from apps.restaurants.tests.factories import RestaurantFactory
 from apps.restaurants.tests.factories import RestaurantOrderCapabilityFactory
 from apps.users.tests.factories import UserFactory
 
-
 pytestmark = pytest.mark.django_db
 
 
@@ -107,8 +106,10 @@ def test_admin_dashboard_returns_platform_metrics(api_client: APIClient):
     RestaurantOrderCapabilityFactory(restaurant=restaurant)
     RestaurantDeliverySettingFactory(restaurant=restaurant)
     category = MenuCategoryFactory(restaurant=restaurant, name="Almuerzos")
-    item = MenuItemFactory(
-        restaurant=restaurant, menu_category=category, name="Bandeja"
+    MenuItemFactory(
+        restaurant=restaurant,
+        menu_category=category,
+        name="Bandeja",
     )
     CustomerAddressFactory(user=customer)
     order = Order.objects.create(
@@ -182,7 +183,8 @@ def test_admin_dashboard_filters_completed_orders_metrics(api_client: APIClient)
 
     api_client.force_authenticate(user=admin)
     response = api_client.get(
-        reverse("api:admin-dashboard-list"), {"order_scope": "completed"}
+        reverse("api:admin-dashboard-list"),
+        {"order_scope": "completed"},
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -299,7 +301,8 @@ def test_admin_users_list_supports_column_filters(api_client: APIClient):
     UserProfile.objects.create(
         user=customer,
         status=UserStatus.objects.get_or_create(
-            code="active", defaults={"name": "Activo"}
+            code="active",
+            defaults={"name": "Activo"},
         )[0],
         phone="300999",
     )
@@ -343,7 +346,8 @@ def test_admin_restaurants_list_returns_real_restaurants(api_client: APIClient):
 
     api_client.force_authenticate(user=admin)
     response = api_client.get(
-        reverse("api:admin-restaurants-list"), {"search": "Parrilla"}
+        reverse("api:admin-restaurants-list"),
+        {"search": "Parrilla"},
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -413,7 +417,7 @@ def test_admin_restaurants_list_supports_pagination_and_ordering(api_client: API
     assert response.data["page_size"] == 2
     assert response.data["total_pages"] >= 2
     assert [restaurant["name"] for restaurant in response.data["results"]] == [
-        third_restaurant.display_name
+        third_restaurant.display_name,
     ]
 
 

@@ -1,11 +1,13 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Bell, Settings, LogOut, User, Menu } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { useAuth } from "@/context/auth-context";
-function dashboardPath(role) {
+import { useNotificationCenter } from "@/hooks/use-orders";
+function getDashboardPath(role) {
     if (role === "admin") {
         return "/dashboard/admin";
     }
@@ -17,6 +19,7 @@ function dashboardPath(role) {
 export function DashboardHeader({ userName, userType, onMobileMenuClick }) {
     const navigate = useNavigate();
     const { logout, activeRole, availableRoles, switchRole } = useAuth();
+    const { unreadCount, markAllRead } = useNotificationCenter();
     const initials = userName
         .split(" ")
         .map((n) => n[0])
@@ -47,22 +50,41 @@ export function DashboardHeader({ userName, userType, onMobileMenuClick }) {
       </div>
 
       <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
-        {availableRoles.length > 1 ? (<select
+        {availableRoles.length > 1 ? (<Select
             value={activeRole}
-            onChange={(event) => {
-                    const nextRole = switchRole(event.target.value);
-                    navigate(dashboardPath(nextRole));
+            onValueChange={(value) => {
+                    const nextRole = switchRole(value);
+                    navigate(getDashboardPath(nextRole));
                 }}
-            className="hidden h-9 rounded-md border border-input bg-background px-3 text-sm md:block"
           >
-            {availableRoles.map((role) => <option key={role.code} value={role.code}>{role.label}</option>)}
-          </select>) : null}
+            <SelectTrigger className="hidden md:flex w-[180px]">
+              <SelectValue placeholder="Selecciona un rol" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableRoles.map((role) => (
+                <SelectItem key={role.code} value={role.code}>
+                  {role.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>) : null}
         <ThemeToggle />
-        <Button variant="ghost" size="icon" className="relative">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative"
+          onClick={async () => {
+            if (unreadCount > 0) {
+              await markAllRead();
+            }
+          }}
+        >
           <Bell className="h-5 w-5"/>
-          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-            3
-          </span>
+          {unreadCount > 0 ? (
+            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
+              {unreadCount}
+            </span>
+          ) : null}
         </Button>
 
         <DropdownMenu>
@@ -88,16 +110,24 @@ export function DashboardHeader({ userName, userType, onMobileMenuClick }) {
                 <DropdownMenuSeparator />
                 <div className="px-2 py-1.5">
                   <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Perfil activo</p>
-                  <select
+                  <Select
                     value={activeRole}
-                    onChange={(event) => {
-                                            const nextRole = switchRole(event.target.value);
-                                            navigate(dashboardPath(nextRole));
+                    onValueChange={(value) => {
+                                            const nextRole = switchRole(value);
+                                            navigate(getDashboardPath(nextRole));
                                         }}
-                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                   >
-                    {availableRoles.map((role) => <option key={role.code} value={role.code}>{role.label}</option>)}
-                  </select>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecciona un rol" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableRoles.map((role) => (
+                        <SelectItem key={role.code} value={role.code}>
+                          {role.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </>) : null}
             <DropdownMenuSeparator />

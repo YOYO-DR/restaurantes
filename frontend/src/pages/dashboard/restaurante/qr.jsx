@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useOwnerRestaurantQrs } from "@/hooks/use-restaurants"
 import { Copy, Download, ExternalLink, Loader2, Pencil, Plus, Printer, QrCode, Trash2 } from "lucide-react"
@@ -74,14 +75,15 @@ function TableDialog({ open, onOpenChange, initialValues, isSaving, onSubmit }) 
           <Field label="Capacidad" type="number" value={form.capacity} onChange={(value) => setForm((current) => ({ ...current, capacity: value }))} />
           <div className="space-y-2">
             <Label>Estado</Label>
-            <select
-              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-              value={form.status_code}
-              onChange={(event) => setForm((current) => ({ ...current, status_code: event.target.value }))}
-            >
-              <option value="active">Activa</option>
-              <option value="inactive">Inactiva</option>
-            </select>
+            <Select value={form.status_code} onValueChange={(value) => setForm((current) => ({ ...current, status_code: value }))}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Activa</SelectItem>
+                <SelectItem value="inactive">Inactiva</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <DialogFooter>
@@ -324,20 +326,30 @@ export default function QRRestaurantePage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>Tamano de descarga</Label>
-                  <select className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm" value={downloadSize} onChange={(event) => setDownloadSize(event.target.value)}>
-                    <option value="small">Pequeno (200x200)</option>
-                    <option value="medium">Mediano (400x400)</option>
-                    <option value="large">Grande (800x800)</option>
-                    <option value="xlarge">Extra Grande (1200x1200)</option>
-                  </select>
+                  <Select value={downloadSize} onValueChange={(value) => setDownloadSize(value)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Tamano de descarga" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="small">Pequeno (200x200)</SelectItem>
+                      <SelectItem value="medium">Mediano (400x400)</SelectItem>
+                      <SelectItem value="large">Grande (800x800)</SelectItem>
+                      <SelectItem value="xlarge">Extra Grande (1200x1200)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label>Formato</Label>
-                  <select className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm" value={downloadFormat} onChange={(event) => setDownloadFormat(event.target.value)}>
-                    <option value="png">PNG</option>
-                    <option value="svg">SVG</option>
-                  </select>
+                  <Select value={downloadFormat} onValueChange={(value) => setDownloadFormat(value)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Formato" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="png">PNG</SelectItem>
+                      <SelectItem value="svg">SVG</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">

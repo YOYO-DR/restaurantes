@@ -1,4 +1,3 @@
-from rest_framework import permissions
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -7,18 +6,18 @@ from rest_framework.viewsets import ModelViewSet
 
 from apps.core.permissions import IsAuthenticatedUser
 from apps.core.permissions import IsOwnerOfRestaurantResourceOrAdminRole
-from apps.core.permissions import IsOwnerOrAdminRole
+from apps.core.permissions import get_user_owned_or_operated_restaurant_ids
 from apps.core.permissions import is_admin_user
-from apps.menu.api.serializers import OwnerMenuCategoryWriteSerializer
-from apps.menu.api.serializers import OwnerMenuItemWriteSerializer
-from apps.menu.api.serializers import MenuItemAvailabilitySerializer
 from apps.menu.api.serializers import InventoryItemSerializer
 from apps.menu.api.serializers import InventoryMovementCreateSerializer
 from apps.menu.api.serializers import InventoryUnitSerializer
+from apps.menu.api.serializers import MenuItemAvailabilitySerializer
+from apps.menu.api.serializers import OwnerMenuCategoryWriteSerializer
+from apps.menu.api.serializers import OwnerMenuItemWriteSerializer
 from apps.menu.models import InventoryItem
-from apps.menu.models import UnitType
 from apps.menu.models import MenuCategory
 from apps.menu.models import MenuItem
+from apps.menu.models import UnitType
 from apps.menu.services import ensure_inventory_catalogs
 
 
@@ -49,7 +48,10 @@ class OwnerMenuCategoryViewSet(ModelViewSet):
         if is_admin_user(self.request.user):
             filtered_queryset = queryset
         else:
-            filtered_queryset = queryset.filter(restaurant__owner=self.request.user)
+            restaurant_ids = get_user_owned_or_operated_restaurant_ids(
+                self.request.user,
+            )
+            filtered_queryset = queryset.filter(restaurant_id__in=restaurant_ids)
 
         restaurant_id = self.request.query_params.get("restaurant")
         search = self.request.query_params.get("search", "").strip()
@@ -85,7 +87,8 @@ class OwnerMenuCrudItemViewSet(ModelViewSet):
         queryset = self.queryset.order_by("name")
         if is_admin_user(self.request.user):
             return queryset
-        return queryset.filter(restaurant__owner=self.request.user)
+        restaurant_ids = get_user_owned_or_operated_restaurant_ids(self.request.user)
+        return queryset.filter(restaurant_id__in=restaurant_ids)
 
 
 class OwnerInventoryItemViewSet(ModelViewSet):
@@ -98,7 +101,10 @@ class OwnerInventoryItemViewSet(ModelViewSet):
         if is_admin_user(self.request.user):
             filtered_queryset = queryset
         else:
-            filtered_queryset = queryset.filter(restaurant__owner=self.request.user)
+            restaurant_ids = get_user_owned_or_operated_restaurant_ids(
+                self.request.user,
+            )
+            filtered_queryset = queryset.filter(restaurant_id__in=restaurant_ids)
 
         restaurant_id = self.request.query_params.get("restaurant")
         search = self.request.query_params.get("search", "").strip()

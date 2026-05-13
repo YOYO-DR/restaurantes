@@ -27,17 +27,25 @@ class Order(BaseModel):
         blank=True,
     )
     restaurant = models.ForeignKey(
-        "restaurants.Restaurant", on_delete=models.PROTECT, related_name="orders"
+        "restaurants.Restaurant",
+        on_delete=models.PROTECT,
+        related_name="orders",
     )
     order_type = models.ForeignKey(
-        OrderType, on_delete=models.PROTECT, related_name="orders"
+        OrderType,
+        on_delete=models.PROTECT,
+        related_name="orders",
     )
     status = models.ForeignKey(
-        OrderStatus, on_delete=models.PROTECT, related_name="orders"
+        OrderStatus,
+        on_delete=models.PROTECT,
+        related_name="orders",
     )
     subtotal_amount = models.DecimalField(max_digits=12, decimal_places=2)
     delivery_fee_amount = models.DecimalField(
-        max_digits=12, decimal_places=2, default=0
+        max_digits=12,
+        decimal_places=2,
+        default=0,
     )
     service_fee_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -83,7 +91,9 @@ class OrderItem(BaseModel):
 
 class OrderFulfillment(BaseModel):
     order = models.OneToOneField(
-        Order, on_delete=models.CASCADE, related_name="fulfillment"
+        Order,
+        on_delete=models.CASCADE,
+        related_name="fulfillment",
     )
     delivery_address = models.ForeignKey(
         "customers.CustomerAddress",
@@ -110,10 +120,14 @@ class OrderFulfillment(BaseModel):
 
 class OrderStatusHistory(BaseModel):
     order = models.ForeignKey(
-        Order, on_delete=models.CASCADE, related_name="status_history"
+        Order,
+        on_delete=models.CASCADE,
+        related_name="status_history",
     )
     status = models.ForeignKey(
-        OrderStatus, on_delete=models.PROTECT, related_name="status_changes"
+        OrderStatus,
+        on_delete=models.PROTECT,
+        related_name="status_changes",
     )
     changed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -132,7 +146,9 @@ class OrderStatusHistory(BaseModel):
 
 class OrderPaymentTransaction(BaseModel):
     order = models.ForeignKey(
-        Order, on_delete=models.CASCADE, related_name="payment_transactions"
+        Order,
+        on_delete=models.CASCADE,
+        related_name="payment_transactions",
     )
     payment_method_type = models.ForeignKey(
         "customers.PaymentMethodType",
@@ -140,7 +156,9 @@ class OrderPaymentTransaction(BaseModel):
         related_name="order_payment_transactions",
     )
     payment_status = models.ForeignKey(
-        PaymentStatus, on_delete=models.PROTECT, related_name="transactions"
+        PaymentStatus,
+        on_delete=models.PROTECT,
+        related_name="transactions",
     )
     provider_name = models.CharField(max_length=80, blank=True)
     provider_reference = models.CharField(max_length=120, blank=True)

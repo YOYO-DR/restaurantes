@@ -38,7 +38,7 @@ MEDIA_URL = "http://media.testserver/"
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels.layers.InMemoryChannelLayer",
-    }
+    },
 }
 # Your stuff...
 # ------------------------------------------------------------------------------

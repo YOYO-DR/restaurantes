@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useOwnerCustomers } from "@/hooks/use-orders"
 import { formatCurrency } from "@/lib/format"
@@ -42,15 +43,16 @@ export default function ClientesRestaurantePage() {
         <h1 className="text-2xl font-bold tracking-tight">Clientes</h1>
         <div className="space-y-2">
           <p className="text-muted-foreground">Gestiona y conoce a tus clientes</p>
-          <select
-            value={orderScope}
-            onChange={(event) => setOrderScope(event.target.value)}
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-          >
-            <option value="all">Todas las ordenes</option>
-            <option value="completed">Completadas</option>
-            <option value="non_completed">No finalizadas</option>
-          </select>
+          <Select value={orderScope} onValueChange={(value) => setOrderScope(value)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Todas las ordenes" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las ordenes</SelectItem>
+              <SelectItem value="completed">Completadas</SelectItem>
+              <SelectItem value="non_completed">No finalizadas</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

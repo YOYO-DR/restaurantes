@@ -9,7 +9,6 @@ from apps.restaurants.tests.factories import OrderTypeFactory
 from apps.restaurants.tests.factories import RestaurantFactory
 from apps.users.tests.factories import UserFactory
 
-
 pytestmark = pytest.mark.django_db
 
 
@@ -44,7 +43,8 @@ def test_customer_dashboard_filters_completed_orders_metrics():
 
     api_client.force_authenticate(user=user)
     response = api_client.get(
-        reverse("api:customer-dashboard-list"), {"order_scope": "completed"}
+        reverse("api:customer-dashboard-list"),
+        {"order_scope": "completed"},
     )
 
     assert response.status_code == status.HTTP_200_OK

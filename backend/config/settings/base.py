@@ -1,9 +1,9 @@
-# ruff: noqa: ERA001, E501
+# ruff: noqa: ERA001
 """Base settings to build other settings files upon."""
 
 import ssl
-from pathlib import Path
 from datetime import timedelta
+from pathlib import Path
 
 import environ
 
@@ -259,7 +259,7 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "verbose": {
-            "format": "%(levelname)s %(asctime)s [function %(name)s.%(funcName)s] [process %(process)d] [thread %(thread)d] %(message)s",  # noqa: E501
+            "format": "%(levelname)s %(asctime)s [function %(name)s.%(funcName)s] [process %(process)d] [thread %(thread)d] %(message)s",
         },
     },
     "handlers": {
@@ -327,7 +327,7 @@ CHANNEL_LAYERS = {
         "CONFIG": {
             "hosts": [REDIS_URL],
         },
-    }
+    },
 }
 
 # Celery

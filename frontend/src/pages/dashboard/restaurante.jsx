@@ -4,6 +4,7 @@ import { DashboardShellSkeleton } from "@/components/ui/app-skeletons"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useOwnerRestaurantDashboard } from "@/hooks/use-restaurants"
 import { formatCurrency } from "@/lib/format"
 import { ArrowRight, Clock, DollarSign, ShoppingBag, Star, TrendingUp, Users } from "lucide-react"
@@ -22,15 +23,16 @@ export default function OwnerDashboardPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <select
-            value={orderScope}
-            onChange={(event) => setOrderScope(event.target.value)}
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-          >
-            <option value="all">Todas las ordenes</option>
-            <option value="completed">Completadas</option>
-            <option value="non_completed">No finalizadas</option>
-          </select>
+          <Select value={orderScope} onValueChange={(value) => setOrderScope(value)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Todas las ordenes" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las ordenes</SelectItem>
+              <SelectItem value="completed">Completadas</SelectItem>
+              <SelectItem value="non_completed">No finalizadas</SelectItem>
+            </SelectContent>
+          </Select>
           <Button asChild>
             <Link to="/dashboard/restaurante/pedidos">
               Ver todos los pedidos

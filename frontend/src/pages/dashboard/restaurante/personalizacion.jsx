@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DashboardShellSkeleton } from "@/components/ui/app-skeletons"
 import { useOwnerRestaurantPersonalization } from "@/hooks/use-restaurants"
 import { Eye, Layout, Loader2, Palette, Type, Upload } from "lucide-react"
@@ -21,7 +22,7 @@ const colorPresets = [
 ]
 
 export default function PersonalizacionRestaurantePage() {
-  const { data, restaurantId, isLoading, isSaving, error, savePersonalization } = useOwnerRestaurantPersonalization()
+  const { data, isLoading, isSaving, error, savePersonalization } = useOwnerRestaurantPersonalization()
   const [form, setForm] = useState(null)
   const logoInputRef = useRef(null)
   const coverInputRef = useRef(null)
@@ -237,9 +238,16 @@ function SelectField({ label, value, onChange, options }) {
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
-      <select className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm" value={value} onChange={(event) => onChange(event.target.value)}>
-        {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-      </select>
+      <Select value={value} onValueChange={(val) => onChange(val)}>
+        <SelectTrigger className="w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   )
 }

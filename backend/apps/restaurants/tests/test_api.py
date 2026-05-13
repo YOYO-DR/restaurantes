@@ -11,6 +11,7 @@ from apps.menu.models import InventoryMovementType
 from apps.menu.models import UnitType
 from apps.orders.models import Order
 from apps.orders.models import OrderItem
+from apps.restaurants.models import Operador
 from apps.restaurants.models import Restaurant
 from apps.restaurants.models import RestaurantReview
 from apps.restaurants.models import TableStatus
@@ -26,7 +27,6 @@ from apps.restaurants.tests.factories import RestaurantFactory
 from apps.restaurants.tests.factories import RestaurantHourFactory
 from apps.restaurants.tests.factories import RestaurantOrderCapabilityFactory
 from apps.users.tests.factories import UserFactory
-
 
 pytestmark = pytest.mark.django_db
 
@@ -48,7 +48,9 @@ def create_restaurant_with_menu(owner=None, slug="el-buen-sabor") -> Restaurant:
     RestaurantDeliverySettingFactory(restaurant=restaurant)
     RestaurantHourFactory(restaurant=restaurant, weekday=0)
     entradas = MenuCategoryFactory(
-        restaurant=restaurant, slug="entradas", name="Entradas"
+        restaurant=restaurant,
+        slug="entradas",
+        name="Entradas",
     )
     MenuItemFactory(
         restaurant=restaurant,
@@ -82,15 +84,19 @@ def test_public_restaurant_detail(api_client: APIClient):
     restaurant = create_restaurant_with_menu()
     branding = ensure_restaurant_branding(restaurant)
     branding.logo_file = SimpleUploadedFile(
-        "logo.txt", b"logo-content", content_type="text/plain"
+        "logo.txt",
+        b"logo-content",
+        content_type="text/plain",
     )
     branding.cover_file = SimpleUploadedFile(
-        "cover.txt", b"cover-content", content_type="text/plain"
+        "cover.txt",
+        b"cover-content",
+        content_type="text/plain",
     )
     branding.save(update_fields=["logo_file", "cover_file", "updated_at"])
 
     response = api_client.get(
-        reverse("api:restaurant-detail", kwargs={"slug": restaurant.slug})
+        reverse("api:restaurant-detail", kwargs={"slug": restaurant.slug}),
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -107,20 +113,22 @@ def test_public_restaurant_detail_returns_active_tables_for_table_orders(
     restaurant = create_restaurant_with_menu()
     restaurant.order_capability.table_order_enabled = True
     restaurant.order_capability.save(
-        update_fields=["table_order_enabled", "updated_at"]
+        update_fields=["table_order_enabled", "updated_at"],
     )
     active_status, _ = TableStatus.objects.get_or_create(
-        code="active", defaults={"name": "Activa"}
+        code="active",
+        defaults={"name": "Activa"},
     )
     inactive_status, _ = TableStatus.objects.get_or_create(
-        code="inactive", defaults={"name": "Inactiva"}
+        code="inactive",
+        defaults={"name": "Inactiva"},
     )
     restaurant.tables.create(table_number="1", capacity=4, status=active_status)
     restaurant.tables.create(table_number="4", capacity=2, status=active_status)
     restaurant.tables.create(table_number="2", capacity=6, status=inactive_status)
 
     response = api_client.get(
-        reverse("api:restaurant-detail", kwargs={"slug": restaurant.slug})
+        reverse("api:restaurant-detail", kwargs={"slug": restaurant.slug}),
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -134,7 +142,7 @@ def test_public_restaurant_menu_only_returns_available_items(api_client: APIClie
     restaurant = create_restaurant_with_menu()
 
     response = api_client.get(
-        reverse("api:restaurant-menu", kwargs={"slug": restaurant.slug})
+        reverse("api:restaurant-menu", kwargs={"slug": restaurant.slug}),
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -151,7 +159,7 @@ def test_owner_can_view_own_restaurant_menu(api_client: APIClient):
     api_client.force_authenticate(user=owner)
 
     response = api_client.get(
-        reverse("api:owner-restaurant-menu", kwargs={"pk": restaurant.pk})
+        reverse("api:owner-restaurant-menu", kwargs={"pk": restaurant.pk}),
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -167,7 +175,7 @@ def test_owner_cannot_view_other_restaurant_menu(api_client: APIClient):
     api_client.force_authenticate(user=owner)
 
     response = api_client.get(
-        reverse("api:owner-restaurant-menu", kwargs={"pk": restaurant.pk})
+        reverse("api:owner-restaurant-menu", kwargs={"pk": restaurant.pk}),
     )
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -181,7 +189,39 @@ def test_owner_cannot_view_other_restaurant_dashboard(api_client: APIClient):
     api_client.force_authenticate(user=owner)
 
     response = api_client.get(
-        reverse("api:owner-restaurant-dashboard", kwargs={"pk": restaurant.pk})
+        reverse("api:owner-restaurant-dashboard", kwargs={"pk": restaurant.pk}),
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_operator_can_view_assigned_restaurant_dashboard(api_client: APIClient):
+    owner = UserFactory()
+    operator = UserFactory()
+    assign_role(owner, "restaurante")
+    assign_role(operator, "operador")
+    restaurant = create_restaurant_with_menu(owner=owner)
+    Operador.objects.create(user=operator, restaurante=restaurant)
+    api_client.force_authenticate(user=operator)
+
+    response = api_client.get(
+        reverse("api:owner-restaurant-dashboard", kwargs={"pk": restaurant.pk}),
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["restaurant"]["id"] == str(restaurant.id)
+
+
+def test_operator_cannot_view_unassigned_restaurant_dashboard(api_client: APIClient):
+    owner = UserFactory()
+    operator = UserFactory()
+    assign_role(owner, "restaurante")
+    assign_role(operator, "operador")
+    restaurant = create_restaurant_with_menu(owner=owner)
+    api_client.force_authenticate(user=operator)
+
+    response = api_client.get(
+        reverse("api:owner-restaurant-dashboard", kwargs={"pk": restaurant.pk}),
     )
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -267,7 +307,8 @@ def test_owner_can_list_inventory_items(api_client: APIClient):
     assign_role(owner, "restaurante")
     restaurant = create_restaurant_with_menu(owner=owner)
     unit_type, _ = UnitType.objects.get_or_create(
-        code="kg", defaults={"name": "Kilogramos"}
+        code="kg",
+        defaults={"name": "Kilogramos"},
     )
     InventoryItem.objects.create(
         restaurant=restaurant,
@@ -296,10 +337,12 @@ def test_owner_can_create_inventory_item_and_register_movement(api_client: APICl
     assign_role(owner, "restaurante")
     restaurant = create_restaurant_with_menu(owner=owner)
     unit_type, _ = UnitType.objects.get_or_create(
-        code="kg", defaults={"name": "Kilogramos"}
+        code="kg",
+        defaults={"name": "Kilogramos"},
     )
     InventoryMovementType.objects.get_or_create(
-        code="stock_in", defaults={"name": "Entrada"}
+        code="stock_in",
+        defaults={"name": "Entrada"},
     )
     api_client.force_authenticate(user=owner)
 
@@ -378,14 +421,16 @@ def test_owner_can_create_menu_item_with_images(api_client: APIClient):
             "name": "Hamburguesa Especial",
             "price_amount": "25000.00",
             "primary_image": SimpleUploadedFile(
-                "primary.jpg", b"primary-image-content", content_type="image/jpeg"
+                "primary.jpg",
+                b"primary-image-content",
+                content_type="image/jpeg",
             ),
             "gallery_images": [
                 SimpleUploadedFile(
                     "gallery-1.jpg",
                     b"gallery-image-content",
                     content_type="image/jpeg",
-                )
+                ),
             ],
         },
         format="multipart",
@@ -520,10 +565,10 @@ def test_owner_dashboard_returns_real_metrics(api_client: APIClient):
             "items": [
                 {
                     "menu_item_id": str(
-                        restaurant.menu_items.filter(is_available=True).first().id
+                        restaurant.menu_items.filter(is_available=True).first().id,
                     ),
                     "quantity": 2,
-                }
+                },
             ],
         },
         format="json",
@@ -531,7 +576,7 @@ def test_owner_dashboard_returns_real_metrics(api_client: APIClient):
 
     api_client.force_authenticate(user=owner)
     response = api_client.get(
-        reverse("api:owner-restaurant-dashboard", kwargs={"pk": restaurant.pk})
+        reverse("api:owner-restaurant-dashboard", kwargs={"pk": restaurant.pk}),
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -584,7 +629,7 @@ def test_owner_can_get_restaurant_reviews(api_client: APIClient):
     api_client.force_authenticate(user=owner)
 
     response = api_client.get(
-        reverse("api:owner-restaurant-reviews", kwargs={"pk": restaurant.pk})
+        reverse("api:owner-restaurant-reviews", kwargs={"pk": restaurant.pk}),
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -630,12 +675,12 @@ def test_owner_can_get_qr_data_and_manage_tables(api_client: APIClient):
     api_client.force_authenticate(user=owner)
 
     qr_response = api_client.get(
-        reverse("api:owner-restaurant-qrs", kwargs={"pk": restaurant.pk})
+        reverse("api:owner-restaurant-qrs", kwargs={"pk": restaurant.pk}),
     )
 
     assert qr_response.status_code == status.HTTP_200_OK
     assert qr_response.data["menu_qr"]["url"].endswith(
-        f"/restaurantes/{restaurant.slug}"
+        f"/restaurantes/{restaurant.slug}",
     )
 
     create_table_response = api_client.post(
@@ -668,7 +713,7 @@ def test_owner_can_get_restaurant_settings(api_client: APIClient):
     api_client.force_authenticate(user=owner)
 
     response = api_client.get(
-        reverse("api:owner-restaurant-settings", kwargs={"pk": restaurant.pk})
+        reverse("api:owner-restaurant-settings", kwargs={"pk": restaurant.pk}),
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -736,7 +781,7 @@ def test_owner_can_update_restaurant_settings_schedule(api_client: APIClient):
                     "close_time": "20:30",
                     "is_closed": False,
                 },
-            ]
+            ],
         },
         format="json",
     )
@@ -769,7 +814,7 @@ def test_owner_can_get_and_update_personalization(api_client: APIClient):
     api_client.force_authenticate(user=owner)
 
     get_response = api_client.get(
-        reverse("api:owner-restaurant-personalization", kwargs={"pk": restaurant.pk})
+        reverse("api:owner-restaurant-personalization", kwargs={"pk": restaurant.pk}),
     )
 
     assert get_response.status_code == status.HTTP_200_OK

@@ -14,7 +14,9 @@ class BackupFrequency(BaseCatalogModel):
 
 class SubscriptionPlan(BaseCatalogModel):
     billing_period = models.ForeignKey(
-        BillingPeriod, on_delete=models.PROTECT, related_name="subscription_plans"
+        BillingPeriod,
+        on_delete=models.PROTECT,
+        related_name="subscription_plans",
     )
     price_amount = models.DecimalField(max_digits=12, decimal_places=2)
     currency_code = models.CharField(max_length=3)

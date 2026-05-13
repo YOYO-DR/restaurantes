@@ -9,7 +9,6 @@ from apps.orders.models import OrderStatusHistory
 from apps.orders.models import OrderType
 from apps.orders.models import PaymentStatus
 
-
 admin.site.register(Order)
 admin.site.register(OrderFulfillment)
 admin.site.register(OrderItem)

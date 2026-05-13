@@ -18,7 +18,6 @@ from apps.restaurants.models import RestaurantStatus
 from apps.restaurants.models import RestaurantTable
 from apps.restaurants.models import TableStatus
 
-
 admin.site.register(CartPosition)
 admin.site.register(CategoryNavigationStyle)
 admin.site.register(MenuLayoutOption)

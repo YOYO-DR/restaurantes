@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.core.permissions import IsAuthenticatedUser
+
 from .serializers import LoginSerializer
 from .serializers import LogoutSerializer
 from .serializers import RefreshCookieSerializer
@@ -80,7 +81,8 @@ class RefreshView(APIView):
 
     def post(self, request):
         serializer = RefreshCookieSerializer(
-            data=request.data, context={"request": request}
+            data=request.data,
+            context={"request": request},
         )
         serializer.is_valid(raise_exception=True)
         refresh_token = validate_refresh_token(serializer.validated_data["refresh"])

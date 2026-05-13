@@ -10,7 +10,6 @@ from apps.restaurants.tests.factories import RestaurantFactory
 from apps.restaurants.tests.factories import RestaurantOrderCapabilityFactory
 from apps.users.tests.factories import UserFactory
 
-
 pytestmark = pytest.mark.django_db
 
 

@@ -15,7 +15,9 @@ class UserStatus(BaseCatalogModel):
 
 class UserRole(BaseModel):
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="account_roles"
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="account_roles",
     )
     role = models.ForeignKey(Role, on_delete=models.PROTECT, related_name="users")
     assigned_by = models.ForeignKey(
@@ -31,20 +33,25 @@ class UserRole(BaseModel):
         db_table = "accounts_user_roles"
         constraints = [
             models.UniqueConstraint(
-                fields=("user", "role"), name="uniq_accounts_user_role"
+                fields=("user", "role"),
+                name="uniq_accounts_user_role",
             ),
         ]
-    
+
     def __str__(self):
         return f"{self.user.email} - {self.role.name}"
 
 
 class UserProfile(BaseModel):
     user = models.OneToOneField(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile"
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="profile",
     )
     status = models.ForeignKey(
-        UserStatus, on_delete=models.PROTECT, related_name="profiles"
+        UserStatus,
+        on_delete=models.PROTECT,
+        related_name="profiles",
     )
     phone = models.CharField(max_length=30, blank=True)
     avatar_url = models.URLField(blank=True)
@@ -56,7 +63,9 @@ class UserProfile(BaseModel):
 
 class UserSession(BaseModel):
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="sessions"
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="sessions",
     )
     refresh_token_hash = models.CharField(max_length=255, unique=True)
     device_name = models.CharField(max_length=120, blank=True)
@@ -79,7 +88,9 @@ class LegalDocumentType(BaseCatalogModel):
 
 class LegalDocument(BaseModel):
     doc_type = models.ForeignKey(
-        LegalDocumentType, on_delete=models.PROTECT, related_name="documents"
+        LegalDocumentType,
+        on_delete=models.PROTECT,
+        related_name="documents",
     )
     version = models.CharField(max_length=30)
     published_at = models.DateTimeField()
@@ -89,7 +100,8 @@ class LegalDocument(BaseModel):
         db_table = "accounts_legal_documents"
         constraints = [
             models.UniqueConstraint(
-                fields=("doc_type", "version"), name="uniq_accounts_doc_type_version"
+                fields=("doc_type", "version"),
+                name="uniq_accounts_doc_type_version",
             ),
         ]
 
@@ -101,7 +113,9 @@ class UserLegalAcceptance(BaseModel):
         related_name="legal_acceptances",
     )
     legal_document = models.ForeignKey(
-        LegalDocument, on_delete=models.PROTECT, related_name="acceptances"
+        LegalDocument,
+        on_delete=models.PROTECT,
+        related_name="acceptances",
     )
     accepted_at = models.DateTimeField(auto_now_add=True)
 
@@ -122,10 +136,14 @@ class ActionCatalog(BaseCatalogModel):
 
 class RoleActionPermission(BaseModel):
     role = models.ForeignKey(
-        Role, on_delete=models.CASCADE, related_name="action_permissions"
+        Role,
+        on_delete=models.CASCADE,
+        related_name="action_permissions",
     )
     action = models.ForeignKey(
-        ActionCatalog, on_delete=models.CASCADE, related_name="role_permissions"
+        ActionCatalog,
+        on_delete=models.CASCADE,
+        related_name="role_permissions",
     )
     is_allowed = models.BooleanField(default=True)
 
@@ -133,6 +151,7 @@ class RoleActionPermission(BaseModel):
         db_table = "accounts_role_action_permissions"
         constraints = [
             models.UniqueConstraint(
-                fields=("role", "action"), name="uniq_accounts_role_action_permission"
+                fields=("role", "action"),
+                name="uniq_accounts_role_action_permission",
             ),
         ]

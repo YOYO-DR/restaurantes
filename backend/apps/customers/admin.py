@@ -6,7 +6,6 @@ from apps.customers.models import CustomerPaymentMethod
 from apps.customers.models import Favorite
 from apps.customers.models import PaymentMethodType
 
-
 admin.site.register(AddressType)
 admin.site.register(CustomerAddress)
 admin.site.register(CustomerPaymentMethod)

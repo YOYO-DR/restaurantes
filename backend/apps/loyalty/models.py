@@ -19,19 +19,32 @@ class LoyaltyRedemptionStatus(BaseCatalogModel):
 
 
 class LoyaltyAccount(BaseModel):
-    user = models.OneToOneField(
+    user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="loyalty_account",
+        related_name="loyalty_accounts",
+    )
+    restaurant = models.ForeignKey(
+        "restaurants.Restaurant",
+        on_delete=models.CASCADE,
+        related_name="loyalty_accounts",
     )
     current_points = models.IntegerField(default=0)
     lifetime_points = models.PositiveIntegerField(default=0)
     tier = models.ForeignKey(
-        LoyaltyTier, on_delete=models.PROTECT, related_name="accounts"
+        LoyaltyTier,
+        on_delete=models.PROTECT,
+        related_name="accounts",
     )
 
     class Meta:
         db_table = "loyalty_accounts"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("user", "restaurant"),
+                name="uniq_user_restaurant_loyalty",
+            ),
+        ]
 
 
 class LoyaltyReward(BaseModel):
@@ -51,7 +64,9 @@ class LoyaltyReward(BaseModel):
 
 class LoyaltyTransaction(BaseModel):
     loyalty_account = models.ForeignKey(
-        LoyaltyAccount, on_delete=models.CASCADE, related_name="transactions"
+        LoyaltyAccount,
+        on_delete=models.CASCADE,
+        related_name="transactions",
     )
     order = models.ForeignKey(
         "orders.Order",
@@ -61,7 +76,9 @@ class LoyaltyTransaction(BaseModel):
         related_name="loyalty_transactions",
     )
     tx_type = models.ForeignKey(
-        LoyaltyTransactionType, on_delete=models.PROTECT, related_name="transactions"
+        LoyaltyTransactionType,
+        on_delete=models.PROTECT,
+        related_name="transactions",
     )
     points_delta = models.IntegerField()
     description = models.TextField(blank=True)
@@ -72,14 +89,38 @@ class LoyaltyTransaction(BaseModel):
 
 class LoyaltyRedemption(BaseModel):
     loyalty_transaction = models.ForeignKey(
-        LoyaltyTransaction, on_delete=models.CASCADE, related_name="redemptions"
+        LoyaltyTransaction,
+        on_delete=models.CASCADE,
+        related_name="redemptions",
     )
     loyalty_reward = models.ForeignKey(
-        LoyaltyReward, on_delete=models.PROTECT, related_name="redemptions"
+        LoyaltyReward,
+        on_delete=models.PROTECT,
+        related_name="redemptions",
     )
     status = models.ForeignKey(
-        LoyaltyRedemptionStatus, on_delete=models.PROTECT, related_name="redemptions"
+        LoyaltyRedemptionStatus,
+        on_delete=models.PROTECT,
+        related_name="redemptions",
     )
 
     class Meta:
         db_table = "loyalty_redemptions"
+
+
+class RestaurantLoyaltySetting(BaseModel):
+    restaurant = models.OneToOneField(
+        "restaurants.Restaurant",
+        on_delete=models.CASCADE,
+        related_name="loyalty_setting",
+    )
+    is_active = models.BooleanField(default=False)
+    currency_unit_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+    )
+    points_earned = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        db_table = "restaurant_loyalty_settings"

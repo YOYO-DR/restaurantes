@@ -8,7 +8,6 @@ from apps.loyalty.models import LoyaltyTier
 from apps.loyalty.models import LoyaltyTransaction
 from apps.loyalty.models import LoyaltyTransactionType
 
-
 admin.site.register(LoyaltyAccount)
 admin.site.register(LoyaltyRedemption)
 admin.site.register(LoyaltyRedemptionStatus)

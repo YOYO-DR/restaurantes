@@ -5,12 +5,11 @@ from apps.menu.models import MenuCategory
 from apps.menu.models import MenuItem
 from apps.orders.models import Order
 from apps.orders.models import OrderItem
-from apps.restaurants.models import CategoryNavigationStyle
 from apps.restaurants.models import CartPosition
+from apps.restaurants.models import CategoryNavigationStyle
 from apps.restaurants.models import MenuLayoutOption
 from apps.restaurants.models import Restaurant
 from apps.restaurants.models import RestaurantAddress
-from apps.restaurants.models import RestaurantBranding
 from apps.restaurants.models import RestaurantDeliverySetting
 from apps.restaurants.models import RestaurantHour
 from apps.restaurants.models import RestaurantOrderCapability
@@ -18,7 +17,6 @@ from apps.restaurants.models import RestaurantReview
 from apps.restaurants.models import RestaurantSocialLink
 from apps.restaurants.models import RestaurantTable
 from apps.restaurants.models import TableStatus
-
 
 WEEKDAY_LABELS = {
     0: "Lunes",
@@ -61,7 +59,7 @@ def build_default_schedule_payload(instance: Restaurant) -> list[dict[str, objec
                 ),
                 "is_closed": hour.is_closed if hour else weekday == 6,
                 "label": WEEKDAY_LABELS.get(weekday, str(weekday)),
-            }
+            },
         )
 
     return schedule
@@ -74,10 +72,12 @@ class RestaurantListSerializer(serializers.ModelSerializer):
     cover_url = serializers.SerializerMethodField()
     is_open = serializers.SerializerMethodField()
     has_delivery = serializers.BooleanField(
-        source="order_capability.delivery_enabled", default=False
+        source="order_capability.delivery_enabled",
+        default=False,
     )
     has_pickup = serializers.BooleanField(
-        source="order_capability.pickup_enabled", default=False
+        source="order_capability.pickup_enabled",
+        default=False,
     )
     delivery_fee_amount = serializers.DecimalField(
         source="delivery_setting.delivery_fee_amount",
@@ -86,10 +86,14 @@ class RestaurantListSerializer(serializers.ModelSerializer):
         default="0.00",
     )
     estimated_min_minutes = serializers.IntegerField(
-        source="delivery_setting.estimated_min_minutes", default=None, allow_null=True
+        source="delivery_setting.estimated_min_minutes",
+        default=None,
+        allow_null=True,
     )
     estimated_max_minutes = serializers.IntegerField(
-        source="delivery_setting.estimated_max_minutes", default=None, allow_null=True
+        source="delivery_setting.estimated_max_minutes",
+        default=None,
+        allow_null=True,
     )
     primary_color = serializers.CharField(source="branding.primary_color", default="")
 
@@ -124,7 +128,9 @@ class RestaurantListSerializer(serializers.ModelSerializer):
         if not branding:
             return ""
         return serialize_branding_media(
-            request, branding.cover_file, branding.cover_url
+            request,
+            branding.cover_file,
+            branding.cover_url,
         )
 
     def get_is_open(self, obj: Restaurant) -> bool:
@@ -154,13 +160,16 @@ class RestaurantDetailSerializer(serializers.ModelSerializer):
     logo_url = serializers.SerializerMethodField()
     is_open = serializers.SerializerMethodField()
     has_delivery = serializers.BooleanField(
-        source="order_capability.delivery_enabled", default=False
+        source="order_capability.delivery_enabled",
+        default=False,
     )
     has_pickup = serializers.BooleanField(
-        source="order_capability.pickup_enabled", default=False
+        source="order_capability.pickup_enabled",
+        default=False,
     )
     has_table_order = serializers.BooleanField(
-        source="order_capability.table_order_enabled", default=False
+        source="order_capability.table_order_enabled",
+        default=False,
     )
     address = serializers.SerializerMethodField()
     delivery_fee_amount = serializers.DecimalField(
@@ -177,43 +186,56 @@ class RestaurantDetailSerializer(serializers.ModelSerializer):
         default=None,
     )
     estimated_min_minutes = serializers.IntegerField(
-        source="delivery_setting.estimated_min_minutes", default=None, allow_null=True
+        source="delivery_setting.estimated_min_minutes",
+        default=None,
+        allow_null=True,
     )
     estimated_max_minutes = serializers.IntegerField(
-        source="delivery_setting.estimated_max_minutes", default=None, allow_null=True
+        source="delivery_setting.estimated_max_minutes",
+        default=None,
+        allow_null=True,
     )
     schedule = RestaurantHourSerializer(source="hours", many=True)
     slogan = serializers.CharField(source="branding.slogan", default="")
     welcome_message = serializers.CharField(
-        source="branding.welcome_message", default=""
+        source="branding.welcome_message",
+        default="",
     )
     primary_color = serializers.CharField(source="branding.primary_color", default="")
     secondary_color = serializers.CharField(
-        source="branding.secondary_color", default=""
+        source="branding.secondary_color",
+        default="",
     )
     menu_layout = serializers.CharField(
-        source="branding.menu_layout_option.code", default="cards"
+        source="branding.menu_layout_option.code",
+        default="cards",
     )
     image_size = serializers.CharField(source="branding.image_size", default="medium")
     show_prices = serializers.BooleanField(source="branding.show_prices", default=True)
     show_descriptions = serializers.BooleanField(
-        source="branding.show_descriptions", default=True
+        source="branding.show_descriptions",
+        default=True,
     )
     show_tags = serializers.BooleanField(source="branding.show_tags", default=True)
     category_navigation = serializers.CharField(
-        source="branding.category_navigation_style.code", default="tabs"
+        source="branding.category_navigation_style.code",
+        default="tabs",
     )
     cart_position = serializers.CharField(
-        source="branding.cart_position.code", default="sidebar"
+        source="branding.cart_position.code",
+        default="sidebar",
     )
     search_enabled = serializers.BooleanField(
-        source="branding.search_enabled", default=True
+        source="branding.search_enabled",
+        default=True,
     )
     filters_enabled = serializers.BooleanField(
-        source="branding.filters_enabled", default=False
+        source="branding.filters_enabled",
+        default=False,
     )
     dark_mode_enabled = serializers.BooleanField(
-        source="branding.dark_mode_enabled", default=False
+        source="branding.dark_mode_enabled",
+        default=False,
     )
     social_links = serializers.SerializerMethodField()
     tables = serializers.SerializerMethodField()
@@ -269,7 +291,9 @@ class RestaurantDetailSerializer(serializers.ModelSerializer):
         if not branding:
             return ""
         return serialize_branding_media(
-            request, branding.cover_file, branding.cover_url
+            request,
+            branding.cover_file,
+            branding.cover_url,
         )
 
     def get_logo_url(self, obj: Restaurant) -> str:
@@ -318,7 +342,7 @@ class RestaurantDetailSerializer(serializers.ModelSerializer):
                 "table_number": table.table_number,
             }
             for table in obj.tables.filter(status__code="active").order_by(
-                "table_number"
+                "table_number",
             )
         ]
 
@@ -514,7 +538,10 @@ class RestaurantSettingsSerializer(serializers.Serializer):
     table_order_enabled = serializers.BooleanField()
     delivery_fee_amount = serializers.DecimalField(max_digits=12, decimal_places=2)
     min_order_amount = serializers.DecimalField(
-        max_digits=12, decimal_places=2, allow_null=True, required=False
+        max_digits=12,
+        decimal_places=2,
+        allow_null=True,
+        required=False,
     )
     estimated_min_minutes = serializers.IntegerField(allow_null=True, required=False)
     estimated_max_minutes = serializers.IntegerField(allow_null=True, required=False)
@@ -556,12 +583,14 @@ class RestaurantSettingsSerializer(serializers.Serializer):
 
     def update(self, instance: Restaurant, validated_data):
         instance.display_name = validated_data.get(
-            "business_name", instance.display_name
+            "business_name",
+            instance.display_name,
         )
         instance.phone = validated_data.get("phone", instance.phone)
         instance.email = validated_data.get("email", instance.email)
         instance.currency_code = validated_data.get(
-            "currency_code", instance.currency_code
+            "currency_code",
+            instance.currency_code,
         )
         instance.save(update_fields=["display_name", "phone", "email", "currency_code"])
 
@@ -581,35 +610,42 @@ class RestaurantSettingsSerializer(serializers.Serializer):
         address.save(update_fields=["line1", "city", "country"])
 
         capability, _ = RestaurantOrderCapability.objects.get_or_create(
-            restaurant=instance
+            restaurant=instance,
         )
         capability.delivery_enabled = validated_data.get(
-            "delivery_enabled", capability.delivery_enabled
+            "delivery_enabled",
+            capability.delivery_enabled,
         )
         capability.pickup_enabled = validated_data.get(
-            "pickup_enabled", capability.pickup_enabled
+            "pickup_enabled",
+            capability.pickup_enabled,
         )
         capability.table_order_enabled = validated_data.get(
-            "table_order_enabled", capability.table_order_enabled
+            "table_order_enabled",
+            capability.table_order_enabled,
         )
         capability.save(
-            update_fields=["delivery_enabled", "pickup_enabled", "table_order_enabled"]
+            update_fields=["delivery_enabled", "pickup_enabled", "table_order_enabled"],
         )
 
         delivery_setting, _ = RestaurantDeliverySetting.objects.get_or_create(
-            restaurant=instance
+            restaurant=instance,
         )
         delivery_setting.delivery_fee_amount = validated_data.get(
-            "delivery_fee_amount", delivery_setting.delivery_fee_amount
+            "delivery_fee_amount",
+            delivery_setting.delivery_fee_amount,
         )
         delivery_setting.min_order_amount = validated_data.get(
-            "min_order_amount", delivery_setting.min_order_amount
+            "min_order_amount",
+            delivery_setting.min_order_amount,
         )
         delivery_setting.estimated_min_minutes = validated_data.get(
-            "estimated_min_minutes", delivery_setting.estimated_min_minutes
+            "estimated_min_minutes",
+            delivery_setting.estimated_min_minutes,
         )
         delivery_setting.estimated_max_minutes = validated_data.get(
-            "estimated_max_minutes", delivery_setting.estimated_max_minutes
+            "estimated_max_minutes",
+            delivery_setting.estimated_max_minutes,
         )
         delivery_setting.save(
             update_fields=[
@@ -617,7 +653,7 @@ class RestaurantSettingsSerializer(serializers.Serializer):
                 "min_order_amount",
                 "estimated_min_minutes",
                 "estimated_max_minutes",
-            ]
+            ],
         )
 
         schedule_items = validated_data.get("schedule", [])
@@ -743,27 +779,35 @@ class RestaurantPersonalizationSerializer(serializers.Serializer):
     logo_url = serializers.URLField(allow_blank=True, required=False)
     cover_url = serializers.URLField(allow_blank=True, required=False)
     primary_color = serializers.CharField(
-        max_length=15, required=False, allow_blank=True
+        max_length=15,
+        required=False,
+        allow_blank=True,
     )
     secondary_color = serializers.CharField(
-        max_length=15, required=False, allow_blank=True
+        max_length=15,
+        required=False,
+        allow_blank=True,
     )
     slogan = serializers.CharField(max_length=180, required=False, allow_blank=True)
     welcome_message = serializers.CharField(required=False, allow_blank=True)
     menu_layout = serializers.ChoiceField(
-        choices=("cards", "list", "grid"), required=False
+        choices=("cards", "list", "grid"),
+        required=False,
     )
     image_size = serializers.ChoiceField(
-        choices=("small", "medium", "large"), required=False
+        choices=("small", "medium", "large"),
+        required=False,
     )
     show_prices = serializers.BooleanField(required=False)
     show_descriptions = serializers.BooleanField(required=False)
     show_tags = serializers.BooleanField(required=False)
     category_navigation = serializers.ChoiceField(
-        choices=("tabs", "sidebar", "dropdown"), required=False
+        choices=("tabs", "sidebar", "dropdown"),
+        required=False,
     )
     cart_position = serializers.ChoiceField(
-        choices=("sidebar", "bottom", "floating"), required=False
+        choices=("sidebar", "bottom", "floating"),
+        required=False,
     )
     search_enabled = serializers.BooleanField(required=False)
     filters_enabled = serializers.BooleanField(required=False)
@@ -795,7 +839,9 @@ class RestaurantPersonalizationSerializer(serializers.Serializer):
             ),
             "cover_url": (
                 serialize_branding_media(
-                    request, branding.cover_file, branding.cover_url
+                    request,
+                    branding.cover_file,
+                    branding.cover_url,
                 )
                 if branding
                 else ""
@@ -841,7 +887,8 @@ class RestaurantPersonalizationSerializer(serializers.Serializer):
         )
 
         instance.display_name = validated_data.get(
-            "restaurant_name", instance.display_name
+            "restaurant_name",
+            instance.display_name,
         )
         instance.description = validated_data.get("description", instance.description)
         instance.phone = validated_data.get("phone", instance.phone)
@@ -867,54 +914,66 @@ class RestaurantPersonalizationSerializer(serializers.Serializer):
             branding.cover_file = validated_data["cover_file"]
             branding.cover_url = ""
         branding.primary_color = validated_data.get(
-            "primary_color", branding.primary_color
+            "primary_color",
+            branding.primary_color,
         )
         branding.secondary_color = validated_data.get(
-            "secondary_color", branding.secondary_color
+            "secondary_color",
+            branding.secondary_color,
         )
         branding.slogan = validated_data.get("slogan", branding.slogan)
         branding.welcome_message = validated_data.get(
-            "welcome_message", branding.welcome_message
+            "welcome_message",
+            branding.welcome_message,
         )
         branding.image_size = validated_data.get("image_size", branding.image_size)
         branding.show_prices = validated_data.get("show_prices", branding.show_prices)
         branding.show_descriptions = validated_data.get(
-            "show_descriptions", branding.show_descriptions
+            "show_descriptions",
+            branding.show_descriptions,
         )
         branding.show_tags = validated_data.get("show_tags", branding.show_tags)
         branding.search_enabled = validated_data.get(
-            "search_enabled", branding.search_enabled
+            "search_enabled",
+            branding.search_enabled,
         )
         branding.filters_enabled = validated_data.get(
-            "filters_enabled", branding.filters_enabled
+            "filters_enabled",
+            branding.filters_enabled,
         )
         branding.dark_mode_enabled = validated_data.get(
-            "dark_mode_enabled", branding.dark_mode_enabled
+            "dark_mode_enabled",
+            branding.dark_mode_enabled,
         )
         branding.menu_layout_option = MenuLayoutOption.objects.get(
-            code=validated_data.get("menu_layout", branding.menu_layout_option.code)
+            code=validated_data.get("menu_layout", branding.menu_layout_option.code),
         )
         branding.category_navigation_style = CategoryNavigationStyle.objects.get(
             code=validated_data.get(
-                "category_navigation", branding.category_navigation_style.code
-            )
+                "category_navigation",
+                branding.category_navigation_style.code,
+            ),
         )
         branding.cart_position = CartPosition.objects.get(
-            code=validated_data.get("cart_position", branding.cart_position.code)
+            code=validated_data.get("cart_position", branding.cart_position.code),
         )
         branding.save()
 
         social_links.instagram_url = validated_data.get(
-            "instagram_url", social_links.instagram_url
+            "instagram_url",
+            social_links.instagram_url,
         )
         social_links.facebook_url = validated_data.get(
-            "facebook_url", social_links.facebook_url
+            "facebook_url",
+            social_links.facebook_url,
         )
         social_links.tiktok_url = validated_data.get(
-            "tiktok_url", social_links.tiktok_url
+            "tiktok_url",
+            social_links.tiktok_url,
         )
         social_links.whatsapp_number = validated_data.get(
-            "whatsapp_number", social_links.whatsapp_number
+            "whatsapp_number",
+            social_links.whatsapp_number,
         )
         social_links.save()
 

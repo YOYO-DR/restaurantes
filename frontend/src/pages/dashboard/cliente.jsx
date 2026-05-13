@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DashboardShellSkeleton } from "@/components/ui/app-skeletons"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useCustomerDashboard } from "@/hooks/use-orders"
 import { formatCurrency } from "@/lib/format"
 import { ArrowRight, Clock, ShoppingBag, Star, Utensils } from "lucide-react"
@@ -18,15 +19,16 @@ export default function ClientDashboardPage() {
         <h2 className="text-2xl font-bold tracking-tight">Hola, {data.user_name || ""}!</h2>
         <div className="space-y-2">
           <p className="text-muted-foreground">Bienvenido a tu cuenta de FoodHub</p>
-          <select
-            value={orderScope}
-            onChange={(event) => setOrderScope(event.target.value)}
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-          >
-            <option value="all">Todas las ordenes</option>
-            <option value="completed">Completadas</option>
-            <option value="non_completed">No finalizadas</option>
-          </select>
+          <Select value={orderScope} onValueChange={(value) => setOrderScope(value)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Todas las ordenes" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las ordenes</SelectItem>
+              <SelectItem value="completed">Completadas</SelectItem>
+              <SelectItem value="non_completed">No finalizadas</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -106,17 +108,47 @@ export default function ClientDashboardPage() {
             </Card>
           </div>
 
-          <Card className="bg-primary text-primary-foreground">
-            <CardContent className="flex flex-col items-center justify-between gap-4 p-6 sm:flex-row">
-              <div>
-                <h3 className="text-lg font-semibold">Tienes {data.loyalty.points} puntos disponibles!</h3>
-                <p className="text-primary-foreground/80">Nivel actual: {data.loyalty.tier}</p>
-              </div>
-              <Button variant="secondary" asChild>
-                <Link to="/dashboard/cliente/puntos">Canjear puntos</Link>
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="space-y-4">
+            <h3 className="text-xl font-bold tracking-tight">Tus Puntos de Fidelidad</h3>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <Card className="bg-primary text-primary-foreground">
+                <CardContent className="flex h-full flex-col items-start justify-between gap-4 p-6">
+                  <div>
+                    <h4 className="text-sm font-medium text-primary-foreground/80">Puntos Totales</h4>
+                    <div className="mt-2 text-3xl font-bold">{data.loyalty.points}</div>
+                    <p className="mt-1 text-sm text-primary-foreground/80">Acumulados en todos los restaurantes</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {data.loyalty.accounts?.map((account) => (
+                <Card key={account.restaurant_id}>
+                  <CardContent className="flex h-full flex-col items-start justify-between gap-4 p-6">
+                    <div className="w-full">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold line-clamp-1 pr-2">{account.restaurant_name}</h4>
+                        <Badge variant="secondary">{account.tier}</Badge>
+                      </div>
+                      <div className="mt-2 text-2xl font-bold text-primary">
+                        {account.points} <span className="text-sm font-normal text-muted-foreground">pts</span>
+                      </div>
+                    </div>
+                    <Button variant="outline" className="w-full" asChild>
+                      <Link to={`/dashboard/cliente/puntos?restaurant_id=${account.restaurant_id}`}>
+                        Ver historial
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+
+              {(!data.loyalty.accounts || data.loyalty.accounts.length === 0) && (
+                <Card className="col-span-1 sm:col-span-1 lg:col-span-2 flex items-center justify-center border-dashed p-6 text-muted-foreground">
+                  Aún no tienes puntos en ningún restaurante.
+                </Card>
+              )}
+            </div>
+          </div>
         </>
       )}
     </div>

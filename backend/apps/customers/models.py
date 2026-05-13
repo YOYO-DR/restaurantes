@@ -20,7 +20,9 @@ class CustomerAddress(BaseModel):
         related_name="customer_addresses",
     )
     address_type = models.ForeignKey(
-        AddressType, on_delete=models.PROTECT, related_name="customer_addresses"
+        AddressType,
+        on_delete=models.PROTECT,
+        related_name="customer_addresses",
     )
     label = models.CharField(max_length=80, blank=True)
     line1 = models.CharField(max_length=220)
@@ -29,10 +31,16 @@ class CustomerAddress(BaseModel):
     state = models.CharField(max_length=120, blank=True)
     country = models.CharField(max_length=120)
     latitude = models.DecimalField(
-        max_digits=10, decimal_places=7, blank=True, null=True
+        max_digits=10,
+        decimal_places=7,
+        blank=True,
+        null=True,
     )
     longitude = models.DecimalField(
-        max_digits=10, decimal_places=7, blank=True, null=True
+        max_digits=10,
+        decimal_places=7,
+        blank=True,
+        null=True,
     )
     notes = models.TextField(blank=True)
     is_default = models.BooleanField(default=False)
@@ -64,16 +72,21 @@ class CustomerPaymentMethod(BaseModel):
 
 class Favorite(BaseModel):
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="favorites"
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="favorites",
     )
     restaurant = models.ForeignKey(
-        "restaurants.Restaurant", on_delete=models.CASCADE, related_name="favorites"
+        "restaurants.Restaurant",
+        on_delete=models.CASCADE,
+        related_name="favorites",
     )
 
     class Meta:
         db_table = "customer_favorites"
         constraints = [
             models.UniqueConstraint(
-                fields=("user", "restaurant"), name="uniq_customer_favorite"
+                fields=("user", "restaurant"),
+                name="uniq_customer_favorite",
             ),
         ]

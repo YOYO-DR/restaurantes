@@ -6,7 +6,6 @@ from apps.platform_config.models import PlatformSecuritySetting
 from apps.platform_config.models import PlatformSetting
 from apps.platform_config.models import SubscriptionPlan
 
-
 admin.site.register(BackupFrequency)
 admin.site.register(BillingPeriod)
 admin.site.register(PlatformSecuritySetting)

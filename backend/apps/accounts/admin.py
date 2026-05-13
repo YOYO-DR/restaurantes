@@ -11,7 +11,6 @@ from apps.accounts.models import UserRole
 from apps.accounts.models import UserSession
 from apps.accounts.models import UserStatus
 
-
 admin.site.register(ActionCatalog)
 admin.site.register(LegalDocument)
 admin.site.register(LegalDocumentType)

@@ -5,14 +5,14 @@ from factory import LazyAttribute
 from factory import Sequence
 from factory.django import DjangoModelFactory
 
+from apps.customers.models import AddressType
+from apps.customers.models import CustomerAddress
 from apps.menu.models import MenuCategory
 from apps.menu.models import MenuItem
 from apps.orders.models import OrderStatus
 from apps.orders.models import OrderType
 from apps.platform_config.models import BillingPeriod
 from apps.platform_config.models import SubscriptionPlan
-from apps.customers.models import AddressType
-from apps.customers.models import CustomerAddress
 from apps.restaurants.models import Restaurant
 from apps.restaurants.models import RestaurantAddress
 from apps.restaurants.models import RestaurantCategory
@@ -133,7 +133,7 @@ class MenuCategoryFactory(DjangoModelFactory[MenuCategory]):
 class MenuItemFactory(DjangoModelFactory[MenuItem]):
     restaurant = LazyAttribute(lambda _: RestaurantFactory())
     menu_category = LazyAttribute(
-        lambda obj: MenuCategoryFactory(restaurant=obj.restaurant)
+        lambda obj: MenuCategoryFactory(restaurant=obj.restaurant),
     )
     slug = Sequence(lambda n: f"menu-item-{n}")
     name = Sequence(lambda n: f"Plato {n}")

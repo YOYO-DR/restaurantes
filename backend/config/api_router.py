@@ -8,15 +8,18 @@ from apps.accounts.api.views import AdminReportsViewSet
 from apps.accounts.api.views import AdminRestaurantsViewSet
 from apps.accounts.api.views import AdminSettingsViewSet
 from apps.accounts.api.views import AdminUsersViewSet
-from apps.menu.api.views import OwnerMenuCategoryViewSet
-from apps.menu.api.views import OwnerMenuCrudItemViewSet
-from apps.menu.api.views import OwnerInventoryItemViewSet
-from apps.menu.api.views import OwnerInventoryMetadataViewSet
-from apps.menu.api.views import OwnerMenuItemViewSet
 from apps.customers.api.views import CustomerAddressViewSet
 from apps.customers.api.views import CustomerDashboardViewSet
+from apps.customers.api.views import CustomerPaymentMethodViewSet
 from apps.customers.api.views import FavoriteViewSet
 from apps.loyalty.api.views import CustomerLoyaltyViewSet
+from apps.menu.api.views import OwnerInventoryItemViewSet
+from apps.menu.api.views import OwnerInventoryMetadataViewSet
+from apps.menu.api.views import OwnerMenuCategoryViewSet
+from apps.menu.api.views import OwnerMenuCrudItemViewSet
+from apps.menu.api.views import OwnerMenuItemViewSet
+from apps.notifications.api.views import NotificationCenterViewSet
+from apps.notifications.api.views import UserNotificationPreferenceViewSet
 from apps.orders.api.views import CheckoutViewSet
 from apps.orders.api.views import CustomerOrderViewSet
 from apps.orders.api.views import OwnerOrderViewSet
@@ -30,25 +33,44 @@ router.register("account/profile", AccountProfileViewSet, basename="account-prof
 router.register("admin/dashboard", AdminDashboardViewSet, basename="admin-dashboard")
 router.register("admin/users", AdminUsersViewSet, basename="admin-users")
 router.register(
-    "admin/restaurants", AdminRestaurantsViewSet, basename="admin-restaurants"
+    "admin/restaurants",
+    AdminRestaurantsViewSet,
+    basename="admin-restaurants",
 )
 router.register("admin/reports", AdminReportsViewSet, basename="admin-reports")
 router.register("admin/settings", AdminSettingsViewSet, basename="admin-settings")
 router.register("users", UserViewSet)
 router.register("restaurants", PublicRestaurantViewSet, basename="restaurant")
 router.register(
-    "customer/addresses", CustomerAddressViewSet, basename="customer-address"
+    "customer/addresses",
+    CustomerAddressViewSet,
+    basename="customer-address",
 )
 router.register(
-    "customer/dashboard", CustomerDashboardViewSet, basename="customer-dashboard"
+    "customer/dashboard",
+    CustomerDashboardViewSet,
+    basename="customer-dashboard",
 )
 router.register("customer/favorites", FavoriteViewSet, basename="customer-favorite")
+router.register(
+    "customer/payment-methods",
+    CustomerPaymentMethodViewSet,
+    basename="customer-payment-method",
+)
+router.register(
+    "customer/notification-preferences",
+    UserNotificationPreferenceViewSet,
+    basename="customer-notification-preference",
+)
+router.register("notifications/center", NotificationCenterViewSet, basename="notification-center")
 router.register("customer/loyalty", CustomerLoyaltyViewSet, basename="customer-loyalty")
 router.register("checkout/orders", CheckoutViewSet, basename="checkout-order")
 router.register("customer/orders", CustomerOrderViewSet, basename="customer-order")
 router.register("owner/orders", OwnerOrderViewSet, basename="owner-order")
 router.register(
-    "owner/restaurants", OwnerRestaurantViewSet, basename="owner-restaurant"
+    "owner/restaurants",
+    OwnerRestaurantViewSet,
+    basename="owner-restaurant",
 )
 router.register("owner/menu-items", OwnerMenuItemViewSet, basename="owner-menu-item")
 router.register(

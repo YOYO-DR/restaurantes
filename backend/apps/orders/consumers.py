@@ -5,6 +5,7 @@ from apps.core.permissions import user_id_has_role
 from apps.orders.services import build_guest_order_group_name
 from apps.orders.services import build_owner_order_group_name
 from apps.orders.services import build_user_order_group_name
+from apps.restaurants.models import Operador
 
 
 class BaseOrderConsumer(AsyncJsonWebsocketConsumer):
@@ -24,7 +25,7 @@ class BaseOrderConsumer(AsyncJsonWebsocketConsumer):
             {
                 "type": self.event_type,
                 "payload": event["payload"],
-            }
+            },
         )
 
 
@@ -40,9 +41,22 @@ class OwnerOrderConsumer(BaseOrderConsumer):
 
         is_admin = await database_sync_to_async(user_id_has_role)(user.id, "admin")
         is_owner = await database_sync_to_async(user_id_has_role)(
-            user.id, "restaurante"
+            user.id,
+            "restaurante",
         )
-        if not is_admin and (not is_owner or str(user.id) != owner_id):
+        is_operator = await database_sync_to_async(user_id_has_role)(
+            user.id,
+            "operador",
+        )
+        operator_matches_owner = False
+        if is_operator:
+            operator_matches_owner = await database_sync_to_async(
+                self._operator_matches_owner,
+            )(user.id, owner_id)
+
+        if not is_admin and not (
+            (is_owner and str(user.id) == owner_id) or operator_matches_owner
+        ):
             await self.close(code=4003)
             return
 
@@ -58,8 +72,15 @@ class OwnerOrderConsumer(BaseOrderConsumer):
             {
                 "type": "owner.order.updated",
                 "payload": event["payload"],
-            }
+            },
         )
+
+    @staticmethod
+    def _operator_matches_owner(user_id, owner_id: str) -> bool:
+        return Operador.objects.filter(
+            user_id=user_id,
+            restaurante__owner_id=owner_id,
+        ).exists()
 
 
 class UserOrderConsumer(BaseOrderConsumer):

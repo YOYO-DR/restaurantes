@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAdminRestaurantEditor, useAdminRestaurants } from "@/hooks/use-admin"
 import { formatCurrency } from "@/lib/format"
 
@@ -245,19 +246,40 @@ export default function AdminRestaurants() {
               <Field label="Telefono"><Input value={editForm.phone} onChange={(event) => setEditForm((current) => ({ ...current, phone: event.target.value }))} /></Field>
               <Field label="Moneda"><Input value={editForm.currency_code} onChange={(event) => setEditForm((current) => ({ ...current, currency_code: event.target.value.toUpperCase() }))} /></Field>
               <Field label="Estado">
-                <select value={editForm.status} onChange={(event) => setEditForm((current) => ({ ...current, status: event.target.value }))} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-                  {(data?.catalogs?.statuses || []).map((option) => <option key={option.code} value={option.code}>{option.name}</option>)}
-                </select>
+                <Select value={editForm.status} onValueChange={(value) => setEditForm((current) => ({ ...current, status: value }))}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecciona un estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(data?.catalogs?.statuses || []).map((option) => (
+                      <SelectItem key={option.code} value={option.code}>{option.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </Field>
               <Field label="Categoria">
-                <select value={editForm.category} onChange={(event) => setEditForm((current) => ({ ...current, category: event.target.value }))} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-                  {(data?.catalogs?.categories || []).map((option) => <option key={option.code} value={option.code}>{option.name}</option>)}
-                </select>
+                <Select value={editForm.category} onValueChange={(value) => setEditForm((current) => ({ ...current, category: value }))}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecciona una categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(data?.catalogs?.categories || []).map((option) => (
+                      <SelectItem key={option.code} value={option.code}>{option.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </Field>
               <Field label="Plan">
-                <select value={editForm.subscription_plan} onChange={(event) => setEditForm((current) => ({ ...current, subscription_plan: event.target.value }))} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-                  {(data?.catalogs?.subscription_plans || []).map((option) => <option key={option.code} value={option.code}>{option.name}</option>)}
-                </select>
+                <Select value={editForm.subscription_plan} onValueChange={(value) => setEditForm((current) => ({ ...current, subscription_plan: value }))}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecciona un plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(data?.catalogs?.subscription_plans || []).map((option) => (
+                      <SelectItem key={option.code} value={option.code}>{option.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </Field>
               <Field label="Tarifa de domicilio"><Input type="number" value={editForm.delivery_fee_amount} onChange={(event) => setEditForm((current) => ({ ...current, delivery_fee_amount: event.target.value }))} /></Field>
               <Field label="Pedido minimo"><Input type="number" value={editForm.min_order_amount} onChange={(event) => setEditForm((current) => ({ ...current, min_order_amount: event.target.value }))} /></Field>
@@ -307,7 +329,7 @@ function DesktopRestaurantsTable({ data, filters, isLoading, ordering, onFilterC
               <th className="px-4 py-3"><FilterInput value={filters.name} onChange={(value) => onFilterChange((current) => ({ ...current, name: value }))} placeholder="Restaurante" icon={<Search className="h-4 w-4" />} /></th>
               <th className="px-4 py-3"><FilterInput value={filters.owner} onChange={(value) => onFilterChange((current) => ({ ...current, owner: value }))} placeholder="Propietario" /></th>
               <th className="px-4 py-3"><FilterInput value={filters.category} onChange={(value) => onFilterChange((current) => ({ ...current, category: value }))} placeholder="Categoria" /></th>
-              <th className="px-4 py-3"><select value={filters.status} onChange={(event) => onFilterChange((current) => ({ ...current, status: event.target.value }))} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="todos">Todos</option><option value="active">Activo</option><option value="inactive">Inactivo</option></select></th>
+              <th className="px-4 py-3"><Select value={filters.status} onValueChange={(value) => onFilterChange((current) => ({ ...current, status: value }))}><SelectTrigger className="h-9 w-[130px]"><SelectValue placeholder="Todos" /></SelectTrigger><SelectContent><SelectItem value="todos">Todos</SelectItem><SelectItem value="active">Activo</SelectItem><SelectItem value="inactive">Inactivo</SelectItem></SelectContent></Select></th>
               <th className="px-4 py-3"><FilterInput value={filters.subscriptionPlan} onChange={(value) => onFilterChange((current) => ({ ...current, subscriptionPlan: value }))} placeholder="Plan" /></th>
               <th className="px-4 py-3"><FilterInput value={filters.ordersCount} onChange={(value) => onFilterChange((current) => ({ ...current, ordersCount: value }))} placeholder="Pedidos" /></th>
               <th className="px-4 py-3"><FilterInput value={filters.revenue} onChange={(value) => onFilterChange((current) => ({ ...current, revenue: value }))} placeholder="Ingresos exactos" /></th>
@@ -355,7 +377,7 @@ function MobileRestaurantsList({ data, filters, isLoading, onFilterChange, pageS
           <FilterInput value={filters.subscriptionPlan} onChange={(value) => onFilterChange((current) => ({ ...current, subscriptionPlan: value }))} placeholder="Plan" />
           <FilterInput value={filters.ordersCount} onChange={(value) => onFilterChange((current) => ({ ...current, ordersCount: value }))} placeholder="Pedidos" />
           <FilterInput value={filters.revenue} onChange={(value) => onFilterChange((current) => ({ ...current, revenue: value }))} placeholder="Ingresos" />
-          <select value={filters.status} onChange={(event) => onFilterChange((current) => ({ ...current, status: event.target.value }))} className="h-10 rounded-md border border-input bg-background px-3 text-sm"><option value="todos">Todos los estados</option><option value="active">Activo</option><option value="inactive">Inactivo</option></select>
+          <Select value={filters.status} onValueChange={(value) => onFilterChange((current) => ({ ...current, status: value }))}><SelectTrigger className="h-10"><SelectValue placeholder="Todos los estados" /></SelectTrigger><SelectContent><SelectItem value="todos">Todos los estados</SelectItem><SelectItem value="active">Activo</SelectItem><SelectItem value="inactive">Inactivo</SelectItem></SelectContent></Select>
           <Input type="date" value={filters.joinedAt} onChange={(event) => onFilterChange((current) => ({ ...current, joinedAt: event.target.value }))} />
         </div>
 
@@ -418,7 +440,7 @@ function FilterInput({ value, onChange, placeholder, icon = null }) {
 }
 
 function PaginationFooter({ data, isLoading, pageSize, onPageSizeChange, onPageChange, compact = false }) {
-  return <div className={`flex flex-col gap-4 border-t border-border p-4 ${compact ? "" : "md:flex-row md:items-center md:justify-between"}`}><div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"><p className="text-sm text-muted-foreground">Pagina {data?.page ?? 1} de {data?.total_pages ?? 1}</p><select value={pageSize} onChange={(event) => onPageSizeChange(Number(event.target.value))} className="h-9 rounded-md border border-input bg-background px-3 text-sm">{PAGE_SIZE_OPTIONS.map((option) => <option key={option} value={option}>{option} por pagina</option>)}</select></div><div className="flex gap-2"><Button variant="outline" disabled={!data || data.page <= 1 || isLoading} onClick={() => onPageChange((current) => Math.max(current - 1, 1))}>Anterior</Button><Button variant="outline" disabled={!data || data.page >= data.total_pages || isLoading} onClick={() => onPageChange((current) => current + 1)}>Siguiente</Button></div></div>
+  return <div className={`flex flex-col gap-4 border-t border-border p-4 ${compact ? "" : "md:flex-row md:items-center md:justify-between"}`}><div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"><p className="text-sm text-muted-foreground">Pagina {data?.page ?? 1} de {data?.total_pages ?? 1}</p><Select value={String(pageSize)} onValueChange={(value) => onPageSizeChange(Number(value))}><SelectTrigger className="h-9 w-32"><SelectValue placeholder={`${pageSize} por pagina`} /></SelectTrigger><SelectContent>{PAGE_SIZE_OPTIONS.map((option) => <SelectItem key={option} value={String(option)}>{option} por pagina</SelectItem>)}</SelectContent></Select></div><div className="flex gap-2"><Button variant="outline" disabled={!data || data.page <= 1 || isLoading} onClick={() => onPageChange((current) => Math.max(current - 1, 1))}>Anterior</Button><Button variant="outline" disabled={!data || data.page >= data.total_pages || isLoading} onClick={() => onPageChange((current) => current + 1)}>Siguiente</Button></div></div>
 }
 
 function OrderingIcon({ ordering, columnKey }) {

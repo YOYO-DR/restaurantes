@@ -14,12 +14,20 @@ import {
   getCustomerAddresses,
   getCustomerFavorites,
   getCustomerLoyalty,
+  getCustomerNotificationPreferences,
+  getCustomerPaymentMethods,
   getCustomerOrders,
+  getNotificationCenter,
   getOwnerAnalytics,
   getOwnerCustomers,
   getOwnerOrders,
   replyOwnerReview,
+  createCustomerPaymentMethod,
+  createNotificationEvent,
+  deleteCustomerPaymentMethod,
+  markAllNotificationsRead,
   updateAccountProfile,
+  updateCustomerNotificationPreference,
   updateCustomerAddress,
   updateOwnerOrderStatus,
 } from "@/services/orders"
@@ -537,7 +545,121 @@ export function useAccountProfile() {
   }
 }
 
-export function useCustomerLoyalty() {
+export function useCustomerSettings() {
+  const [preferences, setPreferences] = useState([])
+  const [paymentMethods, setPaymentMethods] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState("")
+
+  const loadSettings = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const [preferencesPayload, paymentMethodsPayload] = await Promise.all([
+        getCustomerNotificationPreferences(),
+        getCustomerPaymentMethods(),
+      ])
+      setPreferences(preferencesPayload)
+      setPaymentMethods(paymentMethodsPayload)
+      setError("")
+    } catch (loadError) {
+      setError(loadError.message || "No fue posible cargar la configuracion")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadSettings()
+  }, [loadSettings])
+
+  const updatePreference = async (preferenceId, isEnabled) => {
+    setIsSaving(true)
+    try {
+      const updated = await updateCustomerNotificationPreference(preferenceId, {
+        is_enabled: isEnabled,
+      })
+      setPreferences((current) =>
+        current.map((preference) =>
+          preference.id === updated.id ? updated : preference,
+        ),
+      )
+      return updated
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const addPaymentMethod = async (payload) => {
+    setIsSaving(true)
+    try {
+      const created = await createCustomerPaymentMethod(payload)
+      setPaymentMethods((current) => [created, ...current])
+      return created
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const removePaymentMethod = async (paymentMethodId) => {
+    setIsSaving(true)
+    try {
+      await deleteCustomerPaymentMethod(paymentMethodId)
+      setPaymentMethods((current) =>
+        current.filter((method) => method.id !== paymentMethodId),
+      )
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return {
+    preferences,
+    paymentMethods,
+    isLoading,
+    isSaving,
+    error,
+    reload: loadSettings,
+    updatePreference,
+    addPaymentMethod,
+    removePaymentMethod,
+  }
+}
+
+export function useNotificationCenter() {
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const payload = await getNotificationCenter()
+      setUnreadCount(payload.unread_count || 0)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  return {
+    unreadCount,
+    isLoading,
+    reload: load,
+    markAllRead: async () => {
+      await markAllNotificationsRead()
+      setUnreadCount(0)
+    },
+    createNotification: async (payload) => {
+      await createNotificationEvent(payload)
+      await load()
+    },
+  }
+}
+
+export function useCustomerLoyalty(restaurantId) {
   const [data, setData] = useState({
     current_points: 0,
     total_earned: 0,
@@ -550,7 +672,7 @@ export function useCustomerLoyalty() {
   const [error, setError] = useState("")
 
   useEffect(() => {
-    getCustomerLoyalty()
+    getCustomerLoyalty(restaurantId)
       .then((payload) => {
         setData(payload)
         setError("")
@@ -559,7 +681,7 @@ export function useCustomerLoyalty() {
         setError(loadError.message || "No fue posible cargar tus puntos")
       })
       .finally(() => setIsLoading(false))
-  }, [])
+  }, [restaurantId])
 
   return { data, isLoading, error }
 }

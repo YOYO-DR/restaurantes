@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAdminUsers } from "@/hooks/use-admin"
 
 const ROLE_META = {
@@ -200,20 +201,30 @@ function DesktopUsersTable({
                 <FilterInput value={filters.phone} onChange={(value) => onFilterChange((current) => ({ ...current, phone: value }))} placeholder="Filtrar telefono" />
               </th>
               <th className="px-4 py-3">
-                <select value={filters.role} onChange={(event) => onFilterChange((current) => ({ ...current, role: event.target.value }))} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
-                  <option value="todos">Todos</option>
-                  <option value="cliente">Cliente</option>
-                  <option value="restaurante">Restaurante</option>
-                  <option value="admin">Admin</option>
-                </select>
+                <Select value={filters.role} onValueChange={(value) => onFilterChange((current) => ({ ...current, role: value }))}>
+                  <SelectTrigger className="h-9 w-full">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="cliente">Cliente</SelectItem>
+                    <SelectItem value="restaurante">Restaurante</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
               </th>
               <th className="px-4 py-3">
-                <select value={filters.status} onChange={(event) => onFilterChange((current) => ({ ...current, status: event.target.value }))} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
-                  <option value="todos">Todos</option>
-                  <option value="active">Activo</option>
-                  <option value="inactive">Inactivo</option>
-                  <option value="suspended">Suspendido</option>
-                </select>
+                <Select value={filters.status} onValueChange={(value) => onFilterChange((current) => ({ ...current, status: value }))}>
+                  <SelectTrigger className="h-9 w-full">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="active">Activo</SelectItem>
+                    <SelectItem value="inactive">Inactivo</SelectItem>
+                    <SelectItem value="suspended">Suspendido</SelectItem>
+                  </SelectContent>
+                </Select>
               </th>
               <th className="px-4 py-3">
                 <FilterInput value={filters.ordersCount} onChange={(value) => onFilterChange((current) => ({ ...current, ordersCount: value }))} placeholder="Ej. 3" />
@@ -266,18 +277,28 @@ function MobileUsersList({ data, filters, isLoading, onFilterChange, pageSize, o
           <FilterInput value={filters.email} onChange={(value) => onFilterChange((current) => ({ ...current, email: value }))} placeholder="Email" />
           <FilterInput value={filters.phone} onChange={(value) => onFilterChange((current) => ({ ...current, phone: value }))} placeholder="Telefono" />
           <FilterInput value={filters.ordersCount} onChange={(value) => onFilterChange((current) => ({ ...current, ordersCount: value }))} placeholder="Pedidos exactos" />
-          <select value={filters.role} onChange={(event) => onFilterChange((current) => ({ ...current, role: event.target.value }))} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
-            <option value="todos">Todos los roles</option>
-            <option value="cliente">Cliente</option>
-            <option value="restaurante">Restaurante</option>
-            <option value="admin">Admin</option>
-          </select>
-          <select value={filters.status} onChange={(event) => onFilterChange((current) => ({ ...current, status: event.target.value }))} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
-            <option value="todos">Todos los estados</option>
-            <option value="active">Activo</option>
-            <option value="inactive">Inactivo</option>
-            <option value="suspended">Suspendido</option>
-          </select>
+          <Select value={filters.role} onValueChange={(value) => onFilterChange((current) => ({ ...current, role: value }))}>
+            <SelectTrigger className="h-10">
+              <SelectValue placeholder="Todos los roles" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos los roles</SelectItem>
+              <SelectItem value="cliente">Cliente</SelectItem>
+              <SelectItem value="restaurante">Restaurante</SelectItem>
+              <SelectItem value="admin">Admin</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filters.status} onValueChange={(value) => onFilterChange((current) => ({ ...current, status: value }))}>
+            <SelectTrigger className="h-10">
+              <SelectValue placeholder="Todos los estados" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos los estados</SelectItem>
+              <SelectItem value="active">Activo</SelectItem>
+              <SelectItem value="inactive">Inactivo</SelectItem>
+              <SelectItem value="suspended">Suspendido</SelectItem>
+            </SelectContent>
+          </Select>
           <Input type="date" value={filters.joinedAt} onChange={(event) => onFilterChange((current) => ({ ...current, joinedAt: event.target.value }))} className="sm:col-span-2" />
         </div>
 
@@ -321,11 +342,16 @@ function PaginationFooter({ data, isLoading, pageSize, onPageSizeChange, onPageC
     <div className={`flex flex-col gap-4 border-t border-border p-4 ${compact ? "" : "md:flex-row md:items-center md:justify-between"}`}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
         <p className="text-sm text-muted-foreground">Pagina {data?.page ?? 1} de {data?.total_pages ?? 1}</p>
-        <select value={pageSize} onChange={(event) => onPageSizeChange(Number(event.target.value))} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
-          {PAGE_SIZE_OPTIONS.map((option) => (
-            <option key={option} value={option}>{option} por pagina</option>
-          ))}
-        </select>
+        <Select value={String(pageSize)} onValueChange={(value) => onPageSizeChange(Number(value))}>
+          <SelectTrigger className="h-9 w-32">
+            <SelectValue placeholder={`${pageSize} por pagina`} />
+          </SelectTrigger>
+          <SelectContent>
+            {PAGE_SIZE_OPTIONS.map((option) => (
+              <SelectItem key={option} value={String(option)}>{option} por pagina</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="flex gap-2">
         <Button variant="outline" disabled={!data || data.page <= 1 || isLoading} onClick={() => onPageChange((current) => Math.max(current - 1, 1))}>Anterior</Button>

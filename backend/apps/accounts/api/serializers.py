@@ -73,7 +73,8 @@ class AdminPlatformSecuritySettingSerializer(serializers.ModelSerializer):
         queryset=BackupFrequency.objects.filter(is_active=True),
     )
     backup_frequency_label = serializers.CharField(
-        source="backup_frequency.name", read_only=True
+        source="backup_frequency.name",
+        read_only=True,
     )
 
     class Meta:
@@ -162,7 +163,7 @@ class AdminRestaurantSerializer(serializers.ModelSerializer):
             if capability
             else False,
             "delivery_fee_amount": str(
-                delivery_setting.delivery_fee_amount if delivery_setting else "0.00"
+                delivery_setting.delivery_fee_amount if delivery_setting else "0.00",
             ),
             "min_order_amount": (
                 str(delivery_setting.min_order_amount)
@@ -201,7 +202,7 @@ class AdminRestaurantSerializer(serializers.ModelSerializer):
             instance.save(update_fields=update_fields)
 
         capability, _ = RestaurantOrderCapability.objects.get_or_create(
-            restaurant=instance
+            restaurant=instance,
         )
         if capability_fields:
             for field, value in capability_fields.items():
@@ -209,7 +210,7 @@ class AdminRestaurantSerializer(serializers.ModelSerializer):
             capability.save(update_fields=list(capability_fields.keys()))
 
         delivery_setting, _ = RestaurantDeliverySetting.objects.get_or_create(
-            restaurant=instance
+            restaurant=instance,
         )
         if delivery_fields:
             for field, value in delivery_fields.items():

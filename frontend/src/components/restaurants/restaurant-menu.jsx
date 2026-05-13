@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { formatCurrency } from "@/lib/format"
 import { useCart } from "@/context/cart-context"
 import { Plus } from "lucide-react"
@@ -62,10 +63,15 @@ export function RestaurantMenu({ categories, restaurant, isLoading, error }) {
           />
         ) : null}
         {restaurant?.category_navigation === "dropdown" ? (
-          <select className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm" value={activeCategory} onChange={(event) => setActiveCategory(event.target.value)}>
-            <option value="all">Todos</option>
-            {categories.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}
-          </select>
+          <Select value={activeCategory} onValueChange={(value) => setActiveCategory(value)}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {categories.map((category) => <SelectItem key={category.id} value={category.slug}>{category.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
         ) : (
           <div className={`flex gap-2 ${useSidebarNavigation ? "flex-col" : "flex-wrap"}`}>
             <Button
