@@ -63,8 +63,15 @@ const itemSchema = z.object({
 function CategoryDialog({ open, onOpenChange, onSubmit, initialValues, isSubmitting }) {
   const form = useForm({
     resolver: zodResolver(categorySchema),
-    values: initialValues,
+    defaultValues: initialValues,
   })
+
+  useEffect(() => {
+    if (open) {
+      form.reset(initialValues)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -143,7 +150,7 @@ function ItemDialog({
 }) {
   const form = useForm({
     resolver: zodResolver(itemSchema),
-    values: initialValues,
+    defaultValues: initialValues,
   })
   const [categoryOptions, setCategoryOptions] = useState([])
   const [isLoadingCategories, setIsLoadingCategories] = useState(false)
@@ -224,7 +231,7 @@ function ItemDialog({
       initialImages.find((image) => image.url === initialValues.image_url) ||
       null
 
-    form.setValue("menu_category", initialValues.menu_category || "")
+    form.reset(initialValues)
     setPrimaryImageFile(null)
     setInitialPrimaryImage({
       id: existingPrimaryImage?.id || null,

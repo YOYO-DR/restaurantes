@@ -55,7 +55,7 @@ export function RestaurantHeader({ restaurant, isLoading }) {
             <div className="flex flex-wrap items-center gap-3">
               <h1
                 className="text-2xl font-bold md:text-3xl"
-                style={{ textShadow: "0 1px 2px rgba(255, 255, 255, 0.45), 0 2px 10px rgba(0, 0, 0, 0.35)" }}
+                style={{ textShadow: "0 1px 3px rgba(0, 0, 0, 0.25)" }}
               >
                 {restaurant.name}
               </h1>

@@ -658,3 +658,124 @@ def test_customer_dashboard_returns_metrics(api_client: APIClient):
     assert response.status_code == status.HTTP_200_OK
     assert response.data["metrics"]["total_orders"] == 1
     assert len(response.data["recent_orders"]) == 1
+
+
+# --- generate_order_code ---
+
+
+def test_generate_order_code_returns_ord_0001_when_no_orders_exist():
+    from apps.orders.services import generate_order_code
+
+    assert generate_order_code() == "ORD-0001"
+
+
+def test_generate_order_code_increments_from_global_max():
+    from apps.orders.services import generate_order_code
+    from apps.restaurants.tests.factories import OrderStatusFactory, OrderTypeFactory
+
+    restaurant = RestaurantFactory()
+    order_type = OrderTypeFactory(code="pickup", name="Pickup")
+    order_status = OrderStatusFactory(code="new", name="Nuevo")
+
+    Order.objects.create(
+        order_code="ORD-0005",
+        restaurant=restaurant,
+        order_type=order_type,
+        status=order_status,
+        subtotal_amount="10000.00",
+        total_amount="10000.00",
+    )
+
+    assert generate_order_code() == "ORD-0006"
+
+
+def test_generate_order_code_is_globally_sequential_across_restaurants():
+    from apps.orders.services import generate_order_code
+    from apps.restaurants.tests.factories import OrderStatusFactory, OrderTypeFactory
+
+    restaurant_a = RestaurantFactory()
+    restaurant_b = RestaurantFactory()
+    order_type = OrderTypeFactory(code="pickup2", name="Pickup2")
+    order_status = OrderStatusFactory(code="new2", name="Nuevo2")
+
+    Order.objects.create(
+        order_code="ORD-0003",
+        restaurant=restaurant_a,
+        order_type=order_type,
+        status=order_status,
+        subtotal_amount="10000.00",
+        total_amount="10000.00",
+    )
+
+    # El siguiente código debe ser ORD-0004 aunque restaurant_b no tenga pedidos
+    assert generate_order_code() == "ORD-0004"
+
+
+def test_two_restaurants_get_unique_order_codes_on_first_order(api_client: APIClient):
+    """Reproduce el bug original: dos restaurantes creando su primer pedido."""
+    user_a = UserFactory()
+    user_b = UserFactory()
+    restaurant_a, item_a, address_a = setup_checkout_data(user_a)
+    restaurant_b, item_b, address_b = setup_checkout_data(user_b)
+
+    api_client.force_authenticate(user=user_a)
+    response_a = api_client.post(
+        reverse("api:checkout-order-list"),
+        {
+            "restaurant_id": str(restaurant_a.id),
+            "order_type": "delivery",
+            "delivery_address_id": str(address_a.id),
+            "items": [{"menu_item_id": str(item_a.id), "quantity": 1}],
+        },
+        format="json",
+    )
+
+    api_client.force_authenticate(user=user_b)
+    response_b = api_client.post(
+        reverse("api:checkout-order-list"),
+        {
+            "restaurant_id": str(restaurant_b.id),
+            "order_type": "delivery",
+            "delivery_address_id": str(address_b.id),
+            "items": [{"menu_item_id": str(item_b.id), "quantity": 1}],
+        },
+        format="json",
+    )
+
+    assert response_a.status_code == status.HTTP_201_CREATED
+    assert response_b.status_code == status.HTTP_201_CREATED
+    assert response_a.data["order_code"] != response_b.data["order_code"]
+    assert response_a.data["order_code"] == "ORD-0001"
+    assert response_b.data["order_code"] == "ORD-0002"
+
+
+def test_order_code_is_sequential_within_same_restaurant(api_client: APIClient):
+    user = UserFactory()
+    restaurant, item, address = setup_checkout_data(user)
+    api_client.force_authenticate(user=user)
+
+    response_1 = api_client.post(
+        reverse("api:checkout-order-list"),
+        {
+            "restaurant_id": str(restaurant.id),
+            "order_type": "delivery",
+            "delivery_address_id": str(address.id),
+            "items": [{"menu_item_id": str(item.id), "quantity": 1}],
+        },
+        format="json",
+    )
+    response_2 = api_client.post(
+        reverse("api:checkout-order-list"),
+        {
+            "restaurant_id": str(restaurant.id),
+            "order_type": "delivery",
+            "delivery_address_id": str(address.id),
+            "items": [{"menu_item_id": str(item.id), "quantity": 1}],
+        },
+        format="json",
+    )
+
+    assert response_1.status_code == status.HTTP_201_CREATED
+    assert response_2.status_code == status.HTTP_201_CREATED
+    assert response_1.data["order_code"] == "ORD-0001"
+    assert response_2.data["order_code"] == "ORD-0002"

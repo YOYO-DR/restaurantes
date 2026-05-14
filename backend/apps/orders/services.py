@@ -196,8 +196,17 @@ def create_guest_customer_name(email: str, phone: str) -> str:
     return "Cliente invitado"
 
 
-def build_order_code(order: Order) -> str:
-    next_count = Order.objects.filter(restaurant=order.restaurant).count() + 1
+def generate_order_code() -> str:
+    from django.db.models import Max
+
+    last_code = Order.objects.aggregate(max_code=Max("order_code"))["max_code"]
+    if last_code and last_code.startswith("ORD-"):
+        try:
+            next_count = int(last_code[4:]) + 1
+        except ValueError:
+            next_count = 1
+    else:
+        next_count = 1
     return f"ORD-{next_count:04d}"
 
 

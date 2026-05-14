@@ -13,6 +13,7 @@ from apps.orders.models import OrderStatusHistory
 from apps.orders.models import OrderType
 from apps.orders.services import build_guest_tracking_code
 from apps.orders.services import create_guest_customer_name
+from apps.orders.services import generate_order_code
 from apps.orders.services import notify_restaurant_new_order
 from apps.orders.services import send_order_confirmation_email
 from apps.restaurants.models import Restaurant
@@ -218,10 +219,7 @@ class CheckoutSerializer(serializers.Serializer):
         request = self.context["request"]
         order_type = get_order_type_by_code(validated_data["order_type"])
         status = get_new_order_status()
-        next_count = (
-            Order.objects.filter(restaurant=validated_data["restaurant"]).count() + 1
-        )
-        order_code = f"ORD-{next_count:04d}"
+        order_code = generate_order_code()
 
         order = Order.objects.create(
             order_code=order_code,

@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { LoginForm } from "@/components/auth/login-form";
-import { Utensils } from "lucide-react";
+import { ArrowLeft, Utensils } from "lucide-react";
 
 export const metadata = {
     title: "Iniciar Sesion - FoodHub",
@@ -34,6 +34,16 @@ export default function LoginPage() {
 
       <div className="flex w-full flex-col justify-center px-4 py-12 lg:w-1/2 lg:px-16">
         <div className="mx-auto w-full max-w-md">
+          <div className="mb-6">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Volver al inicio
+            </Link>
+          </div>
+
           <div className="mb-8 lg:hidden">
             <Link to="/" className="flex items-center gap-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">

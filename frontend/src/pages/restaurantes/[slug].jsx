@@ -73,7 +73,7 @@ export default function RestaurantPage() {
 
   return (
     <div
-      className={`flex min-h-screen flex-col ${publicRestaurant?.menu_layout === "grid" ? "bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.9),_rgba(255,247,237,0.85)_38%,_transparent_70%)]" : publicRestaurant?.menu_layout === "list" ? "bg-[linear-gradient(180deg,_rgba(248,250,252,0.96),_rgba(255,255,255,1))]" : "bg-[linear-gradient(180deg,_rgba(255,251,235,0.7),_rgba(255,255,255,1))]"}`}
+      className={`flex min-h-screen flex-col ${publicRestaurant?.menu_layout === "grid" ? "bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.9),_rgba(255,247,237,0.85)_38%,_transparent_70%)] dark:bg-none" : publicRestaurant?.menu_layout === "list" ? "bg-[linear-gradient(180deg,_rgba(248,250,252,0.96),_rgba(255,255,255,1))] dark:bg-none" : "bg-[linear-gradient(180deg,_rgba(255,251,235,0.7),_rgba(255,255,255,1))] dark:bg-none"}`}
       style={{
         "--restaurant-primary": publicRestaurant?.primary_color || "#e85d04",
         "--restaurant-secondary": publicRestaurant?.secondary_color || "#16a34a",
