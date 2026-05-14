@@ -6,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/context/auth-context"
@@ -15,7 +14,6 @@ import { resolvePostAuthPath } from "@/lib/auth-routing"
 const loginSchema = z.object({
   email: z.string().email("Ingresa un correo valido"),
   password: z.string().min(8, "La contrasena debe tener minimo 8 caracteres"),
-  remember: z.boolean().default(false),
 })
 
 export function LoginForm() {
@@ -28,19 +26,14 @@ export function LoginForm() {
   const {
     register,
     handleSubmit,
-    setValue,
-    watch,
-      formState: { isSubmitting, errors },
+    formState: { isSubmitting, errors },
   } = useForm({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
       password: "",
-      remember: false,
     },
   })
-
-  const remember = watch("remember")
 
   const onSubmit = async (values) => {
     setServerError("")
@@ -79,13 +72,13 @@ export function LoginForm() {
             </Link>
           </div>
           <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="********"
-                aria-invalid={errors.password ? "true" : "false"}
-                {...register("password")}
-              />
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              placeholder="********"
+              aria-invalid={errors.password ? "true" : "false"}
+              {...register("password")}
+            />
             <button
               type="button"
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
@@ -95,19 +88,6 @@ export function LoginForm() {
             </button>
           </div>
           {errors.password ? <p className="text-sm text-destructive">{errors.password.message}</p> : null}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="remember"
-            checked={remember}
-            onCheckedChange={(checked) => {
-              setValue("remember", Boolean(checked), { shouldValidate: true })
-            }}
-          />
-          <Label htmlFor="remember" className="text-sm font-normal">
-            Recordar mi sesion
-          </Label>
         </div>
 
         {serverError ? (

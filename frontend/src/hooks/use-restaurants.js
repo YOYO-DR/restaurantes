@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
+  cancelOwnerInvitation,
   createOwnerInventoryItem,
   createOwnerInventoryMovement,
   createOwnerMenuCategory,
@@ -10,6 +11,7 @@ import {
   deleteOwnerMenuItem,
   getOwnerInventoryItems,
   getOwnerInventoryMetadata,
+  getOwnerOperators,
   getOwnerRestaurantPersonalization,
   getOwnerRestaurantQrs,
   getOwnerRestaurantDashboard,
@@ -19,7 +21,10 @@ import {
   getRestaurant,
   getRestaurantMenu,
   getRestaurants,
+  inviteOwnerOperator,
+  removeOwnerOperator,
   updateOwnerInventoryItem,
+  updateOwnerOperatorPermissions,
   updateOwnerRestaurantPersonalization,
   updateOwnerRestaurantSettings,
   updateOwnerRestaurantTable,
@@ -561,3 +566,56 @@ export function useOwnerRestaurantSettings() {
     },
   }
 }
+
+export function useOwnerOperators() {
+  const [restaurant, setRestaurant] = useState(null)
+  const [operators, setOperators] = useState([])
+  const [invitations, setInvitations] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const restaurants = await getOwnerRestaurants()
+      const r = restaurants[0] || null
+      setRestaurant(r)
+      if (!r) return
+      const data = await getOwnerOperators(r.id)
+      setOperators(data.operators || [])
+      setInvitations(data.pending_invitations || [])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  return {
+    restaurant,
+    operators,
+    invitations,
+    isLoading,
+    reload: load,
+    inviteOperator: async (payload) => {
+      const data = await inviteOwnerOperator(restaurant.id, payload)
+      await load()
+      return data
+    },
+    cancelInvitation: async (invitationId) => {
+      await cancelOwnerInvitation(restaurant.id, invitationId)
+      setInvitations((current) => current.filter((inv) => inv.id !== invitationId))
+    },
+    updatePermissions: async (operatorId, permissions) => {
+      const data = await updateOwnerOperatorPermissions(restaurant.id, operatorId, permissions)
+      await load()
+      return data
+    },
+    removeOperator: async (operatorId) => {
+      await removeOwnerOperator(restaurant.id, operatorId)
+      setOperators((current) => current.filter((op) => op.id !== operatorId))
+    },
+  }
+}
+

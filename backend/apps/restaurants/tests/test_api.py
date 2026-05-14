@@ -842,3 +842,179 @@ def test_owner_can_get_and_update_personalization(api_client: APIClient):
     assert restaurant.branding.primary_color == "#2563eb"
     assert restaurant.branding.menu_layout_option.code == "grid"
     assert restaurant.social_links.instagram_url == "@casa_pacifica"
+
+
+# ── Operator management tests ─────────────────────────────────────────────────
+
+from django.core import mail as django_mail
+from django.utils import timezone as tz
+
+from apps.restaurants.models import OperatorInvitation
+from apps.restaurants.models import OperatorPermission
+from apps.restaurants.services import DEFAULT_OPERATOR_PERMISSIONS
+
+
+def _setup_owner_with_restaurant():
+    owner = UserFactory()
+    assign_role(owner, "restaurante")
+    restaurant = RestaurantFactory(owner=owner)
+    RestaurantAddressFactory(restaurant=restaurant)
+    return owner, restaurant
+
+
+def test_owner_can_invite_operator_and_email_is_sent(api_client):
+    owner, restaurant = _setup_owner_with_restaurant()
+    api_client.force_authenticate(user=owner)
+
+    response = api_client.post(
+        f"/api/owner/restaurants/{restaurant.id}/operators/",
+        {
+            "email": "operador@example.com",
+            "permissions": {
+                "pedidos": {"can_view": True, "can_create": False, "can_edit": True, "can_delete": False},
+                "menu": {"can_view": True, "can_create": True, "can_edit": True, "can_delete": False},
+            },
+        },
+        format="json",
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    assert OperatorInvitation.objects.filter(email="operador@example.com", restaurant=restaurant).exists()
+    assert len(django_mail.outbox) == 1
+    assert "operador@example.com" in django_mail.outbox[0].to
+
+
+def test_owner_cannot_invite_themselves(api_client):
+    owner, restaurant = _setup_owner_with_restaurant()
+    api_client.force_authenticate(user=owner)
+
+    response = api_client.post(
+        f"/api/owner/restaurants/{restaurant.id}/operators/",
+        {"email": owner.email},
+        format="json",
+    )
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+def test_get_invitation_detail_returns_restaurant_info(api_client):
+    owner, restaurant = _setup_owner_with_restaurant()
+    invitation = OperatorInvitation.objects.create(
+        restaurant=restaurant,
+        invited_by=owner,
+        email="op@test.com",
+        expires_at=tz.now() + tz.timedelta(hours=48),
+        permissions_snapshot={},
+    )
+
+    response = api_client.get(f"/api/invitations/{invitation.token}/")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["email"] == "op@test.com"
+    assert response.data["restaurant_name"] == restaurant.display_name
+
+
+def test_accept_invitation_creates_user_operador_and_permissions(api_client):
+    owner, restaurant = _setup_owner_with_restaurant()
+    invitation = OperatorInvitation.objects.create(
+        restaurant=restaurant,
+        invited_by=owner,
+        email="nuevo_op@test.com",
+        expires_at=tz.now() + tz.timedelta(hours=48),
+        permissions_snapshot={
+            "pedidos": {"can_view": True, "can_create": False, "can_edit": True, "can_delete": False},
+        },
+    )
+
+    response = api_client.post(
+        f"/api/invitations/{invitation.token}/",
+        {"name": "Juan Operador", "password": "pass12345", "password_confirm": "pass12345"},
+        format="json",
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    invitation.refresh_from_db()
+    assert invitation.accepted_at is not None
+
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    user = User.objects.get(email="nuevo_op@test.com")
+    assert user.name == "Juan Operador"
+    assert Operador.objects.filter(user=user, restaurante=restaurant).exists()
+    assert OperatorPermission.objects.filter(operator__user=user, module="pedidos").exists()
+
+
+def test_expired_invitation_returns_error(api_client):
+    owner, restaurant = _setup_owner_with_restaurant()
+    invitation = OperatorInvitation.objects.create(
+        restaurant=restaurant,
+        invited_by=owner,
+        email="exp@test.com",
+        expires_at=tz.now() - tz.timedelta(hours=1),
+        permissions_snapshot={},
+    )
+
+    response = api_client.get(f"/api/invitations/{invitation.token}/")
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+def test_owner_can_list_operators(api_client):
+    owner, restaurant = _setup_owner_with_restaurant()
+    op_user = UserFactory()
+    assign_role(op_user, "operador")
+    operador = Operador.objects.create(user=op_user, restaurante=restaurant)
+
+    api_client.force_authenticate(user=owner)
+    response = api_client.get(f"/api/owner/restaurants/{restaurant.id}/operators/")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert len(response.data["operators"]) == 1
+    assert response.data["operators"][0]["email"] == op_user.email
+
+
+def test_owner_can_update_operator_permissions(api_client):
+    owner, restaurant = _setup_owner_with_restaurant()
+    op_user = UserFactory()
+    assign_role(op_user, "operador")
+    operador = Operador.objects.create(user=op_user, restaurante=restaurant)
+    OperatorPermission.objects.create(
+        operator=operador, module="menu",
+        can_view=True, can_create=False, can_edit=False, can_delete=False
+    )
+
+    api_client.force_authenticate(user=owner)
+    response = api_client.patch(
+        f"/api/owner/restaurants/{restaurant.id}/operators/{operador.id}/permissions/",
+        {"permissions": {"menu": {"can_view": True, "can_create": True, "can_edit": True, "can_delete": False}}},
+        format="json",
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    perm = OperatorPermission.objects.get(operator=operador, module="menu")
+    assert perm.can_create is True
+    assert perm.can_edit is True
+
+
+def test_owner_can_remove_operator(api_client):
+    owner, restaurant = _setup_owner_with_restaurant()
+    op_user = UserFactory()
+    assign_role(op_user, "operador")
+    operador = Operador.objects.create(user=op_user, restaurante=restaurant)
+
+    api_client.force_authenticate(user=owner)
+    response = api_client.delete(
+        f"/api/owner/restaurants/{restaurant.id}/operators/{operador.id}/"
+    )
+
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+    assert not Operador.objects.filter(id=operador.id).exists()
+
+
+def test_non_owner_cannot_access_operators_endpoint(api_client):
+    owner, restaurant = _setup_owner_with_restaurant()
+    other_user = UserFactory()
+
+    api_client.force_authenticate(user=other_user)
+    response = api_client.get(f"/api/owner/restaurants/{restaurant.id}/operators/")
+
+    assert response.status_code in [status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND]

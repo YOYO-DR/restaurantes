@@ -49,6 +49,7 @@ class RegisterView(APIView):
             {
                 "user": UserMeSerializer(user).data,
                 "access": tokens["access"],
+                "refresh": tokens["refresh"],
             },
             status=status.HTTP_201_CREATED,
         )
@@ -69,6 +70,7 @@ class LoginView(APIView):
             {
                 "user": UserMeSerializer(user).data,
                 "access": tokens["access"],
+                "refresh": tokens["refresh"],
             },
             status=status.HTTP_200_OK,
         )

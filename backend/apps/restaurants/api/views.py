@@ -7,7 +7,14 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from apps.core.permissions import AnaliticasModulePermission
+from apps.core.permissions import ClientesModulePermission
+from apps.core.permissions import ConfiguracionModulePermission
 from apps.core.permissions import IsOwnerObjectOrAdminRole
+from apps.core.permissions import PersonalizacionModulePermission
+from apps.core.permissions import QrModulePermission
+from apps.core.permissions import ResenasEditPermission
+from apps.core.permissions import ResenasModulePermission
 from apps.core.permissions import get_user_owned_or_operated_restaurant_ids
 from apps.core.permissions import is_admin_user
 from apps.orders.models import OrderItem
@@ -86,6 +93,24 @@ class PublicRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
 class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsOwnerObjectOrAdminRole]
     serializer_class = RestaurantDetailSerializer
+
+    _ACTION_PERMISSION_MAP = {
+        "customers": ClientesModulePermission,
+        "analytics": AnaliticasModulePermission,
+        "reviews": ResenasModulePermission,
+        "reply_review": ResenasEditPermission,
+        "qrs": QrModulePermission,
+        "create_table": QrModulePermission,
+        "update_table": QrModulePermission,
+        "personalization": PersonalizacionModulePermission,
+        "restaurant_settings": ConfiguracionModulePermission,
+    }
+
+    def get_permissions(self):
+        permission_class = self._ACTION_PERMISSION_MAP.get(self.action)
+        if permission_class:
+            return [permissions.IsAuthenticated(), permission_class()]
+        return [IsOwnerObjectOrAdminRole()]
 
     def get_queryset(self):
         queryset = Restaurant.objects.select_related(
@@ -555,3 +580,274 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
         base_url = request.build_absolute_uri("/").rstrip("/")
         ensure_table_qr_code(base_url, restaurant, table)
         return Response(OwnerRestaurantTableSerializer(table).data)
+
+
+# ── Operator management views ─────────────────────────────────────────────────
+
+from django.contrib.auth import get_user_model
+from django.db import transaction
+from django.utils import timezone as tz
+from rest_framework.views import APIView
+
+from apps.accounts.models import UserRole
+from apps.core.permissions import IsOwnerRole
+from apps.restaurants.models import Operador
+from apps.restaurants.models import OperatorInvitation
+from apps.restaurants.models import OperatorPermission
+from apps.restaurants.models import OPERATOR_MODULES
+from apps.restaurants.api.serializers import OperatorDetailSerializer
+from apps.restaurants.api.serializers import OperatorInvitationSerializer
+from apps.restaurants.api.serializers import OperatorInvitationAcceptSerializer
+from apps.restaurants.api.serializers import OperatorInviteSerializer
+from apps.restaurants.api.serializers import OperatorPermissionsUpdateSerializer
+from apps.restaurants.services import build_permissions_snapshot_from_request
+from apps.restaurants.services import create_default_operator_permissions
+from apps.restaurants.services import DEFAULT_OPERATOR_PERMISSIONS
+from apps.restaurants.tasks import send_operator_invitation_email_task
+
+_User = get_user_model()
+_INVITATION_TTL_HOURS = 72
+
+
+def _get_owned_restaurant(user, restaurant_id):
+    """Retorna el restaurante si el usuario es su dueño, o 404."""
+    from rest_framework.exceptions import NotFound
+    try:
+        return user.owned_restaurants.get(pk=restaurant_id)
+    except Exception:
+        raise NotFound("Restaurante no encontrado.")
+
+
+class OwnerOperatorListView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsOwnerRole]
+
+    def get(self, request, restaurant_id):
+        restaurant = _get_owned_restaurant(request.user, restaurant_id)
+        operators = (
+            Operador.objects.filter(restaurante=restaurant)
+            .select_related("user")
+            .prefetch_related("permissions")
+        )
+        invitations = OperatorInvitation.objects.filter(
+            restaurant=restaurant,
+            accepted_at__isnull=True,
+            expires_at__gt=tz.now(),
+        )
+        return Response({
+            "operators": OperatorDetailSerializer(operators, many=True).data,
+            "pending_invitations": OperatorInvitationSerializer(invitations, many=True).data,
+        })
+
+    def post(self, request, restaurant_id):
+        """Invita un operador por email."""
+        restaurant = _get_owned_restaurant(request.user, restaurant_id)
+        serializer = OperatorInviteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data["email"]
+        permissions_data = serializer.validated_data.get("permissions", {})
+        snapshot = build_permissions_snapshot_from_request(permissions_data)
+
+        # Evitar invitar al propio dueño
+        if email == request.user.email:
+            return Response(
+                {"detail": "No puedes invitarte a ti mismo como operador."},
+                status=400,
+            )
+
+        # Evitar duplicar si ya hay operador activo con ese email
+        if Operador.objects.filter(restaurante=restaurant, user__email=email).exists():
+            return Response(
+                {"detail": "Ya existe un operador con ese correo en este restaurante."},
+                status=400,
+            )
+
+        # Cancelar invitaciones previas pendientes para el mismo email+restaurante
+        OperatorInvitation.objects.filter(
+            restaurant=restaurant,
+            email=email,
+            accepted_at__isnull=True,
+        ).delete()
+
+        invitation = OperatorInvitation.objects.create(
+            restaurant=restaurant,
+            invited_by=request.user,
+            email=email,
+            expires_at=tz.now() + tz.timedelta(hours=_INVITATION_TTL_HOURS),
+            permissions_snapshot=snapshot,
+        )
+        send_operator_invitation_email_task.delay(str(invitation.id))
+        return Response(OperatorInvitationSerializer(invitation).data, status=201)
+
+
+class OwnerOperatorDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsOwnerRole]
+
+    def _get_operator(self, request, restaurant_id, operator_id):
+        from rest_framework.exceptions import NotFound
+        restaurant = _get_owned_restaurant(request.user, restaurant_id)
+        try:
+            return Operador.objects.select_related("user").prefetch_related("permissions").get(
+                pk=operator_id,
+                restaurante=restaurant,
+            )
+        except Operador.DoesNotExist:
+            raise NotFound("Operador no encontrado.")
+
+    def delete(self, request, restaurant_id, operator_id):
+        operator = self._get_operator(request, restaurant_id, operator_id)
+        user = operator.user
+        operator.delete()
+        # Quita el rol operador si ya no tiene otros restaurantes asignados
+        if not Operador.objects.filter(user=user).exists():
+            UserRole.objects.filter(user=user, role__code="operador").delete()
+        return Response(status=204)
+
+
+class OwnerOperatorPermissionsView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsOwnerRole]
+
+    def _get_operator(self, request, restaurant_id, operator_id):
+        from rest_framework.exceptions import NotFound
+        restaurant = _get_owned_restaurant(request.user, restaurant_id)
+        try:
+            return Operador.objects.prefetch_related("permissions").get(
+                pk=operator_id,
+                restaurante=restaurant,
+            )
+        except Operador.DoesNotExist:
+            raise NotFound("Operador no encontrado.")
+
+    def get(self, request, restaurant_id, operator_id):
+        operator = self._get_operator(request, restaurant_id, operator_id)
+        from apps.restaurants.api.serializers import OperatorPermissionSerializer
+        return Response(OperatorPermissionSerializer(operator.permissions.all(), many=True).data)
+
+    def patch(self, request, restaurant_id, operator_id):
+        operator = self._get_operator(request, restaurant_id, operator_id)
+        serializer = OperatorPermissionsUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        for module, perms in serializer.validated_data["permissions"].items():
+            OperatorPermission.objects.update_or_create(
+                operator=operator,
+                module=module,
+                defaults={
+                    "can_view": perms.get("can_view", True),
+                    "can_create": perms.get("can_create", False),
+                    "can_edit": perms.get("can_edit", False),
+                    "can_delete": perms.get("can_delete", False),
+                },
+            )
+        from apps.restaurants.api.serializers import OperatorPermissionSerializer
+        return Response(OperatorPermissionSerializer(operator.permissions.all(), many=True).data)
+
+
+class OwnerInvitationCancelView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsOwnerRole]
+
+    def delete(self, request, restaurant_id, invitation_id):
+        from rest_framework.exceptions import NotFound
+        restaurant = _get_owned_restaurant(request.user, restaurant_id)
+        try:
+            invitation = OperatorInvitation.objects.get(
+                pk=invitation_id,
+                restaurant=restaurant,
+                accepted_at__isnull=True,
+            )
+        except OperatorInvitation.DoesNotExist:
+            raise NotFound("Invitacion no encontrada.")
+        invitation.delete()
+        return Response(status=204)
+
+
+class PublicInvitationDetailView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def _get_invitation(self, token):
+        from rest_framework.exceptions import NotFound, ValidationError
+        try:
+            invitation = OperatorInvitation.objects.select_related(
+                "restaurant"
+            ).get(token=token)
+        except OperatorInvitation.DoesNotExist:
+            raise NotFound("Invitacion no encontrada.")
+        if invitation.accepted_at:
+            raise ValidationError({"detail": "Esta invitacion ya fue aceptada."})
+        if invitation.expires_at < tz.now():
+            raise ValidationError({"detail": "Esta invitacion ha expirado."})
+        return invitation
+
+    def get(self, request, token):
+        invitation = self._get_invitation(token)
+        return Response({
+            "email": invitation.email,
+            "restaurant_name": invitation.restaurant.display_name,
+            "expires_at": invitation.expires_at,
+            "permissions_snapshot": invitation.permissions_snapshot,
+        })
+
+    @transaction.atomic
+    def post(self, request, token):
+        invitation = self._get_invitation(token)
+        serializer = OperatorInvitationAcceptSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        from apps.accounts.models import UserRole
+        from apps.accounts.models import UserProfile
+        from apps.accounts.models import UserStatus
+
+        email = invitation.email
+        name = serializer.validated_data["name"]
+        password = serializer.validated_data["password"]
+
+        # Crear usuario o reutilizar si ya existe
+        user, created = _User.objects.get_or_create(
+            email=email,
+            defaults={"name": name, "is_active": True},
+        )
+        if created:
+            user.set_password(password)
+            user.save(update_fields=["password"])
+
+            status, _ = UserStatus.objects.get_or_create(
+                code="active", defaults={"name": "Activo"}
+            )
+            UserProfile.objects.get_or_create(user=user, defaults={"status": status})
+
+        # Asignar rol operador
+        from apps.accounts.models import Role
+        operador_role, _ = Role.objects.get_or_create(
+            code="operador", defaults={"name": "Operador"}
+        )
+        cliente_role, _ = Role.objects.get_or_create(
+            code="cliente", defaults={"name": "Cliente"}
+        )
+        UserRole.objects.get_or_create(user=user, role=operador_role)
+        UserRole.objects.get_or_create(user=user, role=cliente_role)
+
+        # Crear vínculo Operador
+        operator, _ = Operador.objects.get_or_create(
+            user=user,
+            defaults={"restaurante": invitation.restaurant},
+        )
+
+        # Crear permisos desde snapshot o defaults
+        snapshot = invitation.permissions_snapshot or {}
+        for module in OPERATOR_MODULES:
+            module_perms = snapshot.get(module, DEFAULT_OPERATOR_PERMISSIONS.get(module, {}))
+            OperatorPermission.objects.get_or_create(
+                operator=operator,
+                module=module,
+                defaults={
+                    "can_view": module_perms.get("can_view", True),
+                    "can_create": module_perms.get("can_create", False),
+                    "can_edit": module_perms.get("can_edit", False),
+                    "can_delete": module_perms.get("can_delete", False),
+                },
+            )
+
+        invitation.accepted_at = tz.now()
+        invitation.save(update_fields=["accepted_at"])
+
+        return Response({"detail": "Invitacion aceptada. Ya puedes iniciar sesion."}, status=200)

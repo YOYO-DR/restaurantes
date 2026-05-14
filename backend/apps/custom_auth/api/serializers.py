@@ -76,6 +76,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         default="cliente",
         write_only=True,
     )
+    role = serializers.ChoiceField(
+        choices=("customer", "restaurant_owner", "driver"),
+        required=False,
+        write_only=True,
+    )
     restaurant_name = serializers.CharField(
         max_length=180,
         required=False,
@@ -98,6 +103,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             "password",
             "password_confirm",
             "user_type",
+            "role",
             "restaurant_name",
             "restaurant_address",
         ]
@@ -107,6 +113,12 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"password_confirm": "Passwords do not match."},
             )
+
+        role = attrs.get("role")
+        if role == "restaurant_owner":
+            attrs["user_type"] = "restaurante"
+        elif role == "driver":
+            attrs["user_type"] = "cliente"
 
         user_type = attrs.get("user_type", "cliente")
         if user_type in {"dueno", "owner", "restaurante"}:
@@ -123,6 +135,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data.pop("password_confirm")
+        validated_data.pop("role", None)
         user_type = validated_data.pop("user_type", "cliente")
         phone = validated_data.pop("phone", "")
         restaurant_name = validated_data.pop("restaurant_name", "")
@@ -212,6 +225,23 @@ class UserMeSerializer(serializers.ModelSerializer):
     role = serializers.SerializerMethodField()
     roles = serializers.SerializerMethodField()
     available_roles = serializers.SerializerMethodField()
+    is_customer = serializers.SerializerMethodField()
+    is_restaurant_owner = serializers.SerializerMethodField()
+    is_admin_staff = serializers.SerializerMethodField()
+    is_driver = serializers.SerializerMethodField()
+    phone = serializers.SerializerMethodField()
+    avatar_url = serializers.SerializerMethodField()
+    birth_date = serializers.SerializerMethodField()
+    language = serializers.SerializerMethodField()
+    timezone = serializers.SerializerMethodField()
+    email_verified = serializers.SerializerMethodField()
+    prefers_push = serializers.SerializerMethodField()
+    prefers_email = serializers.SerializerMethodField()
+    prefers_sms = serializers.SerializerMethodField()
+    prefers_marketing = serializers.SerializerMethodField()
+    date_joined = serializers.SerializerMethodField()
+    last_activity_at = serializers.SerializerMethodField()
+    operator_permissions = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -223,6 +253,23 @@ class UserMeSerializer(serializers.ModelSerializer):
             "role",
             "roles",
             "available_roles",
+            "is_customer",
+            "is_restaurant_owner",
+            "is_admin_staff",
+            "is_driver",
+            "phone",
+            "avatar_url",
+            "birth_date",
+            "language",
+            "timezone",
+            "email_verified",
+            "prefers_push",
+            "prefers_email",
+            "prefers_sms",
+            "prefers_marketing",
+            "date_joined",
+            "last_activity_at",
+            "operator_permissions",
         ]
 
     def get_role(self, obj):
@@ -242,6 +289,84 @@ class UserMeSerializer(serializers.ModelSerializer):
             {"code": code, "label": labels.get(code, code.capitalize())}
             for code in get_user_role_codes(obj)
         ]
+
+    def _has_role(self, obj, code):
+        return code in get_user_role_codes(obj)
+
+    def get_is_customer(self, obj):
+        return self._has_role(obj, "cliente")
+
+    def get_is_restaurant_owner(self, obj):
+        return self._has_role(obj, "restaurante")
+
+    def get_is_admin_staff(self, obj):
+        return self._has_role(obj, "admin")
+
+    def get_is_driver(self, obj):
+        return self._has_role(obj, "repartidor")
+
+    def get_phone(self, obj):
+        try:
+            profile = obj.profile
+            return profile.phone or ""
+        except Exception:
+            return ""
+
+    def get_avatar_url(self, obj):
+        try:
+            profile = obj.profile
+            return profile.avatar_url or ""
+        except Exception:
+            return ""
+
+    def get_birth_date(self, obj):
+        return None
+
+    def get_language(self, obj):
+        try:
+            profile = obj.profile
+            return profile.preferred_language or "es"
+        except Exception:
+            return "es"
+
+    def get_timezone(self, obj):
+        return "America/Bogota"
+
+    def get_email_verified(self, obj):
+        return obj.is_active
+
+    def get_prefers_push(self, obj):
+        return True
+
+    def get_prefers_email(self, obj):
+        return True
+
+    def get_prefers_sms(self, obj):
+        return False
+
+    def get_prefers_marketing(self, obj):
+        return True
+
+    def get_date_joined(self, obj):
+        return obj.date_joined.isoformat() if obj.date_joined else ""
+
+    def get_last_activity_at(self, obj):
+        return obj.last_login.isoformat() if obj.last_login else None
+
+    def get_operator_permissions(self, obj):
+        operador = getattr(obj, "operador", None)
+        if not operador:
+            return None
+        perms = operador.permissions.all()
+        return {
+            p.module: {
+                "can_view": p.can_view,
+                "can_create": p.can_create,
+                "can_edit": p.can_edit,
+                "can_delete": p.can_delete,
+            }
+            for p in perms
+        }
 
 
 def build_token_payload(user):

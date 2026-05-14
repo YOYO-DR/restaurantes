@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useOperatorPermission } from "@/hooks/use-operator-permission"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -549,6 +550,7 @@ function ItemDialog({
 }
 
 export default function OwnerMenuPage() {
+  const { canCreate: canCreate, canEdit, canDelete } = useOperatorPermission("menu")
   const {
     data,
     isLoading,
@@ -627,29 +629,33 @@ export default function OwnerMenuPage() {
           </p>
         </div>
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-          <Button
-            variant="outline"
-            className="w-full sm:w-auto"
-            onClick={() => {
-              setSelectedCategory(null)
-              setCategoryDialogOpen(true)
-            }}
-            disabled={!data.restaurant}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Nueva categoria
-          </Button>
-          <Button
-            className="w-full sm:w-auto"
-            onClick={() => {
-              setSelectedItem(null)
-              setItemDialogOpen(true)
-            }}
-            disabled={!data.restaurant || data.categories.length === 0}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Nuevo plato
-          </Button>
+          {canCreate ? (
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => {
+                setSelectedCategory(null)
+                setCategoryDialogOpen(true)
+              }}
+              disabled={!data.restaurant}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Nueva categoria
+            </Button>
+          ) : null}
+          {canCreate ? (
+            <Button
+              className="w-full sm:w-auto"
+              onClick={() => {
+                setSelectedItem(null)
+                setItemDialogOpen(true)
+              }}
+              disabled={!data.restaurant || data.categories.length === 0}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Nuevo plato
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -721,18 +727,21 @@ export default function OwnerMenuPage() {
                   <Badge variant="secondary">{category.item_count}</Badge>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 px-2"
-                    onClick={() => {
-                      setSelectedCategory(category)
-                      setCategoryDialogOpen(true)
-                    }}
-                  >
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Editar
-                  </Button>
+                  {canEdit ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2"
+                      onClick={() => {
+                        setSelectedCategory(category)
+                        setCategoryDialogOpen(true)
+                      }}
+                    >
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Editar
+                    </Button>
+                  ) : null}
+                  {canDelete ? (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
@@ -769,6 +778,7 @@ export default function OwnerMenuPage() {
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
+                  ) : null}
                 </div>
               </div>
             ))}
@@ -833,34 +843,38 @@ export default function OwnerMenuPage() {
                       />
                     </div>
                     <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setSelectedItem({
-                            ...item,
-                            menu_category: data.categories.find((category) => category.name === item.category)?.id || "",
-                          })
-                          setItemDialogOpen(true)
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive"
-                        onClick={async () => {
-                          try {
-                            await deleteItem(item.id)
-                            toast.success(`Plato ${item.name} eliminado`)
-                          } catch (deleteError) {
-                            toast.error(deleteError.message || "No fue posible eliminar el plato")
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {canEdit ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedItem({
+                              ...item,
+                              menu_category: data.categories.find((category) => category.name === item.category)?.id || "",
+                            })
+                            setItemDialogOpen(true)
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      ) : null}
+                      {canDelete ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive"
+                          onClick={async () => {
+                            try {
+                              await deleteItem(item.id)
+                              toast.success(`Plato ${item.name} eliminado`)
+                            } catch (deleteError) {
+                              toast.error(deleteError.message || "No fue posible eliminar el plato")
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      ) : null}
                     </div>
                   </div>
                 </CardContent>

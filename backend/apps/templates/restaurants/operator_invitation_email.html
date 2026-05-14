@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Invitacion a {{ restaurant_name }}</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:32px 0;">
+    <tr>
+      <td align="center">
+        <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+          <tr>
+            <td style="background:#e85d04;padding:24px 32px;">
+              <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">FoodHub</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px;">
+              <h2 style="margin:0 0 16px;color:#18181b;font-size:20px;">Tienes una invitacion</h2>
+              <p style="color:#52525b;font-size:15px;line-height:1.6;margin:0 0 12px;">
+                <strong>{{ invited_by_name }}</strong> te ha invitado a unirte a
+                <strong>{{ restaurant_name }}</strong> como operador en FoodHub.
+              </p>
+              <p style="color:#52525b;font-size:15px;line-height:1.6;margin:0 0 28px;">
+                Haz clic en el boton para aceptar la invitacion y crear tu cuenta.
+              </p>
+              <table cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="border-radius:8px;background:#e85d04;">
+                    <a href="{{ accept_url }}"
+                       style="display:inline-block;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
+                      Aceptar invitacion
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="color:#a1a1aa;font-size:13px;margin:24px 0 0;">
+                Este enlace es valido por 72 horas. Si no esperabas esta invitacion, ignora este mensaje.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 32px;border-top:1px solid #f4f4f5;">
+              <p style="color:#a1a1aa;font-size:12px;margin:0;">
+                &copy; {{ restaurant_name }} — FoodHub
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

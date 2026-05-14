@@ -2,7 +2,7 @@ export function dashboardPathByRole(role) {
     if (role === "admin") {
         return "/dashboard/admin"
     }
-    if (role === "restaurante" || role === "dueno") {
+    if (role === "restaurante" || role === "dueno" || role === "operador") {
         return "/dashboard/restaurante"
     }
     return "/dashboard/cliente"
@@ -12,7 +12,7 @@ function dashboardPrefixByRole(role) {
   if (role === "admin") {
     return "/dashboard/admin"
   }
-  if (role === "restaurante" || role === "dueno") {
+  if (role === "restaurante" || role === "dueno" || role === "operador") {
     return "/dashboard/restaurante"
   }
   return "/dashboard/cliente"

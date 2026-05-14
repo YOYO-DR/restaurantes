@@ -1,3 +1,5 @@
+import uuid
+
 from django.conf import settings
 from django.core.validators import MaxValueValidator
 from django.core.validators import MinValueValidator
@@ -346,3 +348,66 @@ class Operador(BaseModel):
 
     def __str__(self):
         return f"Operador {self.user.username} para {self.restaurante.display_name}"
+
+
+OPERATOR_MODULES = [
+    "pedidos",
+    "menu",
+    "inventario",
+    "clientes",
+    "resenas",
+    "analiticas",
+    "qr",
+    "personalizacion",
+    "configuracion",
+]
+
+
+class OperatorPermission(BaseModel):
+    operator = models.ForeignKey(
+        Operador,
+        on_delete=models.CASCADE,
+        related_name="permissions",
+    )
+    module = models.CharField(max_length=50)
+    can_view = models.BooleanField(default=True)
+    can_create = models.BooleanField(default=False)
+    can_edit = models.BooleanField(default=False)
+    can_delete = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "restaurant_operator_permissions"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("operator", "module"),
+                name="uniq_operator_module_permission",
+            )
+        ]
+
+    def __str__(self):
+        return f"Permisos de {self.operator} en {self.module}"
+
+
+class OperatorInvitation(BaseModel):
+    restaurant = models.ForeignKey(
+        Restaurant,
+        on_delete=models.CASCADE,
+        related_name="operator_invitations",
+    )
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="sent_operator_invitations",
+    )
+    email = models.EmailField()
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField()
+    permissions_snapshot = models.JSONField(default=dict)
+
+    class Meta:
+        db_table = "restaurant_operator_invitations"
+
+    def __str__(self):
+        return f"Invitacion a {self.email} para {self.restaurant.display_name}"

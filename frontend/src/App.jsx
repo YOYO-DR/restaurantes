@@ -40,6 +40,8 @@ import OwnerReviewsPage from "@/pages/dashboard/restaurante/resenas"
 import OwnerAnalyticsPage from "@/pages/dashboard/restaurante/analiticas"
 import OwnerProfilePage from "@/pages/dashboard/restaurante/perfil"
 import OwnerSettingsPage from "@/pages/dashboard/restaurante/configuracion"
+import OwnerOperadoresPage from "@/pages/dashboard/restaurante/operadores"
+import InvitacionOperadorPage from "@/pages/invitacion-operador"
 import NotFoundPage from "@/pages/not-found"
 
 const OwnerQrPage = lazy(() => import("@/pages/dashboard/restaurante/qr"))
@@ -75,6 +77,7 @@ export default function App() {
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/mis-pedidos" element={<GuestOrdersPage />} />
             <Route path="/recuperar-contrasena" element={<RecuperarContrasenaPage />} />
+            <Route path="/invitacion-operador/:token" element={<InvitacionOperadorPage />} />
           </Route>
 
           <Route
@@ -115,7 +118,7 @@ export default function App() {
           <Route
             path="/dashboard/restaurante"
             element={
-              <ProtectedRoute allowedRoles={["restaurante", "dueno"]}>
+              <ProtectedRoute allowedRoles={["restaurante", "dueno", "operador"]}>
                 <OwnerLayout />
               </ProtectedRoute>
             }
@@ -129,6 +132,14 @@ export default function App() {
             <Route path="analiticas" element={<OwnerAnalyticsPage />} />
             <Route path="qr" element={<Suspense fallback={<DashboardShellSkeleton />}><OwnerQrPage /></Suspense>} />
             <Route path="personalizacion" element={<Suspense fallback={<DashboardShellSkeleton />}><OwnerCustomizationPage /></Suspense>} />
+            <Route
+              path="operadores"
+              element={
+                <ProtectedRoute allowedRoles={["restaurante", "dueno"]}>
+                  <OwnerOperadoresPage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="perfil" element={<OwnerProfilePage />} />
             <Route path="configuracion" element={<OwnerSettingsPage />} />
           </Route>

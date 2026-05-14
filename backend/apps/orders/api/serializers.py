@@ -15,7 +15,7 @@ from apps.orders.services import build_guest_tracking_code
 from apps.orders.services import create_guest_customer_name
 from apps.orders.services import generate_order_code
 from apps.orders.services import notify_restaurant_new_order
-from apps.orders.services import send_order_confirmation_email
+from apps.orders.tasks import send_order_confirmation_email_task
 from apps.restaurants.models import Restaurant
 from apps.restaurants.models import RestaurantTable
 
@@ -274,7 +274,7 @@ class CheckoutSerializer(serializers.Serializer):
         )
 
         notify_restaurant_new_order(order)
-        send_order_confirmation_email(order)
+        send_order_confirmation_email_task.delay(str(order.id))
         return order
 
 

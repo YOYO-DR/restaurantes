@@ -1,9 +1,12 @@
 import { Link, useNavigate } from "react-router-dom";
+import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Bell, Settings, LogOut, User, Menu } from "lucide-react";
+import { Bell, CheckCheck, Package, Settings, LogOut, User, Menu } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { useAuth } from "@/context/auth-context";
 import { useNotificationCenter } from "@/hooks/use-orders";
@@ -19,7 +22,7 @@ function getDashboardPath(role) {
 export function DashboardHeader({ userName, userType, onMobileMenuClick }) {
     const navigate = useNavigate();
     const { logout, activeRole, availableRoles, switchRole } = useAuth();
-    const { unreadCount, markAllRead } = useNotificationCenter();
+    const { unreadCount, items, markAllRead } = useNotificationCenter();
     const initials = userName
         .split(" ")
         .map((n) => n[0])
@@ -69,23 +72,68 @@ export function DashboardHeader({ userName, userType, onMobileMenuClick }) {
             </SelectContent>
           </Select>) : null}
         <ThemeToggle />
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative"
-          onClick={async () => {
-            if (unreadCount > 0) {
-              await markAllRead();
-            }
-          }}
-        >
-          <Bell className="h-5 w-5"/>
-          {unreadCount > 0 ? (
-            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
-              {unreadCount}
-            </span>
-          ) : null}
-        </Button>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="h-5 w-5"/>
+              {unreadCount > 0 ? (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
+                  {unreadCount}
+                </span>
+              ) : null}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-80 p-0">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <p className="font-semibold">Notificaciones</p>
+              {unreadCount > 0 ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={markAllRead}
+                >
+                  <CheckCheck className="h-3.5 w-3.5" />
+                  Marcar leidas
+                </Button>
+              ) : null}
+            </div>
+            <div className="max-h-80 overflow-y-auto">
+              {items.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-2 py-10 text-center text-sm text-muted-foreground">
+                  <Bell className="h-8 w-8 opacity-30" />
+                  <p>Sin notificaciones</p>
+                </div>
+              ) : (
+                items.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`flex items-start gap-3 border-b border-border px-4 py-3 last:border-0 ${!item.read_at ? "bg-primary/5" : ""}`}
+                  >
+                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium leading-snug">
+                        {item.type_code === "new_order"
+                          ? `Nuevo pedido ${item.payload_json?.order_code || ""}`
+                          : item.type_code === "order_cancelled"
+                          ? `Pedido cancelado ${item.payload_json?.order_code || ""}`
+                          : "Notificacion"}
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(item.created_at), { addSuffix: true, locale: es })}
+                      </p>
+                    </div>
+                    {!item.read_at ? (
+                      <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                    ) : null}
+                  </div>
+                ))
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

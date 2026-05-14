@@ -22,6 +22,19 @@ class AccountProfileSerializer(serializers.Serializer):
     email = serializers.EmailField()
     phone = serializers.CharField(max_length=30, allow_blank=True, required=False)
     avatar_url = serializers.URLField(allow_blank=True, required=False)
+    avatar_file = serializers.FileField(required=False, allow_null=True, write_only=True)
+    remove_avatar = serializers.BooleanField(required=False, write_only=True)
+
+    def _resolve_avatar_url(self, profile) -> str:
+        if not profile:
+            return ""
+        request = self.context.get("request")
+        if profile.avatar_file:
+            file_url = profile.avatar_file.url
+            if request and file_url.startswith("/"):
+                return request.build_absolute_uri(file_url)
+            return file_url
+        return profile.avatar_url or ""
 
     def to_representation(self, instance):
         profile = getattr(instance, "profile", None)
@@ -30,7 +43,7 @@ class AccountProfileSerializer(serializers.Serializer):
             "name": instance.name,
             "email": instance.email,
             "phone": profile.phone if profile else "",
-            "avatar_url": profile.avatar_url if profile else "",
+            "avatar_url": self._resolve_avatar_url(profile),
         }
 
     def update(self, instance, validated_data):
@@ -48,8 +61,17 @@ class AccountProfileSerializer(serializers.Serializer):
             },
         )
         profile.phone = validated_data.get("phone", profile.phone)
-        profile.avatar_url = validated_data.get("avatar_url", profile.avatar_url)
-        profile.save(update_fields=["phone", "avatar_url"])
+
+        if validated_data.get("remove_avatar"):
+            profile.avatar_file = None
+            profile.avatar_url = ""
+        elif validated_data.get("avatar_file"):
+            profile.avatar_file = validated_data["avatar_file"]
+            profile.avatar_url = ""
+        elif "avatar_url" in validated_data:
+            profile.avatar_url = validated_data["avatar_url"]
+
+        profile.save(update_fields=["phone", "avatar_url", "avatar_file"])
         return instance
 
 

@@ -125,6 +125,10 @@ class AccountProfileViewSet(GenericViewSet):
     permission_classes = [IsAuthenticatedUser]
     serializer_class = AccountProfileSerializer
 
+    def get_serializer(self, *args, **kwargs):
+        kwargs.setdefault("context", {})["request"] = self.request
+        return super().get_serializer(*args, **kwargs)
+
     def list(self, request):
         ensure_default_notification_preferences(request.user)
         unread_notifications = NotificationEvent.objects.filter(

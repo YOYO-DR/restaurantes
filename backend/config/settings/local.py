@@ -33,6 +33,17 @@ EMAIL_BACKEND = env(
     default="django.core.mail.backends.console.EmailBackend",
 )
 
+RESEND_API_KEY = env("RESEND_API_KEY", default="")
+
+if EMAIL_BACKEND == "anymail.backends.resend.EmailBackend":
+    INSTALLED_APPS += ["anymail"]
+    ANYMAIL = {
+        "RESEND_API_KEY": RESEND_API_KEY,
+    }
+else:
+    EMAIL_HOST = env("EMAIL_HOST", default="mailpit")
+    EMAIL_PORT = env.int("EMAIL_PORT", default=1025)
+
 # WhiteNoise
 # ------------------------------------------------------------------------------
 # http://whitenoise.evans.io/en/latest/django.html#using-whitenoise-in-development

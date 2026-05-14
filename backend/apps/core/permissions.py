@@ -104,3 +104,101 @@ class IsOwnerOfRestaurantResourceOrAdminRole(permissions.BasePermission):
         operator_restaurant_id = get_operator_restaurant_id(request.user)
         restaurant_id = getattr(restaurant, "id", None)
         return bool(operator_restaurant_id and restaurant_id == operator_restaurant_id)
+
+
+def operator_can(user, module: str, action: str) -> bool:
+    """
+    Verifica si un usuario puede realizar una acción en un módulo.
+    action: "view" | "create" | "edit" | "delete"
+    Propietarios y admins siempre tienen acceso completo.
+    """
+    if not user or not user.is_authenticated:
+        return False
+    if is_admin_user(user) or is_owner_user(user):
+        return True
+    if not is_operator_user(user):
+        return False
+    operador = getattr(user, "operador", None)
+    if not operador:
+        return False
+    perm = operador.permissions.filter(module=module).first()
+    if not perm:
+        return False
+    return bool(getattr(perm, f"can_{action}", False))
+
+
+class OperatorModulePermission(permissions.BasePermission):
+    """
+    Valida que un operador tenga permiso para la acción solicitada en el módulo.
+    Mapea el método HTTP a la acción correspondiente.
+    Owners y admins siempre pasan (operator_can retorna True para ellos).
+    """
+    module = ""
+    _METHOD_ACTION = {
+        "GET": "view",
+        "HEAD": "view",
+        "OPTIONS": "view",
+        "POST": "create",
+        "PUT": "edit",
+        "PATCH": "edit",
+        "DELETE": "delete",
+    }
+
+    def has_permission(self, request, view) -> bool:
+        if not user_has_role(request.user, "restaurante", "operador", "admin"):
+            return False
+        action = self._METHOD_ACTION.get(request.method, "view")
+        return operator_can(request.user, self.module, action)
+
+    def has_object_permission(self, request, view, obj) -> bool:
+        if is_admin_user(request.user):
+            return True
+        restaurant = getattr(obj, "restaurant", None) or getattr(obj, "restaurante", None)
+        if not restaurant:
+            return True
+        if getattr(restaurant, "owner_id", None) == request.user.id:
+            return True
+        operator_restaurant_id = get_operator_restaurant_id(request.user)
+        return bool(operator_restaurant_id and getattr(restaurant, "id", None) == operator_restaurant_id)
+
+
+class MenuModulePermission(OperatorModulePermission):
+    module = "menu"
+
+
+class InventarioModulePermission(OperatorModulePermission):
+    module = "inventario"
+
+
+class PedidosModulePermission(OperatorModulePermission):
+    module = "pedidos"
+
+
+class ClientesModulePermission(OperatorModulePermission):
+    module = "clientes"
+
+
+class ResenasModulePermission(OperatorModulePermission):
+    module = "resenas"
+
+
+class ResenasEditPermission(OperatorModulePermission):
+    """Para acciones POST que semánticamente son 'editar' (ej: responder reseña)."""
+    module = "resenas"
+    _METHOD_ACTION = {**OperatorModulePermission._METHOD_ACTION, "POST": "edit"}
+
+
+class AnaliticasModulePermission(OperatorModulePermission):
+    module = "analiticas"
+
+
+class QrModulePermission(OperatorModulePermission):
+    module = "qr"
+
+
+class PersonalizacionModulePermission(OperatorModulePermission):
+    module = "personalizacion"
+
+
+class ConfiguracionModulePermission(OperatorModulePermission):
+    module = "configuracion"

@@ -1,3 +1,6 @@
+from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
 from django.utils.text import slugify
 
 from apps.platform_config.models import BillingPeriod
@@ -5,6 +8,10 @@ from apps.platform_config.models import SubscriptionPlan
 from apps.restaurants.models import CartPosition
 from apps.restaurants.models import CategoryNavigationStyle
 from apps.restaurants.models import MenuLayoutOption
+from apps.restaurants.models import OPERATOR_MODULES
+from apps.restaurants.models import Operador
+from apps.restaurants.models import OperatorInvitation
+from apps.restaurants.models import OperatorPermission
 from apps.restaurants.models import QrCode
 from apps.restaurants.models import QrTargetType
 from apps.restaurants.models import Restaurant
@@ -17,6 +24,68 @@ from apps.restaurants.models import RestaurantOrderCapability
 from apps.restaurants.models import RestaurantStatus
 from apps.restaurants.models import RestaurantTable
 from apps.restaurants.models import TableStatus
+
+DEFAULT_OPERATOR_PERMISSIONS: dict[str, dict[str, bool]] = {
+    "pedidos":        {"can_view": True,  "can_create": False, "can_edit": True,  "can_delete": False},
+    "menu":           {"can_view": True,  "can_create": True,  "can_edit": True,  "can_delete": False},
+    "inventario":     {"can_view": True,  "can_create": False, "can_edit": False, "can_delete": False},
+    "clientes":       {"can_view": True,  "can_create": False, "can_edit": False, "can_delete": False},
+    "resenas":        {"can_view": True,  "can_create": False, "can_edit": True,  "can_delete": False},
+    "analiticas":     {"can_view": True,  "can_create": False, "can_edit": False, "can_delete": False},
+    "qr":             {"can_view": False, "can_create": False, "can_edit": False, "can_delete": False},
+    "personalizacion":{"can_view": False, "can_create": False, "can_edit": False, "can_delete": False},
+    "configuracion":  {"can_view": False, "can_create": False, "can_edit": False, "can_delete": False},
+}
+
+
+def create_default_operator_permissions(operator: Operador) -> None:
+    for module in OPERATOR_MODULES:
+        defaults = DEFAULT_OPERATOR_PERMISSIONS.get(module, {"can_view": True})
+        OperatorPermission.objects.get_or_create(
+            operator=operator,
+            module=module,
+            defaults=defaults,
+        )
+
+
+def build_permissions_snapshot_from_request(permissions_data: dict) -> dict:
+    """Normaliza el snapshot de permisos garantizando que todos los módulos estén presentes."""
+    snapshot = {}
+    for module in OPERATOR_MODULES:
+        module_perms = permissions_data.get(module, DEFAULT_OPERATOR_PERMISSIONS.get(module, {}))
+        snapshot[module] = {
+            "can_view": bool(module_perms.get("can_view", True)),
+            "can_create": bool(module_perms.get("can_create", False)),
+            "can_edit": bool(module_perms.get("can_edit", False)),
+            "can_delete": bool(module_perms.get("can_delete", False)),
+        }
+    return snapshot
+
+
+def send_operator_invitation_email(invitation: OperatorInvitation) -> None:
+    base_url = getattr(settings, "FRONTEND_URL", "http://localhost:5174").rstrip("/")
+    accept_url = f"{base_url}/invitacion-operador/{invitation.token}"
+
+    context = {
+        "restaurant_name": invitation.restaurant.display_name,
+        "invited_by_name": getattr(invitation.invited_by, "name", "") or invitation.restaurant.display_name,
+        "accept_url": accept_url,
+        "email": invitation.email,
+    }
+
+    subject = f"Invitacion para unirte a {invitation.restaurant.display_name} en FoodHub"
+    text_body = render_to_string("restaurants/operator_invitation_email.txt", context)
+    html_body = render_to_string("restaurants/operator_invitation_email.html", context)
+    from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@foodhub.local")
+
+    message = EmailMultiAlternatives(
+        subject=subject,
+        body=text_body,
+        from_email=from_email,
+        to=[invitation.email],
+    )
+    message.attach_alternative(html_body, "text/html")
+    message.send(fail_silently=True)
 
 
 def _build_unique_restaurant_slug(base_value: str) -> str:

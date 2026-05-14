@@ -1,5 +1,6 @@
 import { toast } from "sonner"
 import { useState } from "react"
+import { useOperatorPermission } from "@/hooks/use-operator-permission"
 import { CancelOrderDialog } from "@/components/orders/cancel-order-dialog"
 import { DashboardShellSkeleton, OrdersListSkeleton } from "@/components/ui/app-skeletons"
 import { Badge } from "@/components/ui/badge"
@@ -135,6 +136,7 @@ function StatusMetric({ label, total, icon, highlight = false }) {
 }
 
 function OrderCard({ order, onStatusChange, onCancel, updatingOrderId }) {
+  const { canEdit } = useOperatorPermission("pedidos")
   const nextStatus = order.status_code === "new"
     ? { code: "preparing", label: "Empezar a preparar", icon: <ChefHat className="mr-2 h-4 w-4" /> }
     : order.status_code === "preparing"
@@ -211,7 +213,7 @@ function OrderCard({ order, onStatusChange, onCancel, updatingOrderId }) {
         ) : null}
 
         <div className="flex gap-3">
-          {nextStatus ? (
+          {canEdit && nextStatus ? (
             <Button
               className="flex-1"
               disabled={updatingOrderId === order.id}
@@ -241,7 +243,7 @@ function OrderCard({ order, onStatusChange, onCancel, updatingOrderId }) {
             <Phone className="mr-2 h-4 w-4" />
             Llamar
           </Button>
-          {!["delivered", "cancelled"].includes(order.status_code) ? (
+          {canEdit && !["delivered", "cancelled"].includes(order.status_code) ? (
             <Button variant="destructive" onClick={() => onCancel(order)} disabled={updatingOrderId === order.id}>
               Cancelar
             </Button>

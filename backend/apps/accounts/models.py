@@ -55,6 +55,7 @@ class UserProfile(BaseModel):
     )
     phone = models.CharField(max_length=30, blank=True)
     avatar_url = models.URLField(blank=True)
+    avatar_file = models.FileField(upload_to="user-avatars/", blank=True)
     preferred_language = models.CharField(max_length=20, blank=True)
 
     class Meta:

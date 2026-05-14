@@ -234,3 +234,48 @@ export function deleteOwnerMenuItem(menuItemId) {
     headers: {},
   })
 }
+
+// ── Operator management ──────────────────────────────────────────────────────
+
+export function getOwnerOperators(restaurantId) {
+  return apiJson(`/api/owner/restaurants/${restaurantId}/operators/`)
+}
+
+export function inviteOwnerOperator(restaurantId, payload) {
+  return apiJson(`/api/owner/restaurants/${restaurantId}/operators/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+}
+
+export function removeOwnerOperator(restaurantId, operatorId) {
+  return apiJson(`/api/owner/restaurants/${restaurantId}/operators/${operatorId}/`, {
+    method: "DELETE",
+    headers: {},
+  })
+}
+
+export function updateOwnerOperatorPermissions(restaurantId, operatorId, permissions) {
+  return apiJson(`/api/owner/restaurants/${restaurantId}/operators/${operatorId}/permissions/`, {
+    method: "PATCH",
+    body: JSON.stringify({ permissions }),
+  })
+}
+
+export function cancelOwnerInvitation(restaurantId, invitationId) {
+  return apiJson(`/api/owner/restaurants/${restaurantId}/invitations/${invitationId}/`, {
+    method: "DELETE",
+    headers: {},
+  })
+}
+
+export function getOperatorInvitation(token) {
+  return apiJson(`/api/invitations/${token}/`)
+}
+
+export function acceptOperatorInvitation(token, payload) {
+  return apiJson(`/api/invitations/${token}/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+}

@@ -1,0 +1,13 @@
+Hola,
+
+{{ invited_by_name }} te ha invitado a unirte a {{ restaurant_name }} como operador en FoodHub.
+
+Para aceptar la invitacion y crear tu cuenta, ingresa al siguiente enlace:
+
+{{ accept_url }}
+
+Este enlace es valido por 72 horas.
+
+Si no esperabas esta invitacion, puedes ignorar este mensaje.
+
+-- FoodHub

@@ -106,6 +106,16 @@ export function getAccountProfile() {
 }
 
 export function updateAccountProfile(payload) {
+  const hasFile = payload.avatar_file instanceof File
+  if (hasFile || payload.remove_avatar) {
+    const formData = new FormData()
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value === undefined || value === null) return
+      if (typeof value === "boolean") { formData.append(key, value ? "true" : "false"); return }
+      formData.append(key, value)
+    })
+    return apiJson("/api/account/profile/_/", { method: "PATCH", body: formData })
+  }
   return apiJson("/api/account/profile/_/", {
     method: "PATCH",
     body: JSON.stringify(payload),

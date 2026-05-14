@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useOperatorPermission } from "@/hooks/use-operator-permission"
 import { toast } from "sonner"
 import { DashboardShellSkeleton } from "@/components/ui/app-skeletons"
 import { Badge } from "@/components/ui/badge"
@@ -83,7 +84,11 @@ function InventoryItemDialog({
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Nombre" value={form.name} onChange={(value) => setForm((current) => ({ ...current, name: value }))} />
-            <Field label="SKU" value={form.sku} onChange={(value) => setForm((current) => ({ ...current, sku: value }))} />
+            <div className="space-y-2">
+              <Label>SKU</Label>
+              <p className="text-xs text-muted-foreground">Codigo unico que identifica este ingrediente en tu inventario.</p>
+              <Input value={form.sku} onChange={(event) => setForm((current) => ({ ...current, sku: event.target.value }))} />
+            </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -235,6 +240,7 @@ function MovementHistoryDialog({ open, onOpenChange, item }) {
 }
 
 export default function OwnerInventoryPage() {
+  const { canCreate, canEdit } = useOperatorPermission("inventario")
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
   const [itemDialogOpen, setItemDialogOpen] = useState(false)
@@ -275,17 +281,19 @@ export default function OwnerInventoryPage() {
           <h2 className="text-2xl font-bold tracking-tight">Inventario</h2>
           <p className="text-muted-foreground">Gestiona el stock real de ingredientes de {restaurant?.name || "tu restaurante"}</p>
         </div>
-        <Button
-          className="w-full sm:w-auto"
-          onClick={() => {
-            setSelectedItem(null)
-            setItemDialogOpen(true)
-          }}
-          disabled={!restaurant}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Agregar ingrediente
-        </Button>
+        {canCreate ? (
+          <Button
+            className="w-full sm:w-auto"
+            onClick={() => {
+              setSelectedItem(null)
+              setItemDialogOpen(true)
+            }}
+            disabled={!restaurant}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Agregar ingrediente
+          </Button>
+        ) : null}
       </div>
 
       {error ? <div className="text-sm text-destructive">{error}</div> : null}
@@ -387,25 +395,29 @@ export default function OwnerInventoryPage() {
                   >
                     Ver historial
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedItem(item)
-                      setItemDialogOpen(true)
-                    }}
-                  >
-                    Editar
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setSelectedItem(item)
-                      setMovementDialogOpen(true)
-                    }}
-                  >
-                    Actualizar
-                  </Button>
+                  {canEdit ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedItem(item)
+                        setItemDialogOpen(true)
+                      }}
+                    >
+                      Editar
+                    </Button>
+                  ) : null}
+                  {canEdit ? (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setSelectedItem(item)
+                        setMovementDialogOpen(true)
+                      }}
+                    >
+                      Actualizar
+                    </Button>
+                  ) : null}
                 </div>
               </div>
             ))}

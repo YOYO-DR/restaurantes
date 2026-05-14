@@ -628,6 +628,7 @@ export function useCustomerSettings() {
 
 export function useNotificationCenter() {
   const [unreadCount, setUnreadCount] = useState(0)
+  const [items, setItems] = useState([])
   const [isLoading, setIsLoading] = useState(true)
 
   const load = useCallback(async () => {
@@ -635,6 +636,7 @@ export function useNotificationCenter() {
     try {
       const payload = await getNotificationCenter()
       setUnreadCount(payload.unread_count || 0)
+      setItems(payload.items || [])
     } finally {
       setIsLoading(false)
     }
@@ -646,11 +648,13 @@ export function useNotificationCenter() {
 
   return {
     unreadCount,
+    items,
     isLoading,
     reload: load,
     markAllRead: async () => {
       await markAllNotificationsRead()
       setUnreadCount(0)
+      setItems((current) => current.map((item) => ({ ...item, read_at: new Date().toISOString() })))
     },
     createNotification: async (payload) => {
       await createNotificationEvent(payload)

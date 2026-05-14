@@ -9,6 +9,7 @@ from apps.accounts.models import Role
 from apps.accounts.models import UserRole
 from apps.orders.models import Order
 from apps.restaurants.models import Operador
+from apps.restaurants.models import OperatorPermission
 from apps.restaurants.models import TableStatus
 from apps.restaurants.tests.factories import AddressTypeFactory
 from apps.restaurants.tests.factories import CustomerAddressFactory
@@ -581,7 +582,8 @@ def test_operator_can_list_orders_for_assigned_restaurant(api_client: APIClient)
     restaurant, item, address = setup_checkout_data(customer)
     restaurant.owner = owner
     restaurant.save(update_fields=["owner"])
-    Operador.objects.create(user=operator, restaurante=restaurant)
+    op = Operador.objects.create(user=operator, restaurante=restaurant)
+    OperatorPermission.objects.create(operator=op, module="pedidos", can_view=True, can_create=False, can_edit=True, can_delete=False)
 
     api_client.force_authenticate(user=customer)
     api_client.post(
@@ -613,7 +615,8 @@ def test_operator_can_update_order_status_for_assigned_restaurant(
     restaurant, item, address = setup_checkout_data(customer)
     restaurant.owner = owner
     restaurant.save(update_fields=["owner"])
-    Operador.objects.create(user=operator, restaurante=restaurant)
+    op = Operador.objects.create(user=operator, restaurante=restaurant)
+    OperatorPermission.objects.create(operator=op, module="pedidos", can_view=True, can_create=False, can_edit=True, can_delete=False)
 
     api_client.force_authenticate(user=customer)
     create_response = api_client.post(

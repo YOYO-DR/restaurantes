@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { useOperatorPermission } from "@/hooks/use-operator-permission"
 import { toast } from "sonner"
 import { DashboardShellSkeleton } from "@/components/ui/app-skeletons"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -30,6 +31,7 @@ function getInitials(name) {
 }
 
 function ReviewsList({ reviews, replyingTo, replyText, setReplyingTo, setReplyText, onReply, isReplying }) {
+  const { canEdit } = useOperatorPermission("resenas")
   return (
     <div className="space-y-4">
       {reviews.map((review) => (
@@ -92,12 +94,12 @@ function ReviewsList({ reviews, replyingTo, replyText, setReplyingTo, setReplyTe
                   </Button>
                 </div>
               </div>
-            ) : (
+            ) : canEdit ? (
               <Button size="sm" variant="outline" onClick={() => setReplyingTo(review.id)}>
                 <MessageCircle className="mr-2 h-3 w-3" />
                 Responder
               </Button>
-            )
+            ) : null
           ) : null}
         </div>
       ))}

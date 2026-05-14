@@ -4,8 +4,10 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.viewsets import ModelViewSet
 
+from apps.core.permissions import InventarioModulePermission
 from apps.core.permissions import IsAuthenticatedUser
 from apps.core.permissions import IsOwnerOfRestaurantResourceOrAdminRole
+from apps.core.permissions import MenuModulePermission
 from apps.core.permissions import get_user_owned_or_operated_restaurant_ids
 from apps.core.permissions import is_admin_user
 from apps.menu.api.serializers import InventoryItemSerializer
@@ -22,7 +24,7 @@ from apps.menu.services import ensure_inventory_catalogs
 
 
 class OwnerMenuItemViewSet(GenericViewSet):
-    permission_classes = [IsOwnerOfRestaurantResourceOrAdminRole]
+    permission_classes = [MenuModulePermission]
     serializer_class = MenuItemAvailabilitySerializer
     queryset = MenuItem.objects.select_related("restaurant")
 
@@ -39,7 +41,7 @@ class OwnerMenuItemViewSet(GenericViewSet):
 
 
 class OwnerMenuCategoryViewSet(ModelViewSet):
-    permission_classes = [IsOwnerOfRestaurantResourceOrAdminRole]
+    permission_classes = [MenuModulePermission]
     serializer_class = OwnerMenuCategoryWriteSerializer
     queryset = MenuCategory.objects.select_related("restaurant")
 
@@ -79,7 +81,7 @@ class OwnerMenuCategoryViewSet(ModelViewSet):
 
 
 class OwnerMenuCrudItemViewSet(ModelViewSet):
-    permission_classes = [IsOwnerOfRestaurantResourceOrAdminRole]
+    permission_classes = [MenuModulePermission]
     serializer_class = OwnerMenuItemWriteSerializer
     queryset = MenuItem.objects.select_related("restaurant", "menu_category")
 
@@ -92,7 +94,7 @@ class OwnerMenuCrudItemViewSet(ModelViewSet):
 
 
 class OwnerInventoryItemViewSet(ModelViewSet):
-    permission_classes = [IsOwnerOfRestaurantResourceOrAdminRole]
+    permission_classes = [InventarioModulePermission]
     serializer_class = InventoryItemSerializer
     queryset = InventoryItem.objects.select_related("restaurant", "unit_type")
 
@@ -136,7 +138,7 @@ class OwnerInventoryItemViewSet(ModelViewSet):
 
 
 class OwnerInventoryMetadataViewSet(GenericViewSet):
-    permission_classes = [IsAuthenticatedUser]
+    permission_classes = [InventarioModulePermission]
 
     def list(self, request, *args, **kwargs):
         ensure_inventory_catalogs()

@@ -1,3 +1,4 @@
+import django.contrib.auth
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -8,6 +9,10 @@ from apps.orders.models import OrderItem
 from apps.restaurants.models import CartPosition
 from apps.restaurants.models import CategoryNavigationStyle
 from apps.restaurants.models import MenuLayoutOption
+from apps.restaurants.models import OPERATOR_MODULES
+from apps.restaurants.models import Operador
+from apps.restaurants.models import OperatorInvitation
+from apps.restaurants.models import OperatorPermission
 from apps.restaurants.models import Restaurant
 from apps.restaurants.models import RestaurantAddress
 from apps.restaurants.models import RestaurantDeliverySetting
@@ -978,3 +983,78 @@ class RestaurantPersonalizationSerializer(serializers.Serializer):
         social_links.save()
 
         return instance
+
+
+# ── Operator management serializers ──────────────────────────────────────────
+
+class OperatorPermissionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OperatorPermission
+        fields = ["module", "can_view", "can_create", "can_edit", "can_delete"]
+
+
+class OperatorDetailSerializer(serializers.ModelSerializer):
+    user_id = serializers.UUIDField(source="user.id", read_only=True)
+    name = serializers.CharField(source="user.name", read_only=True)
+    email = serializers.EmailField(source="user.email", read_only=True)
+    permissions = OperatorPermissionSerializer(many=True, read_only=True)
+    joined_at = serializers.DateTimeField(source="created_at", read_only=True)
+
+    class Meta:
+        model = Operador
+        fields = ["id", "user_id", "name", "email", "permissions", "joined_at"]
+
+
+class OperatorPermissionsUpdateSerializer(serializers.Serializer):
+    """Recibe { module: {can_view, can_create, can_edit, can_delete} }"""
+    permissions = serializers.DictField(
+        child=serializers.DictField(child=serializers.BooleanField()),
+    )
+
+    def validate_permissions(self, value):
+        for module, perms in value.items():
+            if module not in OPERATOR_MODULES:
+                raise serializers.ValidationError(
+                    f"Modulo '{module}' no valido. Opciones: {OPERATOR_MODULES}"
+                )
+            for action in ["can_view", "can_create", "can_edit", "can_delete"]:
+                if action not in perms:
+                    raise serializers.ValidationError(
+                        f"El modulo '{module}' debe incluir '{action}'."
+                    )
+        return value
+
+
+class OperatorInviteSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    permissions = serializers.DictField(
+        child=serializers.DictField(child=serializers.BooleanField()),
+        required=False,
+    )
+
+    def validate_permissions(self, value):
+        for module in value:
+            if module not in OPERATOR_MODULES:
+                raise serializers.ValidationError(
+                    f"Modulo '{module}' no valido."
+                )
+        return value
+
+
+class OperatorInvitationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OperatorInvitation
+        fields = ["id", "email", "created_at", "expires_at", "accepted_at"]
+
+
+class OperatorInvitationAcceptSerializer(serializers.Serializer):
+    name = serializers.CharField(min_length=2, max_length=200)
+    password = serializers.CharField(min_length=8, write_only=True)
+    password_confirm = serializers.CharField(min_length=8, write_only=True)
+
+    def validate(self, attrs):
+        if attrs["password"] != attrs["password_confirm"]:
+            raise serializers.ValidationError(
+                {"password_confirm": "Las contrasenas no coinciden."}
+            )
+        return attrs

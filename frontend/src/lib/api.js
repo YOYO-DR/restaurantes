@@ -55,31 +55,41 @@ export async function apiRequest(path, options = {}, retry = true) {
   return response
 }
 
+let refreshPromise = null
+
 export async function refreshAccessToken() {
-  const response = await fetch(`${API_BASE_URL}/api/auth/refresh/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    credentials: "include",
-    body: JSON.stringify({}),
+  if (refreshPromise) {
+    return refreshPromise
+  }
+
+  refreshPromise = (async () => {
+    const response = await fetch(`${API_BASE_URL}/api/auth/refresh/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({}),
+    })
+
+    if (!response.ok) {
+      clearAccessToken()
+      notifyAuthFailure()
+      return false
+    }
+
+    const data = await response.json()
+    if (!data.access) {
+      clearAccessToken()
+      notifyAuthFailure()
+      return false
+    }
+
+    setAccessToken(data.access)
+    return true
+  })().finally(() => {
+    refreshPromise = null
   })
 
-  if (!response.ok) {
-    clearAccessToken()
-    notifyAuthFailure()
-    return false
-  }
-
-  const data = await response.json()
-  if (!data.access) {
-    clearAccessToken()
-    notifyAuthFailure()
-    return false
-  }
-
-  setAccessToken(data.access)
-  return true
+  return refreshPromise
 }
 
 export async function apiJson(path, options = {}, retry = true) {

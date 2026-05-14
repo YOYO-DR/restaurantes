@@ -7,6 +7,7 @@ from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from apps.core.permissions import IsAuthenticatedUser
 from apps.core.permissions import IsOwnerOrAdminRole
+from apps.core.permissions import PedidosModulePermission
 from apps.core.permissions import get_user_owned_or_operated_restaurant_ids
 from apps.core.permissions import is_admin_user
 from apps.loyalty.services import assign_points_for_order
@@ -184,7 +185,7 @@ class CheckoutViewSet(GenericViewSet):
 
 
 class OwnerOrderViewSet(ReadOnlyModelViewSet):
-    permission_classes = [IsOwnerOrAdminRole]
+    permission_classes = [PedidosModulePermission]
     serializer_class = OrderSerializer
 
     def get_queryset(self):

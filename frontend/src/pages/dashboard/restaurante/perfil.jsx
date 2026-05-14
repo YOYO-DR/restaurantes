@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,11 +8,15 @@ import { ProfilePageSkeleton } from "@/components/ui/app-skeletons"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAccountProfile } from "@/hooks/use-orders"
-import { Check, Loader2, Upload } from "lucide-react"
+import { Check, Loader2, Upload, X } from "lucide-react"
 
 export default function PerfilRestaurantePage() {
   const { profile, isLoading, isSaving, error, saveProfile } = useAccountProfile()
   const [form, setForm] = useState({ name: "", email: "", phone: "" })
+  const [avatarPreview, setAvatarPreview] = useState("")
+  const [avatarFile, setAvatarFile] = useState(null)
+  const [removeAvatar, setRemoveAvatar] = useState(false)
+  const fileInputRef = useRef(null)
 
   useEffect(() => {
     if (profile) {
@@ -21,11 +25,29 @@ export default function PerfilRestaurantePage() {
         email: profile.email || "",
         phone: profile.phone || "",
       })
+      setAvatarPreview(profile.avatar_url || "")
     }
   }, [profile])
 
+  const initials = form.name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("") || "U"
+
   if (isLoading) {
     return <ProfilePageSkeleton showBadge showSecondaryMeta />
+  }
+
+  function handleFileSelect(event) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setAvatarFile(file)
+    setAvatarPreview(URL.createObjectURL(file))
+    setRemoveAvatar(false)
+    event.target.value = ""
+  }
+
+  function handleRemoveAvatar() {
+    setAvatarFile(null)
+    setAvatarPreview("")
+    setRemoveAvatar(true)
   }
 
   return (
@@ -42,15 +64,29 @@ export default function PerfilRestaurantePage() {
           <CardContent className="pt-6">
             <div className="flex flex-col items-center text-center">
               <Avatar className="h-24 w-24">
+                <AvatarImage src={avatarPreview} alt={form.name} />
                 <AvatarFallback className="bg-primary/10 text-2xl text-primary">
-                  {form.name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("") || "U"}
+                  {initials}
                 </AvatarFallback>
               </Avatar>
-              <Button variant="link" size="sm" className="mt-2" disabled>
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className="mt-2"
+                onClick={() => fileInputRef.current?.click()}
+              >
                 <Upload className="mr-2 h-3 w-3" />
                 Cambiar foto
               </Button>
-              <h2 className="mt-4 text-xl font-semibold">{form.name}</h2>
+              {avatarPreview ? (
+                <Button type="button" variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={handleRemoveAvatar}>
+                  <X className="mr-1 h-3 w-3" />
+                  Quitar foto
+                </Button>
+              ) : null}
+              <h2 className="mt-2 text-xl font-semibold">{form.name}</h2>
               <p className="text-sm text-muted-foreground">Propietario</p>
               {profile?.is_verified ? (
                 <Badge variant="secondary" className="mt-2">
@@ -77,7 +113,13 @@ export default function PerfilRestaurantePage() {
               onSubmit={async (event) => {
                 event.preventDefault()
                 try {
-                  await saveProfile(form)
+                  await saveProfile({
+                    ...form,
+                    ...(avatarFile ? { avatar_file: avatarFile } : {}),
+                    ...(removeAvatar ? { remove_avatar: true } : {}),
+                  })
+                  setAvatarFile(null)
+                  setRemoveAvatar(false)
                   toast.success("Perfil actualizado")
                 } catch (saveError) {
                   toast.error(saveError.message || "No fue posible actualizar el perfil")
