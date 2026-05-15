@@ -1,7 +1,6 @@
-import { createContext, useContext, useMemo } from "react"
-import { useAuth } from "@/context/auth-context"
-import { useOwnerOrderNotifications } from "@/hooks/use-owner-order-notifications"
+import { createContext, useContext, useEffect, useMemo } from "react"
 import { useOwnerOrders } from "@/hooks/use-orders"
+import { realtimeClient } from "@/lib/realtime-client"
 
 const OwnerOrdersContext = createContext(null)
 
@@ -10,10 +9,28 @@ function countUnfinishedOrders(orders) {
 }
 
 export function OwnerOrdersProvider({ children }) {
-  const { user } = useAuth()
   const ownerOrders = useOwnerOrders()
+  const { mergeOrder } = ownerOrders
 
-  useOwnerOrderNotifications(user?.id, ownerOrders.mergeOrder)
+  useEffect(() => {
+    const orderEventTypes = [
+      "order.created",
+      "order.status_changed",
+      "order.cancelled",
+      "order.payment_completed",
+      "order.payment_failed",
+    ]
+
+    const unsubs = orderEventTypes.map((eventType) => (
+      realtimeClient.subscribe(eventType, (payload) => {
+        mergeOrder(payload)
+      })
+    ))
+
+    return () => {
+      unsubs.forEach((unsubscribe) => unsubscribe())
+    }
+  }, [mergeOrder])
 
   const value = useMemo(() => ({
     ...ownerOrders,

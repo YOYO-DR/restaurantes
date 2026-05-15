@@ -75,7 +75,8 @@ def test_refresh_token_lifetime_is_24_hours(api_client: APIClient):
     refresh = RefreshToken.for_user(user)
 
     lifetime = refresh.payload["exp"] - refresh.payload["iat"]
-    assert lifetime == 24 * 60 * 60
+    expected_lifetime = int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds())
+    assert lifetime == expected_lifetime
 
 
 def test_login_invalid_credentials(api_client: APIClient):

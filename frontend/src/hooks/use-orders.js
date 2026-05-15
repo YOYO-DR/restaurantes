@@ -17,21 +17,19 @@ import {
   getCustomerNotificationPreferences,
   getCustomerPaymentMethods,
   getCustomerOrders,
-  getNotificationCenter,
   getOwnerAnalytics,
   getOwnerCustomers,
   getOwnerOrders,
   replyOwnerReview,
   createCustomerPaymentMethod,
-  createNotificationEvent,
   deleteCustomerPaymentMethod,
-  markAllNotificationsRead,
   updateAccountProfile,
   updateCustomerNotificationPreference,
   updateCustomerAddress,
   updateOwnerOrderStatus,
 } from "@/services/orders"
 import { getOwnerRestaurants } from "@/services/restaurants"
+import { useNotificationCenterContext } from "@/context/notification-center-context"
 
 export function useCustomerAddresses(enabled = true) {
   const [addresses, setAddresses] = useState([])
@@ -627,40 +625,7 @@ export function useCustomerSettings() {
 }
 
 export function useNotificationCenter() {
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [items, setItems] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
-
-  const load = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const payload = await getNotificationCenter()
-      setUnreadCount(payload.unread_count || 0)
-      setItems(payload.items || [])
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    load()
-  }, [load])
-
-  return {
-    unreadCount,
-    items,
-    isLoading,
-    reload: load,
-    markAllRead: async () => {
-      await markAllNotificationsRead()
-      setUnreadCount(0)
-      setItems((current) => current.map((item) => ({ ...item, read_at: new Date().toISOString() })))
-    },
-    createNotification: async (payload) => {
-      await createNotificationEvent(payload)
-      await load()
-    },
-  }
+  return useNotificationCenterContext()
 }
 
 export function useCustomerLoyalty(restaurantId) {

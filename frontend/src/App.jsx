@@ -5,6 +5,7 @@ import { DashboardShellSkeleton } from "@/components/ui/app-skeletons"
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { PublicOnlyRoute } from "@/components/auth/public-only-route"
 import { AuthSessionProvider } from "@/components/auth/auth-session-provider"
+import { useRealtimeNotifications } from "@/hooks/use-realtime-notifications"
 import { PublicLayout } from "@/layouts/public-layout"
 import { AdminLayout } from "@/layouts/admin-layout"
 import { ClientLayout } from "@/layouts/client-layout"
@@ -47,10 +48,16 @@ import NotFoundPage from "@/pages/not-found"
 const OwnerQrPage = lazy(() => import("@/pages/dashboard/restaurante/qr"))
 const OwnerCustomizationPage = lazy(() => import("@/pages/dashboard/restaurante/personalizacion"))
 
+function RealtimeBootstrap() {
+  useRealtimeNotifications()
+  return null
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <AuthSessionProvider>
+        <RealtimeBootstrap />
         <Routes>
           <Route element={<PublicLayout />}>
             <Route path="/" element={<HomePage />} />

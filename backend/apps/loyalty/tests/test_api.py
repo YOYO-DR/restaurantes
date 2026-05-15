@@ -28,19 +28,24 @@ def test_customer_loyalty_returns_authenticated_user_data(api_client: APIClient)
     user = UserFactory()
     other_user = UserFactory()
     tier = LoyaltyTier.objects.create(code="base", name="Base", min_points=0)
+    restaurant = RestaurantFactory(display_name="La Brasa")
+    other_restaurant = RestaurantFactory(display_name="Otra Cocina")
+
     LoyaltyAccount.objects.create(
         user=user,
+        restaurant=restaurant,
         tier=tier,
         current_points=120,
         lifetime_points=300,
     )
     LoyaltyAccount.objects.create(
         user=other_user,
+        restaurant=other_restaurant,
         tier=tier,
         current_points=900,
         lifetime_points=1200,
     )
-    favorite_restaurant = RestaurantFactory(display_name="La Brasa")
+    favorite_restaurant = restaurant
     Favorite.objects.create(user=user, restaurant=favorite_restaurant)
     LoyaltyReward.objects.create(
         restaurant=favorite_restaurant,
@@ -63,7 +68,7 @@ def test_customer_loyalty_returns_authenticated_user_data(api_client: APIClient)
     assert response.status_code == status.HTTP_200_OK
     assert response.data["current_points"] == 120
     assert response.data["total_earned"] == 300
-    assert response.data["current_level"] == "Base"
+    assert response.data["current_level"] == "Varios"
     assert [reward["name"] for reward in response.data["available_rewards"]] == [
         "Postre gratis",
     ]

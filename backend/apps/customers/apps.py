@@ -5,3 +5,6 @@ from django.utils.translation import gettext_lazy as _
 class CustomersConfig(AppConfig):
     name = "apps.customers"
     verbose_name = _("Customers")
+
+    def ready(self):
+        from apps.customers import signals  # noqa: F401

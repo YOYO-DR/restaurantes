@@ -273,6 +273,20 @@ class CheckoutSerializer(serializers.Serializer):
             changed_by=request.user if request.user.is_authenticated else None,
         )
 
+        if order.user_id and order.restaurant.orders.filter(user_id=order.user_id).count() == 1:
+            from apps.notifications import realtime
+
+            realtime.notify_restaurant(
+                restaurant_id=order.restaurant_id,
+                module="clientes",
+                event_type="customer.first_order",
+                payload={
+                    "order_id": str(order.id),
+                    "order_code": order.order_code,
+                    "user_id": str(order.user_id),
+                },
+            )
+
         notify_restaurant_new_order(order)
         send_order_confirmation_email_task.delay(str(order.id))
         return order

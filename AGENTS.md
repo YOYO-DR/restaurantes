@@ -12,6 +12,12 @@ For **any backend command** (manage.py, tests, lint, migrations, shell), run it 
 docker compose -f docker-compose.local.yml run --rm -e PGB_POSTGRES_HOST=postgres -e PGB_POSTGRES_PORT=5432 django
 ```
 
+For **pytest specifically**, include explicit DB host overrides with `-e` in the same `docker compose run` command:
+
+```bash
+docker compose -f docker-compose.local.yml run --rm -e PGB_POSTGRES_HOST=postgres -e PGB_POSTGRES_IP=postgres -e PGB_POSTGRES_PORT=5432 django pytest
+```
+
 Examples in this document use that prefix and assume working directory: `backend/`.
 
 ## 2) Project layout
@@ -76,22 +82,22 @@ From `backend/`:
 
 ```bash
 # All tests
-docker compose -f docker-compose.local.yml run --rm -e PGB_POSTGRES_HOST=postgres -e PGB_POSTGRES_PORT=5432 django pytest
+docker compose -f docker-compose.local.yml run --rm -e PGB_POSTGRES_HOST=postgres -e PGB_POSTGRES_IP=postgres -e PGB_POSTGRES_PORT=5432 django pytest
 
 # Single file
-docker compose -f docker-compose.local.yml run --rm -e PGB_POSTGRES_HOST=postgres -e PGB_POSTGRES_PORT=5432 django pytest apps/users/tests/test_models.py
+docker compose -f docker-compose.local.yml run --rm -e PGB_POSTGRES_HOST=postgres -e PGB_POSTGRES_IP=postgres -e PGB_POSTGRES_PORT=5432 django pytest apps/users/tests/test_models.py
 
 # Single test class
-docker compose -f docker-compose.local.yml run --rm -e PGB_POSTGRES_HOST=postgres -e PGB_POSTGRES_PORT=5432 django pytest apps/users/tests/test_models.py::TestUserModel
+docker compose -f docker-compose.local.yml run --rm -e PGB_POSTGRES_HOST=postgres -e PGB_POSTGRES_IP=postgres -e PGB_POSTGRES_PORT=5432 django pytest apps/users/tests/test_models.py::TestUserModel
 
 # Single test function
-docker compose -f docker-compose.local.yml run --rm -e PGB_POSTGRES_HOST=postgres -e PGB_POSTGRES_PORT=5432 django pytest apps/users/tests/test_models.py::TestUserModel::test_str
+docker compose -f docker-compose.local.yml run --rm -e PGB_POSTGRES_HOST=postgres -e PGB_POSTGRES_IP=postgres -e PGB_POSTGRES_PORT=5432 django pytest apps/users/tests/test_models.py::TestUserModel::test_str
 
 # Keyword filter
-docker compose -f docker-compose.local.yml run --rm -e PGB_POSTGRES_HOST=postgres -e PGB_POSTGRES_PORT=5432 django pytest -k "user and not api"
+docker compose -f docker-compose.local.yml run --rm -e PGB_POSTGRES_HOST=postgres -e PGB_POSTGRES_IP=postgres -e PGB_POSTGRES_PORT=5432 django pytest -k "user and not api"
 
 # Coverage
-docker compose -f docker-compose.local.yml run --rm -e PGB_POSTGRES_HOST=postgres -e PGB_POSTGRES_PORT=5432 django coverage run -m pytest
+docker compose -f docker-compose.local.yml run --rm -e PGB_POSTGRES_HOST=postgres -e PGB_POSTGRES_IP=postgres -e PGB_POSTGRES_PORT=5432 django coverage run -m pytest
 ```
 
 ### Frontend tests
@@ -195,7 +201,9 @@ pnpm build
 - Before changing code, read nearby files and existing patterns.
 - Keep changes minimal and domain-consistent.
 - Run relevant lint/tests for touched area.
-- If backend changed, run at least `manage.py check` using Docker prefix.
+- If backend logic changed, always run `manage.py check` and relevant `pytest` commands via `docker compose -f docker-compose.local.yml run --rm ... django`.
+- For backend `pytest`, always include explicit `-e` DB overrides (`PGB_POSTGRES_HOST`, `PGB_POSTGRES_IP`, `PGB_POSTGRES_PORT`) to keep test execution stable.
+- Treat backend logic changes as regression-sensitive: do not finish without running relevant tests.
 - If frontend changed, run `pnpm lint` and `pnpm build` when feasible.
 - Do not introduce secrets or commit env files.
 
@@ -205,7 +213,7 @@ From `backend/`:
 
 ```bash
 docker compose -f docker-compose.local.yml run --rm -e PGB_POSTGRES_HOST=postgres -e PGB_POSTGRES_PORT=5432 django python manage.py check
-docker compose -f docker-compose.local.yml run --rm -e PGB_POSTGRES_HOST=postgres -e PGB_POSTGRES_PORT=5432 django pytest apps/orders/tests/test_api.py::TestOrderViewSet::test_list
+docker compose -f docker-compose.local.yml run --rm -e PGB_POSTGRES_HOST=postgres -e PGB_POSTGRES_IP=postgres -e PGB_POSTGRES_PORT=5432 django pytest apps/orders/tests/test_api.py::TestOrderViewSet::test_list
 docker compose -f docker-compose.local.yml run --rm -e PGB_POSTGRES_HOST=postgres -e PGB_POSTGRES_PORT=5432 django ruff check . --fix
 ```
 

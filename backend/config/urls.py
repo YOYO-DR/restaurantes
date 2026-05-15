@@ -35,6 +35,8 @@ urlpatterns += [
     # API base url
     path("api/", include("config.api_router")),
     path("api/auth/", include("apps.custom_auth.urls", namespace="custom_auth")),
+    # MesaYA public API
+    path("api/public/", include("apps.restaurants.api.mesaya_urls", namespace="mesaya_public")),
     # Operator management
     path("api/", include("apps.restaurants.api.operator_urls")),
     # DRF auth token

@@ -17,6 +17,8 @@ class OrdersConfig(AppConfig):
     verbose_name = _("Orders")
 
     def ready(self):
+        from apps.orders import signals  # noqa: F401
+
         post_migrate.connect(
             seed_order_catalogs,
             sender=self,

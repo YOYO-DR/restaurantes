@@ -33,6 +33,17 @@ dm pre-commit run --all-files
 
 `backend/justfile` has shortcuts: `just build`, `just up`, `just down`, `just manage <args>`, `just logs`.
 
+### Backend execution rules (mandatory)
+
+- Always run `python manage.py ...` through Docker Compose run:
+  `docker compose -f docker-compose.local.yml run --rm -e PGB_POSTGRES_HOST=postgres -e PGB_POSTGRES_PORT=5432 django python manage.py <command>`
+- Always run `pytest` through Docker Compose run and include explicit DB overrides with `-e`:
+  `docker compose -f docker-compose.local.yml run --rm -e PGB_POSTGRES_HOST=postgres -e PGB_POSTGRES_IP=postgres -e PGB_POSTGRES_PORT=5432 django pytest <args>`
+- Whenever backend logic is modified, run at minimum:
+  - `python manage.py check` (via Docker Compose run)
+  - relevant `pytest` suite(s) (via Docker Compose run with `-e` DB overrides)
+- Treat backend logic changes as regression-sensitive and do not finish without those checks.
+
 ### Frontend
 
 ```bash

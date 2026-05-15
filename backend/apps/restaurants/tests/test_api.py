@@ -862,7 +862,21 @@ def _setup_owner_with_restaurant():
     return owner, restaurant
 
 
-def test_owner_can_invite_operator_and_email_is_sent(api_client):
+class _DelayCallRecorder:
+    def __init__(self):
+        self.calls = []
+
+    def delay(self, *args, **kwargs):
+        self.calls.append({"args": args, "kwargs": kwargs})
+
+
+def test_owner_can_invite_operator_and_email_is_sent(api_client, monkeypatch):
+    recorder = _DelayCallRecorder()
+    monkeypatch.setattr(
+        "apps.restaurants.api.views.send_operator_invitation_email_task",
+        recorder,
+    )
+
     owner, restaurant = _setup_owner_with_restaurant()
     api_client.force_authenticate(user=owner)
 
@@ -880,8 +894,8 @@ def test_owner_can_invite_operator_and_email_is_sent(api_client):
 
     assert response.status_code == status.HTTP_201_CREATED
     assert OperatorInvitation.objects.filter(email="operador@example.com", restaurant=restaurant).exists()
-    assert len(django_mail.outbox) == 1
-    assert "operador@example.com" in django_mail.outbox[0].to
+    assert len(django_mail.outbox) == 0
+    assert len(recorder.calls) == 1
 
 
 def test_owner_cannot_invite_themselves(api_client):

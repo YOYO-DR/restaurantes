@@ -37,6 +37,14 @@ def assign_role(user, code: str):
     UserRole.objects.get_or_create(user=user, role=role)
 
 
+class _DelayCallRecorder:
+    def __init__(self):
+        self.calls = []
+
+    def delay(self, *args, **kwargs):
+        self.calls.append({"args": args, "kwargs": kwargs})
+
+
 def setup_checkout_data(user):
     AddressTypeFactory(code="home", name="Casa")
     OrderTypeFactory(code="delivery", name="Delivery")
@@ -123,7 +131,13 @@ def test_customer_can_checkout_table_order_without_service_fee(api_client: APICl
     assert response.data["total_amount"] == "24000.00"
 
 
-def test_guest_can_checkout_pickup_order_and_receives_email(api_client: APIClient):
+def test_guest_can_checkout_pickup_order_and_receives_email(api_client: APIClient, monkeypatch):
+    recorder = _DelayCallRecorder()
+    monkeypatch.setattr(
+        "apps.orders.api.serializers.send_order_confirmation_email_task",
+        recorder,
+    )
+
     OrderTypeFactory(code="delivery", name="Delivery")
     OrderTypeFactory(code="pickup", name="Pickup")
     OrderTypeFactory(code="table", name="Mesa")
@@ -169,7 +183,9 @@ def test_guest_can_checkout_pickup_order_and_receives_email(api_client: APIClien
     assert response.data["customer_phone"] == "3001234567"
     assert response.data["guest_tracking_code"]
     assert Order.objects.get(id=response.data["id"]).user is None
-    assert len(mail.outbox) == 1
+    assert len(mail.outbox) == 0
+    assert len(recorder.calls) == 1
+    assert recorder.calls[0]["args"] == (str(response.data["id"]),)
 
 
 def test_guest_checkout_requires_contact_for_delivery(api_client: APIClient):

@@ -4,11 +4,10 @@ import { CancelOrderDialog } from "@/components/orders/cancel-order-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { useGuestOrderNotifications } from "@/hooks/use-owner-order-notifications"
 import { useGuestOrder, useGuestOrderCancellation } from "@/hooks/use-orders"
 import { getGuestOrders, removeGuestOrder } from "@/lib/guest-orders"
 import { formatCurrency, formatDeliveryWindow } from "@/lib/format"
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Clock, MapPin, ShoppingBag, Trash2 } from "lucide-react"
 
 export default function GuestOrdersPage() {
@@ -73,7 +72,32 @@ export default function GuestOrdersPage() {
     }
   }, [cancelOrder, handleOrderUpdate, handleRemoveEntry, orderToRemove])
 
-  useGuestOrderNotifications(activeEntry?.id, handleOrderUpdate)
+  useEffect(() => {
+    if (!activeEntry?.id || !activeEntry?.tracking_code) {
+      return undefined
+    }
+
+    const apiUrl = new URL(import.meta.env.VITE_API_URL || "http://localhost:8000")
+    const protocol = apiUrl.protocol === "https:" ? "wss:" : "ws:"
+    const query = new URLSearchParams({ tracking_code: activeEntry.tracking_code }).toString()
+    const socket = new WebSocket(`${protocol}//${apiUrl.host}/api/ws/guest-orders/${activeEntry.id}/?${query}`)
+
+    socket.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data)
+        if (!["order.status_changed", "order.cancelled"].includes(message.event_type)) {
+          return
+        }
+        handleOrderUpdate(message.payload)
+      } catch {
+        // ignore malformed payloads
+      }
+    }
+
+    return () => {
+      socket.close()
+    }
+  }, [activeEntry?.id, activeEntry?.tracking_code, handleOrderUpdate])
 
   return (
     <div className="container mx-auto space-y-6 px-4 py-10">

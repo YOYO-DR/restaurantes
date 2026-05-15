@@ -1,13 +1,12 @@
 import { toast } from "sonner"
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { CancelOrderDialog } from "@/components/orders/cancel-order-dialog"
 import { OrdersListSkeleton } from "@/components/ui/app-skeletons"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useAuth } from "@/context/auth-context"
-import { useUserOrderNotifications } from "@/hooks/use-owner-order-notifications"
+import { realtimeClient } from "@/lib/realtime-client"
 import { useCustomerOrders } from "@/hooks/use-orders"
 import { formatCurrency, formatDeliveryWindow } from "@/lib/format"
 import { Clock, MapPin, Phone, RotateCcw, ShoppingBag } from "lucide-react"
@@ -15,13 +14,23 @@ import { Clock, MapPin, Phone, RotateCcw, ShoppingBag } from "lucide-react"
 const ACTIVE_STATUSES = ["new", "preparing", "ready"]
 
 export default function ClientOrdersPage() {
-  const { user } = useAuth()
   const { orders, isLoading, error, mergeOrder, cancelOrder, updatingOrderId } = useCustomerOrders()
   const [orderToCancel, setOrderToCancel] = useState(null)
   const handleOrderUpdate = useCallback((payload) => {
     mergeOrder(payload)
   }, [mergeOrder])
-  useUserOrderNotifications(user?.id, handleOrderUpdate)
+
+  useEffect(() => {
+    const unsubs = [
+      realtimeClient.subscribe("order.status_changed", handleOrderUpdate),
+      realtimeClient.subscribe("order.cancelled", handleOrderUpdate),
+      realtimeClient.subscribe("order.payment_completed", handleOrderUpdate),
+      realtimeClient.subscribe("order.payment_failed", handleOrderUpdate),
+    ]
+    return () => {
+      unsubs.forEach((unsubscribe) => unsubscribe())
+    }
+  }, [handleOrderUpdate])
 
   const activeOrders = orders.filter((order) => ACTIVE_STATUSES.includes(order.status_code))
   const completedOrders = orders.filter((order) => order.status_code === "delivered")
