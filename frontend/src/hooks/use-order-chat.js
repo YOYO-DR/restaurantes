@@ -6,7 +6,7 @@ import {
   markOrderChatRead,
   sendOrderChatMessage,
 } from "@/services/order-chat"
-import { API_BASE_URL, getAccessToken } from "@/lib/api"
+import { API_BASE_URL, apiRequest, getAccessToken } from "@/lib/api"
 import { realtimeClient } from "@/lib/realtime-client"
 
 const ORDER_CHAT_LOCAL_READ_EVENT = "order-chat:read"
@@ -493,12 +493,7 @@ export function useOrderChat({ orderId, trackingCode, enabled = true }) {
       }
 
       try {
-        const headers = {}
-        if (token) {
-          headers.Authorization = `Bearer ${token}`
-        }
-
-        const requestUrl = (() => {
+        const imageUrl = (() => {
           if (token || !trackingCode || message.protected_image_url.includes("tracking_code=")) {
             return message.protected_image_url
           }
@@ -506,10 +501,13 @@ export function useOrderChat({ orderId, trackingCode, enabled = true }) {
           return `${message.protected_image_url}${separator}tracking_code=${encodeURIComponent(trackingCode)}`
         })()
 
-        const response = await fetch(requestUrl, {
+        // Strip API_BASE_URL to get the relative path so apiRequest handles auth + token refresh
+        const imagePath = imageUrl.startsWith(API_BASE_URL)
+          ? imageUrl.slice(API_BASE_URL.length)
+          : imageUrl
+
+        const response = await apiRequest(imagePath, {
           method: "GET",
-          headers,
-          credentials: "include",
           signal: controller.signal,
         })
 

@@ -56,11 +56,11 @@ export function getRestaurants() {
 }
 
 export function getRestaurant(slug) {
-  return apiJson(`/api/restaurants/${slug}/`, {}, false)
+  return apiJson(`/api/restaurants/${slug}/`)
 }
 
 export function getRestaurantMenu(slug) {
-  return apiJson(`/api/restaurants/${slug}/menu/`, {}, false)
+  return apiJson(`/api/restaurants/${slug}/menu/`)
 }
 
 export function getOwnerRestaurants() {
