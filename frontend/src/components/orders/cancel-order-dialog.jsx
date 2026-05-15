@@ -18,6 +18,7 @@ export function CancelOrderDialog({
   isSubmitting,
   onConfirm,
   title = "Cancelar pedido",
+  reasonPlaceholder = "Ejemplo: cambie de opinion, error en la orden, ya no lo necesito",
 }) {
   const [reason, setReason] = useState("")
 
@@ -48,7 +49,7 @@ export function CancelOrderDialog({
               rows={4}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
-              placeholder="Ejemplo: cambie de opinion, error en la orden, ya no lo necesito"
+              placeholder={reasonPlaceholder}
             />
           </div>
         ) : null}

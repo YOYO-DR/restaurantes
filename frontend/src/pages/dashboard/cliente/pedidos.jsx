@@ -5,17 +5,31 @@ import { OrdersListSkeleton } from "@/components/ui/app-skeletons"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useCart } from "@/context/cart-context"
 import { realtimeClient } from "@/lib/realtime-client"
-import { useCustomerOrders } from "@/hooks/use-orders"
+import { useCustomerOrders, useReorder } from "@/hooks/use-orders"
 import { formatCurrency, formatDeliveryWindow } from "@/lib/format"
-import { Clock, MapPin, Phone, RotateCcw, ShoppingBag } from "lucide-react"
+import { Clock, Loader2, MapPin, Phone, RotateCcw, ShoppingBag } from "lucide-react"
 
 const ACTIVE_STATUSES = ["new", "preparing", "ready"]
 
 export default function ClientOrdersPage() {
   const { orders, isLoading, error, mergeOrder, cancelOrder, updatingOrderId } = useCustomerOrders()
+  const { reorder, isReordering } = useReorder()
+  const { items: cartItems, restaurant: cartRestaurant } = useCart()
   const [orderToCancel, setOrderToCancel] = useState(null)
+  const [orderToReorder, setOrderToReorder] = useState(null)
+  const [reorderingId, setReorderingId] = useState(null)
+
   const handleOrderUpdate = useCallback((payload) => {
     mergeOrder(payload)
   }, [mergeOrder])
@@ -35,6 +49,23 @@ export default function ClientOrdersPage() {
   const activeOrders = orders.filter((order) => ACTIVE_STATUSES.includes(order.status_code))
   const completedOrders = orders.filter((order) => order.status_code === "delivered")
   const cancelledOrders = orders.filter((order) => order.status_code === "cancelled")
+
+  const handleReorder = useCallback(async (order) => {
+    setReorderingId(order.id)
+    try {
+      await reorder(order)
+    } finally {
+      setReorderingId(null)
+    }
+  }, [reorder])
+
+  const handleReorderClick = useCallback((order) => {
+    if (cartItems.length > 0) {
+      setOrderToReorder(order)
+    } else {
+      handleReorder(order)
+    }
+  }, [cartItems.length, handleReorder])
 
   return (
     <div className="space-y-6">
@@ -57,13 +88,13 @@ export default function ClientOrdersPage() {
 
           <TabsContent value="all" className="space-y-4">
             {orders.map((order) => (
-              <OrderCard key={order.id} order={order} onCancel={setOrderToCancel} updatingOrderId={updatingOrderId} />
+              <OrderCard key={order.id} order={order} onCancel={setOrderToCancel} onReorder={handleReorderClick} reorderingId={reorderingId} updatingOrderId={updatingOrderId} />
             ))}
           </TabsContent>
 
           <TabsContent value="active" className="space-y-4">
             {activeOrders.length ? (
-              activeOrders.map((order) => <OrderCard key={order.id} order={order} onCancel={setOrderToCancel} updatingOrderId={updatingOrderId} />)
+              activeOrders.map((order) => <OrderCard key={order.id} order={order} onCancel={setOrderToCancel} onReorder={handleReorderClick} reorderingId={reorderingId} updatingOrderId={updatingOrderId} />)
             ) : (
               <Card>
                 <CardContent className="py-12 text-center text-muted-foreground">No tienes pedidos activos</CardContent>
@@ -73,13 +104,13 @@ export default function ClientOrdersPage() {
 
           <TabsContent value="completed" className="space-y-4">
             {completedOrders.map((order) => (
-              <OrderCard key={order.id} order={order} onCancel={setOrderToCancel} updatingOrderId={updatingOrderId} />
+              <OrderCard key={order.id} order={order} onCancel={setOrderToCancel} onReorder={handleReorderClick} reorderingId={reorderingId} updatingOrderId={updatingOrderId} />
             ))}
           </TabsContent>
 
           <TabsContent value="cancelled" className="space-y-4">
             {cancelledOrders.map((order) => (
-              <OrderCard key={order.id} order={order} onCancel={setOrderToCancel} updatingOrderId={updatingOrderId} />
+              <OrderCard key={order.id} order={order} onCancel={setOrderToCancel} onReorder={handleReorderClick} reorderingId={reorderingId} updatingOrderId={updatingOrderId} />
             ))}
           </TabsContent>
         </Tabs>
@@ -105,11 +136,40 @@ export default function ClientOrdersPage() {
         }}
         title="Cancelar pedido"
       />
+
+      <Dialog open={Boolean(orderToReorder)} onOpenChange={(open) => { if (!open) setOrderToReorder(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reemplazar carrito actual</DialogTitle>
+            <DialogDescription>
+              Tu carrito tiene items de <strong>{cartRestaurant?.name}</strong>. ¿Quieres reemplazarlos para repetir el pedido de <strong>{orderToReorder?.restaurant_name}</strong>?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOrderToReorder(null)} disabled={isReordering}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                const order = orderToReorder
+                setOrderToReorder(null)
+                handleReorder(order)
+              }}
+              disabled={isReordering}
+            >
+              {isReordering ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Sí, reemplazar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
 
-function OrderCard({ order, onCancel, updatingOrderId }) {
+function OrderCard({ order, onCancel, onReorder, reorderingId, updatingOrderId }) {
+  const isThisReordering = reorderingId === order.id
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between pb-2">
@@ -174,9 +234,17 @@ function OrderCard({ order, onCancel, updatingOrderId }) {
             <Phone className="mr-2 h-4 w-4" />
             Contactar
           </Button>
-          <Button variant="outline" size="sm" className="flex-1" disabled>
-            <RotateCcw className="mr-2 h-4 w-4" />
-            Repetir pedido
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={() => onReorder(order)}
+            disabled={isThisReordering}
+          >
+            {isThisReordering
+              ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              : <RotateCcw className="mr-2 h-4 w-4" />}
+            {isThisReordering ? "Cargando..." : "Repetir pedido"}
           </Button>
           {!["delivered", "cancelled"].includes(order.status_code) ? (
             <Button variant="destructive" size="sm" onClick={() => onCancel(order)} disabled={updatingOrderId === order.id}>

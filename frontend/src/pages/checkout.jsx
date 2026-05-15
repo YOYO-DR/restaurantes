@@ -190,7 +190,7 @@ export default function CheckoutPage() {
                         variant="outline"
                         onClick={async () => {
                           try {
-                            await createAddress({
+                            const created = await createAddress({
                               label: newAddress.label,
                               line1: newAddress.line1,
                               city: newAddress.city,
@@ -199,15 +199,15 @@ export default function CheckoutPage() {
                               state: "",
                               country: "Colombia",
                               is_default: false,
-                              address_type: addresses[0]?.address_type || null,
                             })
+                            setSelectedAddressId(created.id)
                             toast.success("Direccion guardada")
                             setNewAddress({ label: "", line1: "", city: "", notes: "" })
                           } catch (addressError) {
                             toast.error(addressError.message || "No fue posible guardar la direccion")
                           }
                         }}
-                        disabled={!newAddress.label || !newAddress.line1 || !newAddress.city || !addresses[0]?.address_type}
+                        disabled={!newAddress.label || !newAddress.line1 || !newAddress.city}
                       >
                         Guardar nueva direccion
                       </Button>

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { toast } from "sonner"
 import {
   cancelCheckoutOrder,
   cancelOwnerOrder,
@@ -28,7 +30,8 @@ import {
   updateCustomerAddress,
   updateOwnerOrderStatus,
 } from "@/services/orders"
-import { getOwnerRestaurants } from "@/services/restaurants"
+import { getOwnerRestaurants, getRestaurant, getRestaurantMenu } from "@/services/restaurants"
+import { useCart } from "@/context/cart-context"
 import { useNotificationCenterContext } from "@/context/notification-center-context"
 
 export function useCustomerAddresses(enabled = true) {
@@ -65,8 +68,9 @@ export function useCustomerAddresses(enabled = true) {
     isLoading,
     error,
     createAddress: async (payload) => {
-      await createCustomerAddress(payload)
+      const created = await createCustomerAddress(payload)
       await loadAddresses()
+      return created
     },
     updateAddress: async (addressId, payload) => {
       await updateCustomerAddress(addressId, payload)
@@ -653,4 +657,85 @@ export function useCustomerLoyalty(restaurantId) {
   }, [restaurantId])
 
   return { data, isLoading, error }
+}
+
+export function useReorder() {
+  const [isReordering, setIsReordering] = useState(false)
+  const { clearCart, addItem, setOrderType } = useCart()
+  const navigate = useNavigate()
+
+  const reorder = useCallback(
+    async (order) => {
+      setIsReordering(true)
+      try {
+        const [restaurant, menu] = await Promise.all([
+          getRestaurant(order.restaurant_slug),
+          getRestaurantMenu(order.restaurant_slug),
+        ])
+
+        const allMenuItems = (menu.categories || []).flatMap((cat) => cat.items || [])
+
+        const available = []
+        const unavailableNames = []
+
+        for (const orderItem of order.items) {
+          const menuItem = allMenuItems.find((m) => m.id === String(orderItem.menu_item_id))
+          if (menuItem && menuItem.is_available) {
+            available.push({ menuItem, quantity: orderItem.quantity })
+          } else {
+            unavailableNames.push(orderItem.item_name_snapshot)
+          }
+        }
+
+        if (available.length === 0) {
+          toast.error("Ningún plato de este pedido está disponible actualmente")
+          return
+        }
+
+        if (unavailableNames.length > 0) {
+          toast.warning(`Platos no disponibles: ${unavailableNames.join(", ")}`)
+        }
+
+        const typeMap = {
+          delivery: order.restaurant_has_delivery,
+          pickup: order.restaurant_has_pickup,
+          table: order.restaurant_has_table_order,
+        }
+        const resolvedType = typeMap[order.order_type_code]
+          ? order.order_type_code
+          : (Object.keys(typeMap).find((k) => typeMap[k]) || "delivery")
+
+        const cartRestaurant = {
+          id: restaurant.id,
+          name: restaurant.name,
+          slug: restaurant.slug,
+          delivery_fee_amount: restaurant.delivery_fee_amount,
+          estimated_min_minutes: restaurant.estimated_min_minutes,
+          estimated_max_minutes: restaurant.estimated_max_minutes,
+          has_table_order: restaurant.has_table_order,
+          tables: restaurant.tables || [],
+        }
+
+        clearCart()
+        setOrderType(resolvedType)
+        for (const { menuItem, quantity } of available) {
+          for (let i = 0; i < quantity; i++) {
+            addItem(
+              { id: menuItem.id, name: menuItem.name, price: Number(menuItem.price_amount), currency: menuItem.currency_code },
+              cartRestaurant,
+            )
+          }
+        }
+
+        navigate(`/restaurantes/${order.restaurant_slug}`)
+      } catch (err) {
+        toast.error(err.message || "No fue posible repetir el pedido")
+      } finally {
+        setIsReordering(false)
+      }
+    },
+    [clearCart, addItem, setOrderType, navigate],
+  )
+
+  return { reorder, isReordering }
 }

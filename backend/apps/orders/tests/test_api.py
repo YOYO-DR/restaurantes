@@ -429,6 +429,103 @@ def test_owner_can_cancel_order(api_client: APIClient):
     assert response.data["status_code"] == "cancelled"
 
 
+def test_operator_cancel_shows_cancelled_by_restaurante(api_client: APIClient):
+    customer = UserFactory()
+    owner = UserFactory()
+    operator = UserFactory()
+    assign_role(owner, "restaurante")
+    assign_role(operator, "operador")
+    restaurant, item, address = setup_checkout_data(customer)
+    restaurant.owner = owner
+    restaurant.save(update_fields=["owner"])
+    op = Operador.objects.create(user=operator, restaurante=restaurant)
+    OperatorPermission.objects.create(operator=op, module="pedidos", can_view=True, can_create=False, can_edit=True, can_delete=True)
+
+    api_client.force_authenticate(user=customer)
+    create_response = api_client.post(
+        reverse("api:checkout-order-list"),
+        {
+            "restaurant_id": str(restaurant.id),
+            "order_type": "delivery",
+            "delivery_address_id": str(address.id),
+            "items": [{"menu_item_id": str(item.id), "quantity": 1}],
+        },
+        format="json",
+    )
+    assert create_response.status_code == status.HTTP_201_CREATED
+
+    api_client.force_authenticate(user=operator)
+    response = api_client.patch(
+        reverse("api:owner-order-cancel", kwargs={"pk": create_response.data["id"]}),
+        {"reason": "Ingrediente agotado"},
+        format="json",
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["status_code"] == "cancelled"
+    assert response.data["cancelled_by"] == "restaurante"
+    assert response.data["cancel_reason"] == "Ingrediente agotado"
+
+
+def test_owner_cancel_shows_cancelled_by_restaurante(api_client: APIClient):
+    customer = UserFactory()
+    owner = UserFactory()
+    assign_role(owner, "restaurante")
+    restaurant, item, address = setup_checkout_data(customer)
+    restaurant.owner = owner
+    restaurant.save(update_fields=["owner"])
+
+    api_client.force_authenticate(user=customer)
+    create_response = api_client.post(
+        reverse("api:checkout-order-list"),
+        {
+            "restaurant_id": str(restaurant.id),
+            "order_type": "delivery",
+            "delivery_address_id": str(address.id),
+            "items": [{"menu_item_id": str(item.id), "quantity": 1}],
+        },
+        format="json",
+    )
+    assert create_response.status_code == status.HTTP_201_CREATED
+
+    api_client.force_authenticate(user=owner)
+    response = api_client.patch(
+        reverse("api:owner-order-cancel", kwargs={"pk": create_response.data["id"]}),
+        {"reason": "Sin inventario"},
+        format="json",
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["cancelled_by"] == "restaurante"
+
+
+def test_customer_cancel_shows_cancelled_by_cliente(api_client: APIClient):
+    customer = UserFactory()
+    restaurant, item, address = setup_checkout_data(customer)
+
+    api_client.force_authenticate(user=customer)
+    create_response = api_client.post(
+        reverse("api:checkout-order-list"),
+        {
+            "restaurant_id": str(restaurant.id),
+            "order_type": "delivery",
+            "delivery_address_id": str(address.id),
+            "items": [{"menu_item_id": str(item.id), "quantity": 1}],
+        },
+        format="json",
+    )
+    assert create_response.status_code == status.HTTP_201_CREATED
+
+    response = api_client.patch(
+        reverse("api:checkout-order-cancel", kwargs={"pk": create_response.data["id"]}),
+        {"reason": "Ya no lo necesito"},
+        format="json",
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["cancelled_by"] == "cliente"
+
+
 def test_checkout_returns_validation_error_when_order_type_catalog_is_missing(
     api_client: APIClient,
 ):
@@ -798,3 +895,75 @@ def test_order_code_is_sequential_within_same_restaurant(api_client: APIClient):
     assert response_2.status_code == status.HTTP_201_CREATED
     assert response_1.data["order_code"] == "ORD-0001"
     assert response_2.data["order_code"] == "ORD-0002"
+
+
+def test_customer_order_list_includes_menu_item_id_for_reorder(api_client: APIClient):
+    user = UserFactory()
+    restaurant, item, address = setup_checkout_data(user)
+    api_client.force_authenticate(user=user)
+    api_client.post(
+        reverse("api:checkout-order-list"),
+        {
+            "restaurant_id": str(restaurant.id),
+            "order_type": "delivery",
+            "delivery_address_id": str(address.id),
+            "items": [{"menu_item_id": str(item.id), "quantity": 2}],
+        },
+        format="json",
+    )
+
+    response = api_client.get(reverse("api:customer-order-list"))
+
+    assert response.status_code == status.HTTP_200_OK
+    order_item = response.data[0]["items"][0]
+    assert "menu_item_id" in order_item
+    assert str(order_item["menu_item_id"]) == str(item.id)
+    assert order_item["quantity"] == 2
+
+
+def test_customer_order_list_includes_restaurant_slug_for_reorder(api_client: APIClient):
+    user = UserFactory()
+    restaurant, item, address = setup_checkout_data(user)
+    api_client.force_authenticate(user=user)
+    api_client.post(
+        reverse("api:checkout-order-list"),
+        {
+            "restaurant_id": str(restaurant.id),
+            "order_type": "delivery",
+            "delivery_address_id": str(address.id),
+            "items": [{"menu_item_id": str(item.id), "quantity": 1}],
+        },
+        format="json",
+    )
+
+    response = api_client.get(reverse("api:customer-order-list"))
+
+    assert response.status_code == status.HTTP_200_OK
+    order_data = response.data[0]
+    assert "restaurant_slug" in order_data
+    assert order_data["restaurant_slug"] == restaurant.slug
+
+
+def test_customer_order_list_includes_restaurant_capabilities_for_reorder(api_client: APIClient):
+    user = UserFactory()
+    restaurant, item, address = setup_checkout_data(user)
+    api_client.force_authenticate(user=user)
+    api_client.post(
+        reverse("api:checkout-order-list"),
+        {
+            "restaurant_id": str(restaurant.id),
+            "order_type": "delivery",
+            "delivery_address_id": str(address.id),
+            "items": [{"menu_item_id": str(item.id), "quantity": 1}],
+        },
+        format="json",
+    )
+
+    response = api_client.get(reverse("api:customer-order-list"))
+
+    assert response.status_code == status.HTTP_200_OK
+    order_data = response.data[0]
+    assert "restaurant_has_delivery" in order_data
+    assert "restaurant_has_pickup" in order_data
+    assert "restaurant_has_table_order" in order_data
+    assert order_data["restaurant_has_delivery"] is True

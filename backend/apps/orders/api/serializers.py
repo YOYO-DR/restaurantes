@@ -293,10 +293,13 @@ class CheckoutSerializer(serializers.Serializer):
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
+    menu_item_id = serializers.UUIDField(read_only=True)
+
     class Meta:
         model = OrderItem
         fields = [
             "id",
+            "menu_item_id",
             "item_name_snapshot",
             "unit_price_amount",
             "quantity",
@@ -309,6 +312,10 @@ class OrderSerializer(serializers.ModelSerializer):
         source="restaurant.display_name",
         read_only=True,
     )
+    restaurant_slug = serializers.CharField(source="restaurant.slug", read_only=True)
+    restaurant_has_delivery = serializers.SerializerMethodField()
+    restaurant_has_pickup = serializers.SerializerMethodField()
+    restaurant_has_table_order = serializers.SerializerMethodField()
     status_code = serializers.CharField(source="status.code", read_only=True)
     status_name = serializers.CharField(source="status.name", read_only=True)
     order_type_code = serializers.CharField(source="order_type.code", read_only=True)
@@ -337,6 +344,10 @@ class OrderSerializer(serializers.ModelSerializer):
             "order_code",
             "restaurant",
             "restaurant_name",
+            "restaurant_slug",
+            "restaurant_has_delivery",
+            "restaurant_has_pickup",
+            "restaurant_has_table_order",
             "status_code",
             "status_name",
             "order_type_code",
@@ -361,6 +372,24 @@ class OrderSerializer(serializers.ModelSerializer):
             "created_at",
             "items",
         ]
+
+    def get_restaurant_has_delivery(self, obj: Order) -> bool:
+        try:
+            return obj.restaurant.order_capability.delivery_enabled
+        except Exception:
+            return False
+
+    def get_restaurant_has_pickup(self, obj: Order) -> bool:
+        try:
+            return obj.restaurant.order_capability.pickup_enabled
+        except Exception:
+            return False
+
+    def get_restaurant_has_table_order(self, obj: Order) -> bool:
+        try:
+            return obj.restaurant.order_capability.table_order_enabled
+        except Exception:
+            return False
 
     def get_delivery_address_label(self, obj: Order) -> str:
         fulfillment = getattr(obj, "fulfillment", None)
@@ -395,12 +424,18 @@ class OrderSerializer(serializers.ModelSerializer):
         if obj.restaurant.owner_id == changed_by.id:
             return "restaurante"
 
+        try:
+            if changed_by.operador.restaurante_id == obj.restaurant.id:
+                return "restaurante"
+        except Exception:
+            pass
+
         return "cliente"
 
     def _get_last_cancel_entry(self, obj: Order):
         return (
             obj.status_history.filter(status__code="cancelled")
-            .select_related("changed_by")
+            .select_related("changed_by", "changed_by__operador")
             .order_by("-changed_at")
             .first()
         )

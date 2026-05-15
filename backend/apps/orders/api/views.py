@@ -32,6 +32,7 @@ class CustomerOrderViewSet(ReadOnlyModelViewSet):
             Order.objects.filter(user=self.request.user)
             .select_related(
                 "restaurant",
+                "restaurant__order_capability",
                 "status",
                 "order_type",
                 "fulfillment__delivery_address",

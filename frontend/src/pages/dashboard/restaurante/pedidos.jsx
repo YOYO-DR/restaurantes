@@ -114,6 +114,7 @@ export default function OwnerOrdersPage() {
               }
             }}
             title="Cancelar pedido"
+            reasonPlaceholder="Ejemplo: ingrediente agotado, pedido duplicado, cliente solicito cancelacion"
           />
         </>
       )}
