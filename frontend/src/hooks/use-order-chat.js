@@ -7,6 +7,9 @@ import {
   sendOrderChatMessage,
 } from "@/services/order-chat"
 import { API_BASE_URL, getAccessToken } from "@/lib/api"
+import { realtimeClient } from "@/lib/realtime-client"
+
+const ORDER_CHAT_LOCAL_READ_EVENT = "order-chat:read"
 
 const IMAGE_CACHE_INDEX_KEY = "order-chat-image:index:v1"
 const HOUR_IN_MS = 60 * 60 * 1000
@@ -629,6 +632,11 @@ export function useOrderChat({ orderId, trackingCode, enabled = true }) {
     }
     await markOrderChatRead(orderId, { trackingCode })
     setUnreadCount(0)
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent(ORDER_CHAT_LOCAL_READ_EVENT, {
+        detail: { orderId: String(orderId) },
+      }))
+    }
   }, [orderId, trackingCode])
 
   return useMemo(() => ({
@@ -656,8 +664,23 @@ export function useOrderChat({ orderId, trackingCode, enabled = true }) {
   ])
 }
 
-export function useOrderChatUnreadCount({ orderId, trackingCode, enabled = true }) {
+export function useOrderChatUnreadCount({ orderId, trackingCode, enabled = true, refreshToken = 0 }) {
   const [unreadCount, setUnreadCount] = useState(0)
+
+  const refreshUnreadCount = useCallback(() => {
+    if (!enabled || !orderId) {
+      setUnreadCount(0)
+      return
+    }
+
+    getOrderChat(orderId, { trackingCode })
+      .then((payload) => {
+        setUnreadCount(payload.unread_count_for_me || 0)
+      })
+      .catch(() => {
+        setUnreadCount(0)
+      })
+  }, [enabled, orderId, trackingCode])
 
   useEffect(() => {
     if (!enabled || !orderId) {
@@ -665,24 +688,40 @@ export function useOrderChatUnreadCount({ orderId, trackingCode, enabled = true 
       return
     }
 
-    let cancelled = false
-    getOrderChat(orderId, { trackingCode })
-      .then((payload) => {
-        if (cancelled) {
-          return
-        }
-        setUnreadCount(payload.unread_count_for_me || 0)
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setUnreadCount(0)
-        }
-      })
+    refreshUnreadCount()
+  }, [enabled, orderId, refreshToken, refreshUnreadCount])
+
+  useEffect(() => {
+    if (!enabled || !orderId) {
+      return
+    }
+
+    const orderIdAsString = String(orderId)
+    const unsubscribe = realtimeClient.subscribe("order.chat_message", (payload) => {
+      if (String(payload?.order_id || "") !== orderIdAsString) {
+        return
+      }
+      refreshUnreadCount()
+    })
+
+    const onLocalRead = (event) => {
+      if (String(event?.detail?.orderId || "") !== orderIdAsString) {
+        return
+      }
+      setUnreadCount(0)
+    }
+
+    if (typeof window !== "undefined") {
+      window.addEventListener(ORDER_CHAT_LOCAL_READ_EVENT, onLocalRead)
+    }
 
     return () => {
-      cancelled = true
+      unsubscribe()
+      if (typeof window !== "undefined") {
+        window.removeEventListener(ORDER_CHAT_LOCAL_READ_EVENT, onLocalRead)
+      }
     }
-  }, [enabled, orderId, trackingCode])
+  }, [enabled, orderId, refreshUnreadCount])
 
   return unreadCount
 }

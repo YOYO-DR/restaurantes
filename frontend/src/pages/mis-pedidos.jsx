@@ -26,6 +26,7 @@ export default function GuestOrdersPage() {
   const [orderToRemove, setOrderToRemove] = useState(null)
   const [orderToContact, setOrderToContact] = useState(null)
   const [orderToChat, setOrderToChat] = useState(null)
+  const [chatRefreshTick, setChatRefreshTick] = useState(0)
 
   const hasOrders = entries.length > 0
 
@@ -40,6 +41,7 @@ export default function GuestOrdersPage() {
     orderId: activeOrder?.id,
     trackingCode: activeEntry?.tracking_code,
     enabled: Boolean(activeOrder?.id && activeEntry?.tracking_code),
+    refreshToken: chatRefreshTick,
   })
 
   const handleOrderUpdate = useCallback((payload) => {
@@ -96,10 +98,13 @@ export default function GuestOrdersPage() {
     socket.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data)
-        if (!["order.status_changed", "order.cancelled"].includes(message.event_type)) {
+        if (["order.status_changed", "order.cancelled"].includes(message.event_type)) {
+          handleOrderUpdate(message.payload)
           return
         }
-        handleOrderUpdate(message.payload)
+        if (message.event_type === "order.chat_message") {
+          setChatRefreshTick((current) => current + 1)
+        }
       } catch {
         // ignore malformed payloads
       }

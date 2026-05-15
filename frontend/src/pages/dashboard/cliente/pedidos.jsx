@@ -294,12 +294,12 @@ function OrderCard({ order, onCancel, onReorder, onContact, onChat, reorderingId
           </div>
         ) : null}
 
-        <div className="flex gap-3">
-          <Button variant="outline" size="sm" className="flex-1" onClick={() => onContact(order)}>
+        <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-3">
+          <Button variant="outline" size="sm" className="min-w-0 px-2 text-xs sm:flex-1 sm:px-3 sm:text-sm" onClick={() => onContact(order)}>
             <Phone className="mr-2 h-4 w-4" />
             Contactar
           </Button>
-          <Button variant="outline" size="sm" className="flex-1" onClick={() => onChat(order)}>
+          <Button variant="outline" size="sm" className="min-w-0 px-2 text-xs sm:flex-1 sm:px-3 sm:text-sm" onClick={() => onChat(order)}>
             <MessageCircle className="mr-2 h-4 w-4" />
             Chat
             {unreadCount > 0 ? (
@@ -309,7 +309,7 @@ function OrderCard({ order, onCancel, onReorder, onContact, onChat, reorderingId
           <Button
             variant="outline"
             size="sm"
-            className="flex-1"
+            className="min-w-0 px-2 text-xs sm:flex-1 sm:px-3 sm:text-sm"
             onClick={() => onReorder(order)}
             disabled={isThisReordering}
           >
@@ -319,7 +319,7 @@ function OrderCard({ order, onCancel, onReorder, onContact, onChat, reorderingId
             {isThisReordering ? "Cargando..." : "Repetir pedido"}
           </Button>
           {!["delivered", "cancelled"].includes(order.status_code) ? (
-            <Button variant="destructive" size="sm" onClick={() => onCancel(order)} disabled={updatingOrderId === order.id}>
+            <Button variant="destructive" size="sm" className="col-span-3 sm:col-span-1" onClick={() => onCancel(order)} disabled={updatingOrderId === order.id}>
               Cancelar
             </Button>
           ) : null}

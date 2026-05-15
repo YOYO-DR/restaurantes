@@ -121,7 +121,7 @@ class MesaYARestaurantDetailSerializer(MesaYARestaurantListSerializer):
 
     def get_website(self, obj):
         sl = getattr(obj, "social_links", None)
-        return sl.website_url if sl else ""
+        return ""
 
     def get_branches(self, obj):
         address = obj.addresses.filter(is_primary=True).first()

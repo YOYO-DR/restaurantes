@@ -16,6 +16,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.notifications import realtime
 from apps.order_chat.api.serializers import OrderChatDetailSerializer
 from apps.order_chat.api.serializers import OrderChatMessageCreateSerializer
 from apps.order_chat.api.serializers import OrderChatMessageSerializer
@@ -195,6 +196,40 @@ class OrderChatMessagesView(OrderBaseChatAPIView):
 
         payload = message_payload(message)
         broadcast_chat_event(order.id, "chat.message", payload)
+        notification_payload = {
+            "order_id": str(order.id),
+            "order_code": order.order_code,
+            "chat_message_id": str(message.id),
+            "sender_kind": sender_kind,
+            "sender_label": message.sender_label,
+            "body_preview": (body or "")[:160],
+            "has_image": bool(message.image),
+            "created_at": message.created_at.isoformat(),
+        }
+
+        if sender_kind == OrderChatMessage.SenderKind.RESTAURANT:
+            if order.user_id:
+                realtime.notify_user(
+                    user_id=order.user_id,
+                    event_type="order.chat_message",
+                    payload=notification_payload,
+                    persist=True,
+                )
+            elif order.guest_tracking_code:
+                realtime.notify_guest_order(
+                    order_id=order.id,
+                    event_type="order.chat_message",
+                    payload=notification_payload,
+                )
+        else:
+            realtime.notify_restaurant(
+                restaurant_id=order.restaurant_id,
+                module="pedidos",
+                event_type="order.chat_message",
+                payload=notification_payload,
+                persist=True,
+            )
+
         return Response(
             OrderChatMessageSerializer(message, context={"request": request}).data,
             status=status.HTTP_201_CREATED,

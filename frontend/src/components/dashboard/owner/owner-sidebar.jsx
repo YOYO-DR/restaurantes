@@ -93,7 +93,7 @@ export function OwnerSidebar({ className, onNavigate }) {
   const restaurantName = restaurants[0]?.name || restaurants[0]?.business_name || "Tu restaurante"
   const isOwner = user?.role === "restaurante" || user?.roles?.includes("restaurante")
 
-  return (<aside className={cn("flex h-screen w-64 flex-shrink-0 flex-col border-r border-border bg-sidebar", className)}>
+  return (<aside className={cn("flex h-dvh w-64 flex-shrink-0 flex-col border-r border-border bg-sidebar", className)}>
       <div className="flex h-16 items-center border-b border-sidebar-border px-6">
         <Link to="/" className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary">

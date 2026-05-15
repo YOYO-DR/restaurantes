@@ -134,6 +134,83 @@ def test_can_post_chat_message_text(api_client: APIClient):
     assert OrderChatMessage.objects.filter(chat__order=order).count() == 1
 
 
+def test_post_chat_message_triggers_realtime_notifications_for_restaurant(api_client: APIClient, monkeypatch: pytest.MonkeyPatch):
+    customer = UserFactory()
+    assign_role(customer, "cliente")
+    order = setup_order(customer)
+    api_client.force_authenticate(customer)
+
+    captured = {}
+
+    def fake_notify_restaurant(*, restaurant_id, module, event_type, payload, persist=True):
+        captured["restaurant_id"] = restaurant_id
+        captured["module"] = module
+        captured["event_type"] = event_type
+        captured["payload"] = payload
+        captured["persist"] = persist
+
+    monkeypatch.setattr(
+        "apps.order_chat.api.views.realtime.notify_restaurant",
+        fake_notify_restaurant,
+    )
+
+    response = api_client.post(
+        f"/api/orders/{order.id}/chat/messages/",
+        {"body": "Hola restaurante"},
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    assert captured["restaurant_id"] == order.restaurant_id
+    assert captured["module"] == "pedidos"
+    assert captured["event_type"] == "order.chat_message"
+    assert captured["persist"] is True
+    assert captured["payload"]["order_code"] == order.order_code
+    assert captured["payload"]["sender_kind"] == "customer"
+
+
+def test_restaurant_message_notifies_customer_user(api_client: APIClient, monkeypatch: pytest.MonkeyPatch):
+    customer = UserFactory()
+    assign_role(customer, "cliente")
+    order = setup_order(customer)
+
+    operator_user = UserFactory()
+    assign_role(operator_user, "operador")
+    operador = Operador.objects.create(user=operator_user, restaurante=order.restaurant)
+    OperatorPermission.objects.create(
+        operator=operador,
+        module="pedidos",
+        can_view=True,
+        can_create=False,
+        can_edit=False,
+        can_delete=False,
+    )
+    api_client.force_authenticate(operator_user)
+    captured = {}
+
+    def fake_notify_user(*, user_id, event_type, payload, persist=True):
+        captured["user_id"] = user_id
+        captured["event_type"] = event_type
+        captured["payload"] = payload
+        captured["persist"] = persist
+
+    monkeypatch.setattr(
+        "apps.order_chat.api.views.realtime.notify_user",
+        fake_notify_user,
+    )
+
+    response = api_client.post(
+        f"/api/orders/{order.id}/chat/messages/",
+        {"body": "Tu pedido ya casi sale"},
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    assert captured["user_id"] == customer.id
+    assert captured["event_type"] == "order.chat_message"
+    assert captured["persist"] is True
+    assert captured["payload"]["order_code"] == order.order_code
+    assert captured["payload"]["sender_kind"] == "restaurant"
+
+
 def test_chat_image_blocked_when_disabled(api_client: APIClient):
     customer = UserFactory()
     assign_role(customer, "cliente")

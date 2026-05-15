@@ -7,6 +7,7 @@ import { getAccessToken } from "@/lib/api"
 
 const TOAST_EVENTS = new Set([
   "order.created",
+  "order.chat_message",
   "inventory.low_stock",
   "inventory.out_of_stock",
   "order.cancelled",
@@ -18,6 +19,11 @@ function toastMessageForEvent(message, payload) {
   }
   if (message.event_type === "order.cancelled") {
     return `Pedido cancelado ${payload.order_code || ""}`.trim()
+  }
+  if (message.event_type === "order.chat_message") {
+    const orderCode = payload.order_code || ""
+    const sender = payload.sender_label || "nuevo mensaje"
+    return `Mensaje en ${orderCode}: ${sender}`.trim()
   }
   if (message.event_type === "inventory.out_of_stock") {
     return `${payload.inventory_item_name || "Item"} agotado`

@@ -53,11 +53,11 @@ export function CartSidebar({ restaurant, compact = false, inline = false }) {
   }
 
   return (
-    <Card className={cardClassName}>
+    <Card className={`${cardClassName} min-w-0 overflow-x-hidden`}>
       <CardHeader className="pb-4">
         <CardTitle className="text-lg">Tu pedido</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="min-w-0 space-y-6 overflow-x-hidden">
         <RadioGroup value={orderType} onValueChange={handleOrderTypeChange} className="grid grid-cols-3 gap-2">
           <div>
             <RadioGroupItem value="delivery" id="delivery" className="peer sr-only" />
@@ -100,12 +100,12 @@ export function CartSidebar({ restaurant, compact = false, inline = false }) {
 
         <div className="space-y-3">
           {items.map((item) => (
-            <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+            <div key={item.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-border p-3">
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{item.name}</p>
                 <p className="text-sm text-primary">{formatCurrency(item.price, item.currency)}</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
                 <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQuantity(item.id, -1)}>
                   <Minus className="h-3 w-3" />
                 </Button>

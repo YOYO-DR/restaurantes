@@ -121,12 +121,12 @@ export default function RestaurantPage() {
                 </div>
 
                 <Drawer open={isFloatingCartOpen} onOpenChange={setIsFloatingCartOpen}>
-                  <DrawerContent className="max-h-[85vh] px-0">
+                  <DrawerContent className="max-h-[85vh] overflow-x-hidden px-0">
                     <DrawerHeader className="px-4 pb-2 text-left">
                       <DrawerTitle>Tu pedido</DrawerTitle>
                       <DrawerDescription>Revisa tu carrito o cierralo para seguir explorando el menu.</DrawerDescription>
                     </DrawerHeader>
-                    <div className="overflow-y-auto px-4 pb-6">
+                    <div className="overflow-x-hidden overflow-y-auto px-4 pb-6">
                       <CartSidebar restaurant={publicRestaurant} compact inline />
                     </div>
                   </DrawerContent>

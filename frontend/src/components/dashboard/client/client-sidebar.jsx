@@ -41,7 +41,7 @@ const menuItems = [
 ];
 export function ClientSidebar({ className, onNavigate }) {
     const { pathname } = useLocation();
-  return (<aside className={cn("flex h-screen w-64 flex-shrink-0 flex-col border-r border-border bg-sidebar", className)}>
+  return (<aside className={cn("flex h-dvh w-64 flex-shrink-0 flex-col border-r border-border bg-sidebar", className)}>
       <div className="flex h-16 items-center border-b border-sidebar-border px-6">
         <Link to="/" className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary">
@@ -63,7 +63,7 @@ export function ClientSidebar({ className, onNavigate }) {
         })}
       </nav>
 
-      <div className="mt-auto border-t border-sidebar-border p-4">
+      <div className="mt-auto border-t border-sidebar-border px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <Link to="/restaurantes" onClick={onNavigate} className="flex items-center justify-center gap-2 rounded-lg bg-sidebar-primary px-4 py-2 text-sm font-medium text-sidebar-primary-foreground transition-colors hover:bg-sidebar-primary/90">
           <Utensils className="h-4 w-4"/>
           Ver Restaurantes
