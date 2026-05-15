@@ -34,6 +34,13 @@ class PlatformSetting(BaseModel):
     default_currency_code = models.CharField(max_length=3, default="COP")
     default_locale = models.CharField(max_length=20, default="es-CO")
     maintenance_mode = models.BooleanField(default=False)
+    chat_images_enabled = models.BooleanField(default=True)
+    chat_image_max_mb = models.PositiveIntegerField(default=10)
+    chat_image_allowed_mimes = models.CharField(
+        max_length=255,
+        default="image/jpeg,image/png,image/webp",
+    )
+    chat_post_close_purge_hours = models.PositiveIntegerField(default=24)
 
     class Meta:
         db_table = "platform_settings"

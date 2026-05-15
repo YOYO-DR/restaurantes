@@ -1,5 +1,8 @@
 import { toast } from "sonner"
 import { useCallback, useEffect, useState } from "react"
+import { OrderChatSheet } from "@/components/order-chat/order-chat-sheet"
+import { RestaurantContactDialog } from "@/components/order-chat/restaurant-contact-dialog"
+import { useOrderChatUnreadCount } from "@/hooks/use-order-chat"
 import { CancelOrderDialog } from "@/components/orders/cancel-order-dialog"
 import { OrdersListSkeleton } from "@/components/ui/app-skeletons"
 import { Badge } from "@/components/ui/badge"
@@ -18,7 +21,7 @@ import { useCart } from "@/context/cart-context"
 import { realtimeClient } from "@/lib/realtime-client"
 import { useCustomerOrders, useReorder } from "@/hooks/use-orders"
 import { formatCurrency, formatDeliveryWindow } from "@/lib/format"
-import { Clock, Loader2, MapPin, Phone, RotateCcw, ShoppingBag } from "lucide-react"
+import { Clock, Loader2, MapPin, MessageCircle, Phone, RotateCcw, ShoppingBag } from "lucide-react"
 
 const ACTIVE_STATUSES = ["new", "preparing", "ready"]
 
@@ -28,6 +31,8 @@ export default function ClientOrdersPage() {
   const { items: cartItems, restaurant: cartRestaurant } = useCart()
   const [orderToCancel, setOrderToCancel] = useState(null)
   const [orderToReorder, setOrderToReorder] = useState(null)
+  const [orderToContact, setOrderToContact] = useState(null)
+  const [orderToChat, setOrderToChat] = useState(null)
   const [reorderingId, setReorderingId] = useState(null)
 
   const handleOrderUpdate = useCallback((payload) => {
@@ -88,13 +93,33 @@ export default function ClientOrdersPage() {
 
           <TabsContent value="all" className="space-y-4">
             {orders.map((order) => (
-              <OrderCard key={order.id} order={order} onCancel={setOrderToCancel} onReorder={handleReorderClick} reorderingId={reorderingId} updatingOrderId={updatingOrderId} />
+              <OrderCard
+                key={order.id}
+                order={order}
+                onCancel={setOrderToCancel}
+                onReorder={handleReorderClick}
+                onContact={setOrderToContact}
+                onChat={setOrderToChat}
+                reorderingId={reorderingId}
+                updatingOrderId={updatingOrderId}
+              />
             ))}
           </TabsContent>
 
           <TabsContent value="active" className="space-y-4">
             {activeOrders.length ? (
-              activeOrders.map((order) => <OrderCard key={order.id} order={order} onCancel={setOrderToCancel} onReorder={handleReorderClick} reorderingId={reorderingId} updatingOrderId={updatingOrderId} />)
+                activeOrders.map((order) => (
+                  <OrderCard
+                    key={order.id}
+                    order={order}
+                    onCancel={setOrderToCancel}
+                    onReorder={handleReorderClick}
+                    onContact={setOrderToContact}
+                    onChat={setOrderToChat}
+                    reorderingId={reorderingId}
+                    updatingOrderId={updatingOrderId}
+                  />
+                ))
             ) : (
               <Card>
                 <CardContent className="py-12 text-center text-muted-foreground">No tienes pedidos activos</CardContent>
@@ -104,13 +129,31 @@ export default function ClientOrdersPage() {
 
           <TabsContent value="completed" className="space-y-4">
             {completedOrders.map((order) => (
-              <OrderCard key={order.id} order={order} onCancel={setOrderToCancel} onReorder={handleReorderClick} reorderingId={reorderingId} updatingOrderId={updatingOrderId} />
+              <OrderCard
+                key={order.id}
+                order={order}
+                onCancel={setOrderToCancel}
+                onReorder={handleReorderClick}
+                onContact={setOrderToContact}
+                onChat={setOrderToChat}
+                reorderingId={reorderingId}
+                updatingOrderId={updatingOrderId}
+              />
             ))}
           </TabsContent>
 
           <TabsContent value="cancelled" className="space-y-4">
             {cancelledOrders.map((order) => (
-              <OrderCard key={order.id} order={order} onCancel={setOrderToCancel} onReorder={handleReorderClick} reorderingId={reorderingId} updatingOrderId={updatingOrderId} />
+              <OrderCard
+                key={order.id}
+                order={order}
+                onCancel={setOrderToCancel}
+                onReorder={handleReorderClick}
+                onContact={setOrderToContact}
+                onChat={setOrderToChat}
+                reorderingId={reorderingId}
+                updatingOrderId={updatingOrderId}
+              />
             ))}
           </TabsContent>
         </Tabs>
@@ -163,12 +206,34 @@ export default function ClientOrdersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <RestaurantContactDialog
+        open={Boolean(orderToContact)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setOrderToContact(null)
+          }
+        }}
+        order={orderToContact}
+      />
+
+      <OrderChatSheet
+        open={Boolean(orderToChat)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setOrderToChat(null)
+          }
+        }}
+        order={orderToChat}
+        side="customer"
+      />
     </div>
   )
 }
 
-function OrderCard({ order, onCancel, onReorder, reorderingId, updatingOrderId }) {
+function OrderCard({ order, onCancel, onReorder, onContact, onChat, reorderingId, updatingOrderId }) {
   const isThisReordering = reorderingId === order.id
+  const unreadCount = useOrderChatUnreadCount({ orderId: order.id })
 
   return (
     <Card>
@@ -230,9 +295,16 @@ function OrderCard({ order, onCancel, onReorder, reorderingId, updatingOrderId }
         ) : null}
 
         <div className="flex gap-3">
-          <Button variant="outline" size="sm" className="flex-1" disabled>
+          <Button variant="outline" size="sm" className="flex-1" onClick={() => onContact(order)}>
             <Phone className="mr-2 h-4 w-4" />
             Contactar
+          </Button>
+          <Button variant="outline" size="sm" className="flex-1" onClick={() => onChat(order)}>
+            <MessageCircle className="mr-2 h-4 w-4" />
+            Chat
+            {unreadCount > 0 ? (
+              <Badge className="ml-2" variant="default">{unreadCount}</Badge>
+            ) : null}
           </Button>
           <Button
             variant="outline"

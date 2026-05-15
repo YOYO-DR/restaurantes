@@ -86,6 +86,10 @@ class AdminPlatformSettingSerializer(serializers.ModelSerializer):
             "default_currency_code",
             "default_locale",
             "maintenance_mode",
+            "chat_images_enabled",
+            "chat_image_max_mb",
+            "chat_image_allowed_mimes",
+            "chat_post_close_purge_hours",
         ]
 
 

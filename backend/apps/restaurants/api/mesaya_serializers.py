@@ -81,13 +81,13 @@ class MesaYARestaurantListSerializer(serializers.ModelSerializer):
         return _media_url(self.context.get("request"), branding.cover_file, branding.cover_url)
 
     def get_categories(self, obj):
-        from apps.restaurants.models import RestaurantCategory
-        cats = obj.category.all()
-        return [
-            {"id": str(c.id), "name": c.name, "slug": c.code,
-             "icon": "", "image_url": "", "sort_order": 0}
-            for c in cats
-        ]
+        cat = obj.category
+        if not cat:
+            return []
+        return [{
+            "id": str(cat.id), "name": cat.name, "slug": cat.code,
+            "icon": "", "image_url": "", "sort_order": 0,
+        }]
 
     def get_total_orders(self, obj):
         return getattr(obj, "total_orders", 0)

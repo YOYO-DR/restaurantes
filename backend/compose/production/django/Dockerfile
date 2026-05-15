@@ -45,6 +45,8 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
   gettext \
   # entrypoint
   wait-for-it \
+  # python-magic dependency for MIME detection
+  libmagic1 \
   # telnet \
   # cleaning up unused files
   && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \

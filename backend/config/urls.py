@@ -37,6 +37,8 @@ urlpatterns += [
     path("api/auth/", include("apps.custom_auth.urls", namespace="custom_auth")),
     # MesaYA public API
     path("api/public/", include("apps.restaurants.api.mesaya_urls", namespace="mesaya_public")),
+    path("api/", include("apps.restaurants.api.mesaya_catalog_urls", namespace="mesaya_catalog")),
+    path("api/", include("apps.order_chat.api.urls")),
     # Operator management
     path("api/", include("apps.restaurants.api.operator_urls")),
     # DRF auth token

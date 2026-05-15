@@ -1,14 +1,17 @@
 import { Link } from "react-router-dom"
 import { toast } from "sonner"
+import { OrderChatSheet } from "@/components/order-chat/order-chat-sheet"
+import { RestaurantContactDialog } from "@/components/order-chat/restaurant-contact-dialog"
 import { CancelOrderDialog } from "@/components/orders/cancel-order-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { useOrderChatUnreadCount } from "@/hooks/use-order-chat"
 import { useGuestOrder, useGuestOrderCancellation } from "@/hooks/use-orders"
 import { getGuestOrders, removeGuestOrder } from "@/lib/guest-orders"
 import { formatCurrency, formatDeliveryWindow } from "@/lib/format"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Clock, MapPin, ShoppingBag, Trash2 } from "lucide-react"
+import { Clock, MapPin, MessageCircle, Phone, ShoppingBag, Trash2 } from "lucide-react"
 
 export default function GuestOrdersPage() {
   const initialEntries = getGuestOrders()
@@ -21,6 +24,8 @@ export default function GuestOrdersPage() {
   const { order, isLoading, error, mergeOrder } = useGuestOrder(activeEntry)
   const { cancelOrder, isCancelling } = useGuestOrderCancellation()
   const [orderToRemove, setOrderToRemove] = useState(null)
+  const [orderToContact, setOrderToContact] = useState(null)
+  const [orderToChat, setOrderToChat] = useState(null)
 
   const hasOrders = entries.length > 0
 
@@ -30,6 +35,12 @@ export default function GuestOrdersPage() {
     }
     return order
   }, [activeEntry, order])
+
+  const unreadCount = useOrderChatUnreadCount({
+    orderId: activeOrder?.id,
+    trackingCode: activeEntry?.tracking_code,
+    enabled: Boolean(activeOrder?.id && activeEntry?.tracking_code),
+  })
 
   const handleOrderUpdate = useCallback((payload) => {
     mergeOrder(payload)
@@ -210,12 +221,69 @@ export default function GuestOrdersPage() {
                   <div className="border-t border-border pt-4 text-lg font-semibold">
                     Total: <span className="text-primary">{formatCurrency(activeOrder.total_amount, activeOrder.currency_code)}</span>
                   </div>
+                  <div className="flex flex-wrap gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => setOrderToContact(activeOrder)}
+                    >
+                      <Phone className="mr-2 h-4 w-4" />
+                      Contactar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => setOrderToChat(activeOrder)}
+                    >
+                      <MessageCircle className="mr-2 h-4 w-4" />
+                      Chat
+                      {unreadCount > 0 ? (
+                        <Badge className="ml-2" variant="default">{unreadCount}</Badge>
+                      ) : null}
+                    </Button>
+                    {!['delivered', 'cancelled'].includes(activeOrder.status_code) ? (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => setOrderToRemove(activeOrder)}
+                        disabled={isCancelling}
+                      >
+                        Cancelar
+                      </Button>
+                    ) : null}
+                  </div>
                 </>
               ) : null}
             </CardContent>
           </Card>
         </div>
       ) : null}
+
+      <RestaurantContactDialog
+        open={Boolean(orderToContact)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setOrderToContact(null)
+          }
+        }}
+        order={orderToContact}
+        trackingCode={activeEntry?.tracking_code}
+      />
+
+      <OrderChatSheet
+        open={Boolean(orderToChat)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setOrderToChat(null)
+          }
+        }}
+        order={orderToChat}
+        side="customer"
+        trackingCode={activeEntry?.tracking_code}
+      />
 
       <CancelOrderDialog
         open={Boolean(orderToRemove)}

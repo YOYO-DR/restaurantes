@@ -1,6 +1,8 @@
 import { toast } from "sonner"
 import { useState } from "react"
+import { OrderChatSheet } from "@/components/order-chat/order-chat-sheet"
 import { useOperatorPermission } from "@/hooks/use-operator-permission"
+import { useOrderChatUnreadCount } from "@/hooks/use-order-chat"
 import { CancelOrderDialog } from "@/components/orders/cancel-order-dialog"
 import { DashboardShellSkeleton, OrdersListSkeleton } from "@/components/ui/app-skeletons"
 import { Badge } from "@/components/ui/badge"
@@ -9,11 +11,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useOwnerOrdersContext } from "@/context/owner-orders-context"
 import { formatCurrency } from "@/lib/format"
-import { CheckCircle, ChefHat, Clock, Loader2, MapPin, Phone, ShoppingBag, Truck, User } from "lucide-react"
+import { CheckCircle, ChefHat, Clock, Loader2, MapPin, MessageCircle, Phone, ShoppingBag, Truck, User } from "lucide-react"
 
 export default function OwnerOrdersPage() {
   const { orders, isLoading, error, updateStatus, cancelOrder, updatingOrderId } = useOwnerOrdersContext()
   const [orderToCancel, setOrderToCancel] = useState(null)
+  const [orderToChat, setOrderToChat] = useState(null)
   const newOrders = orders.filter((order) => order.status_code === "new")
   const preparingOrders = orders.filter((order) => order.status_code === "preparing")
   const readyOrders = orders.filter((order) => order.status_code === "ready")
@@ -65,32 +68,32 @@ export default function OwnerOrdersPage() {
 
             <TabsContent value="all" className="space-y-4">
               {orders.map((order) => (
-                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} updatingOrderId={updatingOrderId} />
+                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} onChat={setOrderToChat} updatingOrderId={updatingOrderId} />
               ))}
             </TabsContent>
             <TabsContent value="new" className="space-y-4">
               {newOrders.map((order) => (
-                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} updatingOrderId={updatingOrderId} />
+                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} onChat={setOrderToChat} updatingOrderId={updatingOrderId} />
               ))}
             </TabsContent>
             <TabsContent value="preparing" className="space-y-4">
               {preparingOrders.map((order) => (
-                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} updatingOrderId={updatingOrderId} />
+                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} onChat={setOrderToChat} updatingOrderId={updatingOrderId} />
               ))}
             </TabsContent>
             <TabsContent value="ready" className="space-y-4">
               {readyOrders.map((order) => (
-                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} updatingOrderId={updatingOrderId} />
+                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} onChat={setOrderToChat} updatingOrderId={updatingOrderId} />
               ))}
             </TabsContent>
             <TabsContent value="completed" className="space-y-4">
               {completedOrders.map((order) => (
-                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} updatingOrderId={updatingOrderId} />
+                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} onChat={setOrderToChat} updatingOrderId={updatingOrderId} />
               ))}
             </TabsContent>
             <TabsContent value="cancelled" className="space-y-4">
               {cancelledOrders.map((order) => (
-                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} updatingOrderId={updatingOrderId} />
+                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} onChat={setOrderToChat} updatingOrderId={updatingOrderId} />
               ))}
             </TabsContent>
           </Tabs>
@@ -116,6 +119,17 @@ export default function OwnerOrdersPage() {
             title="Cancelar pedido"
             reasonPlaceholder="Ejemplo: ingrediente agotado, pedido duplicado, cliente solicito cancelacion"
           />
+
+          <OrderChatSheet
+            open={Boolean(orderToChat)}
+            onOpenChange={(open) => {
+              if (!open) {
+                setOrderToChat(null)
+              }
+            }}
+            order={orderToChat}
+            side="restaurant"
+          />
         </>
       )}
     </div>
@@ -136,8 +150,9 @@ function StatusMetric({ label, total, icon, highlight = false }) {
   )
 }
 
-function OrderCard({ order, onStatusChange, onCancel, updatingOrderId }) {
+function OrderCard({ order, onStatusChange, onCancel, onChat, updatingOrderId }) {
   const { canEdit } = useOperatorPermission("pedidos")
+  const unreadCount = useOrderChatUnreadCount({ orderId: order.id })
   const nextStatus = order.status_code === "new"
     ? { code: "preparing", label: "Empezar a preparar", icon: <ChefHat className="mr-2 h-4 w-4" /> }
     : order.status_code === "preparing"
@@ -243,6 +258,13 @@ function OrderCard({ order, onStatusChange, onCancel, updatingOrderId }) {
           <Button variant="outline" disabled>
             <Phone className="mr-2 h-4 w-4" />
             Llamar
+          </Button>
+          <Button variant="outline" onClick={() => onChat(order)}>
+            <MessageCircle className="mr-2 h-4 w-4" />
+            Chat
+            {unreadCount > 0 ? (
+              <Badge className="ml-2" variant="default">{unreadCount}</Badge>
+            ) : null}
           </Button>
           {canEdit && !["delivered", "cancelled"].includes(order.status_code) ? (
             <Button variant="destructive" onClick={() => onCancel(order)} disabled={updatingOrderId === order.id}>
