@@ -96,6 +96,7 @@ class OwnerMenuItemWriteSerializer(serializers.ModelSerializer):
         required=False,
         write_only=True,
     )
+    earns_points = serializers.BooleanField(required=False, default=False)
     allows_points_redemption = serializers.BooleanField(required=False)
     min_points_redeemable = serializers.IntegerField(required=False, min_value=0)
     max_points_redeemable = serializers.IntegerField(
@@ -122,6 +123,7 @@ class OwnerMenuItemWriteSerializer(serializers.ModelSerializer):
             "gallery_images",
             "remove_primary_image",
             "remove_gallery_image_ids",
+            "earns_points",
             "allows_points_redemption",
             "min_points_redeemable",
             "max_points_redeemable",
@@ -278,6 +280,7 @@ class OwnerMenuItemWriteSerializer(serializers.ModelSerializer):
         validated_data.pop("remove_primary_image", None)
         validated_data.pop("remove_gallery_image_ids", None)
         loyalty_payload = {
+            "earns_points": validated_data.pop("earns_points", False),
             "allows_points_redemption": validated_data.pop("allows_points_redemption", False),
             "min_points_redeemable": validated_data.pop("min_points_redeemable", 0),
             "max_points_redeemable": validated_data.pop("max_points_redeemable", None),
@@ -296,6 +299,7 @@ class OwnerMenuItemWriteSerializer(serializers.ModelSerializer):
         remove_primary_image = validated_data.pop("remove_primary_image", False)
         remove_gallery_image_ids = validated_data.pop("remove_gallery_image_ids", [])
         loyalty_payload = {
+            "earns_points": validated_data.pop("earns_points", None),
             "allows_points_redemption": validated_data.pop("allows_points_redemption", None),
             "min_points_redeemable": validated_data.pop("min_points_redeemable", None),
             "max_points_redeemable": validated_data.pop("max_points_redeemable", None),
@@ -305,6 +309,8 @@ class OwnerMenuItemWriteSerializer(serializers.ModelSerializer):
         self._sync_images(menu_item, primary_image, gallery_images)
         if any(value is not None for value in loyalty_payload.values()):
             loyalty_config, _ = MenuItemLoyaltyConfig.objects.get_or_create(menu_item=menu_item)
+            if loyalty_payload["earns_points"] is not None:
+                loyalty_config.earns_points = loyalty_payload["earns_points"]
             if loyalty_payload["allows_points_redemption"] is not None:
                 loyalty_config.allows_points_redemption = loyalty_payload["allows_points_redemption"]
             if loyalty_payload["min_points_redeemable"] is not None:

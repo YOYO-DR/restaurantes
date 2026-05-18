@@ -10,7 +10,8 @@ import { formatCurrency } from "@/lib/format"
 import { useCart } from "@/context/cart-context"
 import { useAuth } from "@/context/auth-context"
 import { useCustomerLoyalty } from "@/hooks/use-orders"
-import { Plus } from "lucide-react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Info, Plus } from "lucide-react"
 
 export function RestaurantMenu({ categories, restaurant, isLoading, error }) {
   const [activeCategory, setActiveCategory] = useState("all")
@@ -140,9 +141,7 @@ export function RestaurantMenu({ categories, restaurant, isLoading, error }) {
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold">{item.name}</h3>
                     {restaurant?.show_tags && item.is_popular ? <Badge variant="secondary" className="text-xs">Popular</Badge> : null}
-                    {item.allows_points_redemption ? (
-                      <FriendlyLoyaltyBadge item={item} isAuthenticated={isAuthenticated} loyaltyData={loyaltyData} isLoadingLoyalty={isLoadingLoyalty} />
-                    ) : null}
+                    <FriendlyLoyaltyBadge item={item} isAuthenticated={isAuthenticated} loyaltyData={loyaltyData} isLoadingLoyalty={isLoadingLoyalty} />
                   </div>
                   {restaurant?.show_descriptions ? <p className="line-clamp-3 text-sm text-muted-foreground">{item.description}</p> : null}
                 </div>
@@ -163,9 +162,7 @@ export function RestaurantMenu({ categories, restaurant, isLoading, error }) {
                       <div className="flex items-center gap-2">
                         <h3 className="font-medium">{item.name}</h3>
                         {restaurant?.show_tags && item.is_popular ? <Badge variant="secondary" className="text-xs">Popular</Badge> : null}
-                        {item.allows_points_redemption ? (
-                          <FriendlyLoyaltyBadge item={item} isAuthenticated={isAuthenticated} loyaltyData={loyaltyData} isLoadingLoyalty={isLoadingLoyalty} />
-                        ) : null}
+                        <FriendlyLoyaltyBadge item={item} isAuthenticated={isAuthenticated} loyaltyData={loyaltyData} isLoadingLoyalty={isLoadingLoyalty} />
                       </div>
                       {restaurant?.show_descriptions ? <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.description}</p> : null}
                     </div>
@@ -192,30 +189,67 @@ export function RestaurantMenu({ categories, restaurant, isLoading, error }) {
 }
 
 function FriendlyLoyaltyBadge({ item, isAuthenticated, loyaltyData, isLoadingLoyalty }) {
-  if (!item.allows_points_redemption) {
-    return null
-  }
-
+  const earnsPoints = Boolean(item.earns_points)
+  const allowsRedemption = Boolean(item.allows_points_redemption)
   const minPoints = Number(item.min_points_redeemable || 0)
   const maxPoints = item.max_points_redeemable == null ? null : Number(item.max_points_redeemable)
-
-  if (!isAuthenticated || isLoadingLoyalty) {
-    const maxLabel = maxPoints == null ? "sin maximo" : `max ${maxPoints}`
-    return (
-      <Badge variant="outline" className="text-xs text-emerald-700">
-        Puedes usar puntos aqui (min {minPoints}, {maxLabel})
-      </Badge>
-    )
-  }
-
+  const isProgramActive = Boolean(loyaltyData?.is_active)
+  const shouldShowNoPoints = isAuthenticated && isProgramActive && !earnsPoints
   const currentPoints = Number(loyaltyData?.current_points || 0)
   const hasMinimum = currentPoints >= minPoints
 
+  if (!earnsPoints && !allowsRedemption && !shouldShowNoPoints) {
+    return null
+  }
+
   return (
-    <Badge variant="outline" className={`text-xs ${hasMinimum ? "text-emerald-700" : "text-amber-700"}`}>
-      {hasMinimum
-        ? `Tienes ${currentPoints} pts. Puedes usar ${minPoints}${maxPoints == null ? " o mas" : ` a ${maxPoints}`} aqui.`
-        : `Tienes ${currentPoints} pts. Necesitas minimo ${minPoints} para usar descuento aqui.`}
+    <div className="flex flex-wrap items-center gap-1">
+      {earnsPoints ? (
+        <LoyaltyPill text="Gana puntos" tone="green" hint="Gana puntos: cada peso que gastes en este plato suma para tu programa de fidelidad." />
+      ) : null}
+
+      {allowsRedemption ? (
+        <LoyaltyPill
+          text="Acepta canje"
+          tone={isAuthenticated && !isLoadingLoyalty && !hasMinimum ? "amber" : "green"}
+          hint={
+            isAuthenticated && !isLoadingLoyalty
+              ? hasMinimum
+                ? `Acepta canje: puedes pagar parte de este plato con puntos. Tienes ${currentPoints} puntos (minimo ${minPoints}${maxPoints == null ? "" : `, maximo ${maxPoints}`}).`
+                : `Acepta canje: puedes pagar parte de este plato con puntos. Te faltan ${Math.max(minPoints - currentPoints, 0)} puntos para alcanzar el minimo ${minPoints}.`
+              : `Acepta canje: puedes pagar parte de este plato con puntos (minimo ${minPoints}${maxPoints == null ? "" : `, maximo ${maxPoints}`}).`
+          }
+        />
+      ) : null}
+
+      {shouldShowNoPoints ? (
+        <LoyaltyPill
+          text="No otorga puntos"
+          tone="muted"
+          hint="No otorga puntos: este producto no acumula puntos por decision del restaurante."
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function LoyaltyPill({ text, hint, tone }) {
+  const toneClass = tone === "amber"
+    ? "text-amber-700"
+    : tone === "muted"
+      ? "text-muted-foreground"
+      : "text-emerald-700"
+  return (
+    <Badge variant="outline" className={`text-xs ${toneClass} gap-1`}>
+      <span>{text}</span>
+      <Popover>
+        <PopoverTrigger asChild>
+          <button type="button" aria-label={`Info ${text}`} className="hover:text-foreground">
+            <Info className="h-3 w-3" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="max-w-xs text-xs leading-relaxed">{hint}</PopoverContent>
+      </Popover>
     </Badge>
   )
 }
@@ -233,6 +267,7 @@ function AddItemButton({ item, restaurant, addItem, compact = false }) {
             name: item.name,
             price: Number(item.price_amount),
             currency: item.currency_code,
+            earns_points: Boolean(item.earns_points),
             allows_points_redemption: Boolean(item.allows_points_redemption),
             min_points_redeemable: item.min_points_redeemable ?? 0,
             max_points_redeemable: item.max_points_redeemable ?? null,

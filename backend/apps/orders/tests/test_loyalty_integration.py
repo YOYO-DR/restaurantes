@@ -82,6 +82,11 @@ def test_pickup_completed_status_assigns_points(api_client: APIClient):
         currency_unit_amount="1000.00",
         points_earned=1,
     )
+    MenuItemLoyaltyConfig.objects.create(
+        menu_item=item,
+        earns_points=True,
+        allows_points_redemption=False,
+    )
 
     api_client.force_authenticate(user=customer)
     create_response = api_client.post(
@@ -124,6 +129,11 @@ def test_pickup_delivered_status_assigns_points(api_client: APIClient):
         currency_unit_amount="1000.00",
         points_earned=1,
     )
+    MenuItemLoyaltyConfig.objects.create(
+        menu_item=item,
+        earns_points=True,
+        allows_points_redemption=False,
+    )
 
     api_client.force_authenticate(user=customer)
     create_response = api_client.post(
@@ -165,6 +175,11 @@ def test_cancel_completed_order_reverts_points(api_client: APIClient):
         is_active=True,
         currency_unit_amount="1000.00",
         points_earned=1,
+    )
+    MenuItemLoyaltyConfig.objects.create(
+        menu_item=item,
+        earns_points=True,
+        allows_points_redemption=False,
     )
 
     api_client.force_authenticate(user=customer)
@@ -232,6 +247,7 @@ def test_checkout_applies_redemption_discount(api_client: APIClient):
 
     MenuItemLoyaltyConfig.objects.create(
         menu_item=item,
+        earns_points=False,
         allows_points_redemption=True,
         min_points_redeemable=50,
         max_points_redeemable=150,

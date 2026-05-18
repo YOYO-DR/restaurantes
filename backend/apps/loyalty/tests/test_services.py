@@ -90,6 +90,7 @@ def test_assign_points_for_order_is_idempotent_and_applies_cap():
     order, item = _build_order(user, restaurant, total="12000.00")
     MenuItemLoyaltyConfig.objects.create(
         menu_item=item,
+        earns_points=True,
         allows_points_redemption=True,
     )
 
@@ -115,6 +116,7 @@ def test_revert_points_for_order_creates_negative_tx():
     order, item = _build_order(user, restaurant, total="3000.00")
     MenuItemLoyaltyConfig.objects.create(
         menu_item=item,
+        earns_points=True,
         allows_points_redemption=True,
     )
 
@@ -187,6 +189,7 @@ def test_apply_redemption_to_order_respects_item_constraints():
     order, menu_item = _build_order(user, restaurant, total="12000.00")
     MenuItemLoyaltyConfig.objects.create(
         menu_item=menu_item,
+        earns_points=True,
         allows_points_redemption=True,
         min_points_redeemable=50,
         max_points_redeemable=150,
@@ -203,7 +206,7 @@ def test_apply_redemption_to_order_respects_item_constraints():
     assert redemption.points_applied == 120
 
 
-def test_assign_points_for_order_skips_non_redeemable_items():
+def test_assign_points_for_order_skips_non_earning_items():
     user = UserFactory()
     restaurant = RestaurantFactory()
     LoyaltyTier.objects.create(code="base", name="Base", min_points=0, restaurant=restaurant)
@@ -216,6 +219,7 @@ def test_assign_points_for_order_skips_non_redeemable_items():
     order, item = _build_order(user, restaurant, total="6000.00")
     MenuItemLoyaltyConfig.objects.create(
         menu_item=item,
+        earns_points=False,
         allows_points_redemption=False,
     )
 
@@ -225,7 +229,7 @@ def test_assign_points_for_order_skips_non_redeemable_items():
     assert LoyaltyTransaction.objects.filter(order=order).count() == 0
 
 
-def test_assign_points_for_order_counts_items_without_config_as_eligible():
+def test_assign_points_for_order_skips_items_without_config():
     user = UserFactory()
     restaurant = RestaurantFactory()
     LoyaltyTier.objects.create(code="base", name="Base", min_points=0, restaurant=restaurant)
@@ -239,9 +243,33 @@ def test_assign_points_for_order_counts_items_without_config_as_eligible():
 
     assign_points_for_order(order)
 
-    account = LoyaltyAccount.objects.get(user=user, restaurant=restaurant)
-    assert account.current_points == 6
-    assert LoyaltyTransaction.objects.filter(order=order).count() == 1
+    assert not LoyaltyAccount.objects.filter(user=user, restaurant=restaurant).exists()
+    assert LoyaltyTransaction.objects.filter(order=order).count() == 0
+
+
+def test_assign_points_for_order_counts_only_items_with_earns_points_enabled():
+    user = UserFactory()
+    restaurant = RestaurantFactory()
+    LoyaltyTier.objects.create(code="base", name="Base", min_points=0, restaurant=restaurant)
+    RestaurantLoyaltySetting.objects.create(
+        restaurant=restaurant,
+        is_active=True,
+        currency_unit_amount="1000.00",
+        points_earned=1,
+    )
+    order, item = _build_order(user, restaurant, total="6000.00")
+    MenuItemLoyaltyConfig.objects.create(
+        menu_item=item,
+        earns_points=False,
+        allows_points_redemption=True,
+        min_points_redeemable=0,
+        max_points_redeemable=100,
+    )
+
+    assign_points_for_order(order)
+
+    assert not LoyaltyAccount.objects.filter(user=user, restaurant=restaurant).exists()
+    assert LoyaltyTransaction.objects.filter(order=order).count() == 0
 
 
 def test_assign_points_for_order_notifies_with_restaurant_and_order_code(monkeypatch):
@@ -267,7 +295,12 @@ def test_assign_points_for_order_notifies_with_restaurant_and_order_code(monkeyp
         currency_unit_amount="1000.00",
         points_earned=1,
     )
-    order, _item = _build_order(user, restaurant, total="2000.00")
+    order, item = _build_order(user, restaurant, total="2000.00")
+    MenuItemLoyaltyConfig.objects.create(
+        menu_item=item,
+        earns_points=True,
+        allows_points_redemption=False,
+    )
 
     assign_points_for_order(order)
 

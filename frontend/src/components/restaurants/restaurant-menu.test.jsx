@@ -42,6 +42,7 @@ const categories = [
         currency_code: "COP",
         is_available: true,
         is_popular: true,
+        earns_points: true,
         allows_points_redemption: true,
         min_points_redeemable: 50,
         max_points_redeemable: 120,
@@ -54,6 +55,7 @@ const categories = [
         currency_code: "COP",
         is_available: true,
         is_popular: false,
+        earns_points: false,
         allows_points_redemption: false,
       },
     ],
@@ -88,13 +90,13 @@ describe("RestaurantMenu", () => {
       />,
     )
 
-    expect(screen.getByText("Puedes usar puntos aqui (min 50, max 120)")).toBeInTheDocument()
+    expect(screen.getByText("Gana puntos")).toBeInTheDocument()
     expect(screen.queryByText(/Ajiaco.*puntos/i)).not.toBeInTheDocument()
   })
 
   it("shows minimum points message for authenticated customers", () => {
     authState.isAuthenticated = true
-    loyaltyState.data = { current_points: 20 }
+    loyaltyState.data = { current_points: 20, is_active: true }
 
     render(
       <RestaurantMenu
@@ -119,7 +121,8 @@ describe("RestaurantMenu", () => {
       />,
     )
 
-    expect(screen.getByText("Tienes 20 pts. Necesitas minimo 50 para usar descuento aqui.")).toBeInTheDocument()
+    expect(screen.getByText("Acepta canje")).toBeInTheDocument()
+    expect(screen.getByText("No otorga puntos")).toBeInTheDocument()
   })
 
   it("respects dropdown navigation and hidden fields", () => {

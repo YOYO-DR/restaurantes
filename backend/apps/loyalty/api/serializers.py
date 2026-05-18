@@ -58,6 +58,7 @@ class LoyaltyRewardSerializer(serializers.ModelSerializer):
 class LoyaltyRedemptionSerializer(serializers.ModelSerializer):
     reward_name = serializers.CharField(source="loyalty_reward.name", read_only=True)
     restaurant_id = serializers.UUIDField(source="loyalty_reward.restaurant_id", read_only=True)
+    restaurant_slug = serializers.CharField(source="loyalty_reward.restaurant.slug", read_only=True)
     restaurant_name = serializers.CharField(source="loyalty_reward.restaurant.display_name", read_only=True)
     status_code = serializers.CharField(source="status.code", read_only=True)
     customer_name = serializers.SerializerMethodField()
@@ -69,6 +70,7 @@ class LoyaltyRedemptionSerializer(serializers.ModelSerializer):
             "id",
             "reward_name",
             "restaurant_id",
+            "restaurant_slug",
             "restaurant_name",
             "status_code",
             "points_available",

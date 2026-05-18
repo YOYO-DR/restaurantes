@@ -49,7 +49,7 @@ def _eligible_total_amount(order: Order) -> Decimal:
         if order_item.menu_item_id is None:
             continue
         config = loyalty_configs.get(str(order_item.menu_item_id))
-        if config is None or config.allows_points_redemption:
+        if config is not None and config.earns_points:
             eligible_total += Decimal(order_item.line_total_amount)
     return eligible_total
 
@@ -253,6 +253,47 @@ def redeem_reward(user, reward: LoyaltyReward, points: int | None = None) -> Loy
         reward.available_quantity -= 1
         reward.save(update_fields=["available_quantity", "updated_at"])
 
+    return redemption
+
+
+@transaction.atomic
+def cancel_redemption(user, redemption: LoyaltyRedemption) -> LoyaltyRedemption:
+    account = redemption.loyalty_transaction.loyalty_account
+    if account.user_id != user.id:
+        raise ValueError("No puedes cancelar este canje.")
+    if redemption.status.code != "pending":
+        raise ValueError("Solo puedes cancelar canjes pendientes.")
+
+    cancelled_status, _ = LoyaltyRedemptionStatus.objects.get_or_create(
+        code="cancelled",
+        defaults={"name": "Cancelado", "description": "Canje cancelado por el cliente."},
+    )
+    tx_type, _ = LoyaltyTransactionType.objects.get_or_create(
+        code="redemption_cancelled",
+        defaults={
+            "name": "Canje cancelado",
+            "description": "Devolucion de puntos por cancelacion de canje pendiente.",
+        },
+    )
+
+    points_to_return = abs(redemption.loyalty_transaction.points_delta)
+    LoyaltyTransaction.objects.create(
+        loyalty_account=account,
+        tx_type=tx_type,
+        points_delta=points_to_return,
+        description=f"Cancelacion de canje: {redemption.loyalty_reward.name}",
+    )
+
+    account.current_points += points_to_return
+    account.save(update_fields=["current_points", "updated_at"])
+
+    reward = redemption.loyalty_reward
+    if reward.available_quantity is not None:
+        reward.available_quantity += 1
+        reward.save(update_fields=["available_quantity", "updated_at"])
+
+    redemption.status = cancelled_status
+    redemption.save(update_fields=["status", "updated_at"])
     return redemption
 
 

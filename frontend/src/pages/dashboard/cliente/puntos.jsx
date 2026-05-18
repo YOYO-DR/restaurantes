@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { useRedeemReward } from "@/hooks/use-loyalty"
+import { useCancelRedemption, useCustomerRedemptions, useRedeemReward } from "@/hooks/use-loyalty"
 import { useCustomerLoyalty } from "@/hooks/use-orders"
 
 export default function ClientPointsPage() {
@@ -15,6 +15,8 @@ export default function ClientPointsPage() {
   const restaurantId = searchParams.get("restaurant_id")
   const { data, isLoading, error, reload } = useCustomerLoyalty(restaurantId)
   const { redeem, isSubmitting } = useRedeemReward()
+  const { cancel, isSubmitting: isCancelling } = useCancelRedemption()
+  const { redemptions: pendingRedemptions, reload: reloadPending } = useCustomerRedemptions("pending", true)
 
   const selectedRestaurantSummary = restaurantId
     ? data.points_by_restaurant?.find((entry) => entry.restaurant_id === restaurantId) || null
@@ -138,6 +140,7 @@ export default function ClientPointsPage() {
                             try {
                               await redeem({ reward_id: reward.id })
                               await reload()
+                              await reloadPending()
                             } catch {
                               // handled by api layer toasts if any
                             }
@@ -172,6 +175,53 @@ export default function ClientPointsPage() {
                     </div>
                   ))}
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Mis canjes pendientes</CardTitle>
+                <CardDescription>Usalos en tu siguiente compra o cancelalos para recuperar puntos.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {pendingRedemptions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No tienes canjes pendientes.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {pendingRedemptions.map((redemption) => (
+                      <div key={redemption.id} className="rounded-lg border border-border p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-medium">{redemption.reward_name}</p>
+                            <p className="text-sm text-muted-foreground">{redemption.restaurant_name} - {redemption.points_available} pts reservados</p>
+                          </div>
+                          <Badge variant="outline">{redemption.status_code}</Badge>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Button size="sm" variant="outline" asChild>
+                            <Link to={`/restaurantes/${redemption.restaurant_slug}`}>Aplicar en mi proximo pedido</Link>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            disabled={isCancelling}
+                            onClick={async () => {
+                              try {
+                                await cancel(redemption.id)
+                                await reload()
+                                await reloadPending()
+                              } catch {
+                                // handled by api layer toasts if any
+                              }
+                            }}
+                          >
+                            Cancelar canje
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

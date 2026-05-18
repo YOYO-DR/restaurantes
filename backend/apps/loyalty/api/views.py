@@ -22,6 +22,7 @@ from apps.loyalty.models import LoyaltyTier
 from apps.loyalty.models import LoyaltyTransaction
 from apps.loyalty.models import RestaurantLoyaltySetting
 from apps.loyalty.services import redeem_reward
+from apps.loyalty.services import cancel_redemption
 
 
 class CustomerLoyaltyViewSet(GenericViewSet):
@@ -63,6 +64,7 @@ class CustomerLoyaltyViewSet(GenericViewSet):
         available_rewards = LoyaltyReward.objects.filter(
             restaurant_id__in=fav_restaurant_ids,
             is_active=True,
+            points_cost__lte=current_points,
         ).select_related("restaurant")[:8]
 
         tx_qs = LoyaltyTransaction.objects.filter(loyalty_account__in=accounts).select_related(
@@ -134,6 +136,8 @@ class CustomerLoyaltyViewSet(GenericViewSet):
                         "name": reward.name,
                         "points": reward.points_cost,
                         "description": reward.description,
+                        "restaurant_id": str(reward.restaurant_id),
+                        "restaurant_slug": reward.restaurant.slug,
                         "restaurant_name": reward.restaurant.display_name,
                     }
                     for reward in available_rewards
@@ -174,6 +178,26 @@ class CustomerLoyaltyViewSet(GenericViewSet):
         if status_code:
             queryset = queryset.filter(status__code=status_code)
         return Response(LoyaltyRedemptionSerializer(queryset.order_by("-created_at"), many=True).data)
+
+    @action(detail=True, methods=["delete"], url_path="redemptions")
+    def cancel_redemption(self, request, pk=None):
+        redemption = LoyaltyRedemption.objects.filter(
+            pk=pk,
+            loyalty_transaction__loyalty_account__user=request.user,
+        ).select_related(
+            "status",
+            "loyalty_reward",
+            "loyalty_transaction__loyalty_account",
+        ).first()
+        if not redemption:
+            return Response({"detail": "Canje no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            updated = cancel_redemption(request.user, redemption)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(LoyaltyRedemptionSerializer(updated).data, status=status.HTTP_200_OK)
 
 
 class OwnerRestaurantLoyaltySettingViewSet(GenericViewSet):

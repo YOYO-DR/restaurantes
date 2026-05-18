@@ -5,8 +5,12 @@ from rest_framework.test import APIClient
 
 from apps.customers.models import Favorite
 from apps.loyalty.models import LoyaltyAccount
+from apps.loyalty.models import LoyaltyRedemption
+from apps.loyalty.models import LoyaltyRedemptionStatus
 from apps.loyalty.models import LoyaltyReward
 from apps.loyalty.models import LoyaltyTier
+from apps.loyalty.models import LoyaltyTransaction
+from apps.loyalty.models import LoyaltyTransactionType
 from apps.restaurants.tests.factories import RestaurantFactory
 from apps.users.tests.factories import UserFactory
 
@@ -83,6 +87,42 @@ def test_customer_loyalty_returns_authenticated_user_data(api_client: APIClient)
     ]
 
 
+def test_customer_loyalty_filters_rewards_by_current_points(api_client: APIClient):
+    user = UserFactory()
+    tier = LoyaltyTier.objects.create(code="base", name="Base", min_points=0)
+    restaurant = RestaurantFactory(display_name="La Brasa")
+    Favorite.objects.create(user=user, restaurant=restaurant)
+    LoyaltyAccount.objects.create(
+        user=user,
+        restaurant=restaurant,
+        tier=tier,
+        current_points=90,
+        lifetime_points=130,
+    )
+    LoyaltyReward.objects.create(
+        restaurant=restaurant,
+        name="Postre gratis",
+        description="Brownie",
+        points_cost=80,
+        is_active=True,
+    )
+    LoyaltyReward.objects.create(
+        restaurant=restaurant,
+        name="Combo premium",
+        description="Especial",
+        points_cost=120,
+        is_active=True,
+    )
+    api_client.force_authenticate(user=user)
+
+    response = api_client.get(reverse("api:customer-loyalty-list"))
+
+    assert response.status_code == status.HTTP_200_OK
+    assert [reward["name"] for reward in response.data["available_rewards"]] == [
+        "Postre gratis",
+    ]
+
+
 def test_customer_loyalty_filters_by_restaurant_and_returns_single_level(api_client: APIClient):
     user = UserFactory()
     tier_base = LoyaltyTier.objects.create(code="base", name="Base", min_points=0)
@@ -124,3 +164,104 @@ def test_customer_loyalty_filters_by_restaurant_and_returns_single_level(api_cli
             "current_level": "VIP",
         },
     ]
+
+
+def test_customer_can_cancel_pending_redemption_and_recovers_points(api_client: APIClient):
+    user = UserFactory()
+    tier = LoyaltyTier.objects.create(code="base", name="Base", min_points=0)
+    restaurant = RestaurantFactory(display_name="La Brasa")
+    account = LoyaltyAccount.objects.create(
+        user=user,
+        restaurant=restaurant,
+        tier=tier,
+        current_points=20,
+        lifetime_points=100,
+    )
+    reward = LoyaltyReward.objects.create(
+        restaurant=restaurant,
+        name="Postre",
+        description="Brownie",
+        points_cost=80,
+        is_active=True,
+        available_quantity=0,
+    )
+    tx_type, _ = LoyaltyTransactionType.objects.get_or_create(
+        code="reward_redeemed",
+        defaults={"name": "Recompensa canjeada"},
+    )
+    pending_status, _ = LoyaltyRedemptionStatus.objects.get_or_create(
+        code="pending",
+        defaults={"name": "Pendiente"},
+    )
+    tx = LoyaltyTransaction.objects.create(
+        loyalty_account=account,
+        tx_type=tx_type,
+        points_delta=-80,
+        description="Canje de recompensa: Postre",
+    )
+    redemption = LoyaltyRedemption.objects.create(
+        loyalty_transaction=tx,
+        loyalty_reward=reward,
+        status=pending_status,
+        points_applied=0,
+    )
+
+    api_client.force_authenticate(user=user)
+    response = api_client.delete(
+        reverse("api:customer-loyalty-cancel-redemption", kwargs={"pk": str(redemption.id)}),
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    account.refresh_from_db()
+    reward.refresh_from_db()
+    redemption.refresh_from_db()
+    assert account.current_points == 100
+    assert reward.available_quantity == 1
+    assert redemption.status.code == "cancelled"
+
+
+def test_customer_cannot_cancel_applied_redemption(api_client: APIClient):
+    user = UserFactory()
+    tier = LoyaltyTier.objects.create(code="base", name="Base", min_points=0)
+    restaurant = RestaurantFactory(display_name="La Brasa")
+    account = LoyaltyAccount.objects.create(
+        user=user,
+        restaurant=restaurant,
+        tier=tier,
+        current_points=20,
+        lifetime_points=100,
+    )
+    reward = LoyaltyReward.objects.create(
+        restaurant=restaurant,
+        name="Postre",
+        description="Brownie",
+        points_cost=80,
+        is_active=True,
+    )
+    tx_type, _ = LoyaltyTransactionType.objects.get_or_create(
+        code="reward_redeemed",
+        defaults={"name": "Recompensa canjeada"},
+    )
+    applied_status, _ = LoyaltyRedemptionStatus.objects.get_or_create(
+        code="applied",
+        defaults={"name": "Aplicado"},
+    )
+    tx = LoyaltyTransaction.objects.create(
+        loyalty_account=account,
+        tx_type=tx_type,
+        points_delta=-80,
+        description="Canje de recompensa: Postre",
+    )
+    redemption = LoyaltyRedemption.objects.create(
+        loyalty_transaction=tx,
+        loyalty_reward=reward,
+        status=applied_status,
+        points_applied=80,
+    )
+
+    api_client.force_authenticate(user=user)
+    response = api_client.delete(
+        reverse("api:customer-loyalty-cancel-redemption", kwargs={"pk": str(redemption.id)}),
+    )
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST

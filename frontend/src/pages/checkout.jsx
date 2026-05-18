@@ -13,7 +13,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/context/auth-context"
 import { useCart } from "@/context/cart-context"
 import { useCheckout, useCustomerAddresses } from "@/hooks/use-orders"
-import { useCustomerRedemptions } from "@/hooks/use-loyalty"
+import { useCustomerLoyalty } from "@/hooks/use-orders"
+import { useCustomerRedemptions, useRedeemReward } from "@/hooks/use-loyalty"
 import { saveGuestOrder } from "@/lib/guest-orders"
 import { formatCurrency, formatDeliveryWindow } from "@/lib/format"
 import { CheckCircle2, Clock3, Loader2, MapPin, ShoppingBag } from "lucide-react"
@@ -24,12 +25,15 @@ export default function CheckoutPage() {
   const { items, restaurant, orderType, tableId, tableNumber, clearCart } = useCart()
   const { addresses, isLoading: isLoadingAddresses, createAddress } = useCustomerAddresses(isAuthenticated)
   const { isSubmitting, submitOrder } = useCheckout()
-  const { redemptions } = useCustomerRedemptions("pending", isAuthenticated)
+  const { redemptions, reload: reloadRedemptions } = useCustomerRedemptions("pending", isAuthenticated)
+  const { data: loyaltyData } = useCustomerLoyalty(restaurant?.id || null, { enabled: Boolean(isAuthenticated && restaurant?.id) })
+  const { redeem, isSubmitting: isRedeemingNow } = useRedeemReward()
   const [selectedAddressId, setSelectedAddressId] = useState("")
   const [notes, setNotes] = useState("")
   const [newAddress, setNewAddress] = useState({ label: "", line1: "", city: "", notes: "" })
   const [guestCustomer, setGuestCustomer] = useState({ name: "", email: "", phone: "", address: "" })
   const [selectedRedemptionId, setSelectedRedemptionId] = useState("")
+  const [selectedQuickRewardId, setSelectedQuickRewardId] = useState("")
   const [lineRedemptionPoints, setLineRedemptionPoints] = useState({})
 
   const subtotal = useMemo(
@@ -38,7 +42,12 @@ export default function CheckoutPage() {
   )
   const deliveryFee = orderType === "delivery" ? Number(restaurant?.delivery_fee_amount || 0) : 0
   const total = subtotal + deliveryFee
-  const selectedRedemption = redemptions.find((entry) => entry.id === selectedRedemptionId)
+  const restaurantRedemptions = redemptions.filter((entry) => String(entry.restaurant_id) === String(restaurant?.id))
+  const selectedRedemption = restaurantRedemptions.find((entry) => entry.id === selectedRedemptionId)
+  const quickRewards = (loyaltyData.available_rewards || []).filter(
+    (reward) => String(reward.restaurant_id) === String(restaurant?.id),
+  )
+  const selectedQuickReward = quickRewards.find((reward) => reward.id === selectedQuickRewardId)
   const pointsReserved = Number(selectedRedemption?.points_available || 0)
   const effectiveGlobalCap = selectedRedemption ? pointsReserved : 0
   const totalLinePoints = Object.values(lineRedemptionPoints).reduce((acc, value) => acc + Number(value || 0), 0)
@@ -239,12 +248,50 @@ export default function CheckoutPage() {
                 </CardContent>
               </Card>
 
-              {isAuthenticated && redemptions.length > 0 ? (
+              {isAuthenticated && (restaurantRedemptions.length > 0 || quickRewards.length > 0) ? (
                 <Card>
                   <CardHeader>
                     <CardTitle>Aplicar puntos</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {quickRewards.length > 0 ? (
+                      <div className="space-y-2 rounded-lg border border-border p-3">
+                        <Label>Canjear ahora</Label>
+                        <select
+                          className="w-full rounded-md border border-input bg-background p-2 text-sm"
+                          value={selectedQuickRewardId}
+                          onChange={(event) => setSelectedQuickRewardId(event.target.value)}
+                        >
+                          <option value="">Selecciona una recompensa</option>
+                          {quickRewards.map((reward) => (
+                            <option key={reward.id} value={reward.id}>{reward.name} ({reward.points} pts)</option>
+                          ))}
+                        </select>
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={isRedeemingNow || !selectedQuickReward}
+                          onClick={async () => {
+                            if (!selectedQuickReward) {
+                              return
+                            }
+                            try {
+                              const created = await redeem({ reward_id: selectedQuickReward.id })
+                              await reloadRedemptions()
+                              setSelectedRedemptionId(created.id)
+                              setSelectedQuickRewardId("")
+                              setLineRedemptionPoints({})
+                              toast.success("Canje creado. Puedes aplicarlo en este pedido")
+                            } catch (error) {
+                              toast.error(error.message || "No fue posible crear el canje")
+                            }
+                          }}
+                        >
+                          {isRedeemingNow ? "Canjeando..." : "Canjear y aplicar"}
+                        </Button>
+                      </div>
+                    ) : null}
+
                     <div className="space-y-2">
                       <Label>Canje pendiente</Label>
                       <select
@@ -254,13 +301,13 @@ export default function CheckoutPage() {
                           setSelectedRedemptionId(event.target.value)
                           setLineRedemptionPoints({})
                         }}
-                      >
-                        <option value="">No aplicar canje</option>
-                        {redemptions.map((redemption) => (
-                          <option key={redemption.id} value={redemption.id}>
-                            {redemption.reward_name} - {redemption.restaurant_name} ({redemption.points_available} pts)
-                          </option>
-                        ))}
+                        >
+                          <option value="">No aplicar canje</option>
+                          {restaurantRedemptions.map((redemption) => (
+                            <option key={redemption.id} value={redemption.id}>
+                              {redemption.reward_name} - {redemption.restaurant_name} ({redemption.points_available} pts)
+                            </option>
+                          ))}
                       </select>
                     </div>
 

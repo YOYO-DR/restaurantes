@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 
 import {
+  cancelRedemption,
   createOwnerLoyaltyReward,
   createOwnerLoyaltyTier,
   deleteOwnerLoyaltyReward,
@@ -220,4 +221,19 @@ export function useCustomerRedemptions(status = "pending", enabled = true) {
   }, [load])
 
   return { redemptions, isLoading, error, reload: load }
+}
+
+export function useCancelRedemption() {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  return {
+    isSubmitting,
+    cancel: async (redemptionId) => {
+      setIsSubmitting(true)
+      try {
+        return await cancelRedemption(redemptionId)
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+  }
 }

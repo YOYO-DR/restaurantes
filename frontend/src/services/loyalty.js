@@ -82,3 +82,10 @@ export function getCustomerRedemptions(status) {
   }
   return apiJson(`/api/customer/loyalty/redemptions/${params.toString() ? `?${params.toString()}` : ""}`)
 }
+
+export function cancelRedemption(redemptionId) {
+  return apiJson(`/api/customer/loyalty/${redemptionId}/redemptions/`, {
+    method: "DELETE",
+    headers: {},
+  })
+}

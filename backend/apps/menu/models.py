@@ -74,6 +74,7 @@ class MenuItemLoyaltyConfig(BaseModel):
         on_delete=models.CASCADE,
         related_name="loyalty_config",
     )
+    earns_points = models.BooleanField(default=False)
     allows_points_redemption = models.BooleanField(default=False)
     min_points_redeemable = models.PositiveIntegerField(default=0)
     max_points_redeemable = models.PositiveIntegerField(null=True, blank=True)

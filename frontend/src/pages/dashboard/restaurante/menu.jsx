@@ -39,6 +39,7 @@ import { Input } from "@/components/ui/input"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
+import { InfoHint } from "@/components/ui/info-hint"
 import { useOwnerRestaurantMenu } from "@/hooks/use-restaurants"
 import { formatCurrency } from "@/lib/format"
 import { getOwnerMenuCategories } from "@/services/restaurants"
@@ -59,6 +60,7 @@ const itemSchema = z.object({
   prep_time_minutes: z.coerce.number().int().min(0, "Tiempo invalido").optional(),
   is_available: z.boolean().default(true),
   is_popular: z.boolean().default(false),
+  earns_points: z.boolean().default(false),
   allows_points_redemption: z.boolean().default(false),
   min_points_redeemable: z.coerce.number().int().min(0).optional(),
   max_points_redeemable: z.coerce.number().int().min(1).optional(),
@@ -119,7 +121,7 @@ function CategoryDialog({ open, onOpenChange, onSubmit, initialValues, isSubmitt
                 </FormItem>
               )}
             />
-            <DialogFooter>
+            <DialogFooter className="sticky bottom-0 border-t bg-background pt-3">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
@@ -284,14 +286,14 @@ function ItemDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
+        <DialogHeader className="shrink-0 border-b border-border bg-background px-6 py-4">
           <DialogTitle>{initialValues.id ? "Editar plato" : "Nuevo plato"}</DialogTitle>
           <DialogDescription>Administra nombre, precio y disponibilidad de tus platos.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form
-            className="space-y-4"
+            className="flex min-h-0 flex-1 flex-col overflow-hidden"
             onSubmit={form.handleSubmit((values) =>
               onSubmit({
                 ...values,
@@ -302,6 +304,8 @@ function ItemDialog({
                 remove_gallery_image_ids: removedGalleryImageIds,
               }))}
           >
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/60 [&::-webkit-scrollbar-thumb:hover]:bg-border [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2">
+              <div className="space-y-4">
             <FormField
               control={form.control}
               name="menu_category"
@@ -531,16 +535,48 @@ function ItemDialog({
               />
             </div>
             <div className="space-y-3 rounded-lg border border-border p-3">
-              <p className="text-sm font-medium">Canje con puntos</p>
+              <p className="text-sm font-medium">Puntos</p>
+              <FormField
+                control={form.control}
+                name="earns_points"
+                render={({ field }) => (
+                  <FormItem className="rounded-md border p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <FormLabel className="m-0">Este producto otorga puntos al comprarlo</FormLabel>
+                          <InfoHint>
+                            Si esta apagado, los clientes no ganan puntos por el precio de este producto.
+                          </InfoHint>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Controla si este plato acumula puntos.</p>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </div>
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="allows_points_redemption"
                 render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-md border p-3">
-                    <FormLabel>Permitir canje de puntos</FormLabel>
-                    <FormControl>
-                      <Switch checked={field.value} onCheckedChange={field.onChange} />
-                    </FormControl>
+                  <FormItem className="rounded-md border p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <FormLabel className="m-0">Este producto se puede pagar con puntos</FormLabel>
+                          <InfoHint>
+                            Permite que el cliente aplique parte de sus puntos como descuento en este producto.
+                          </InfoHint>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Activa minimos y maximos de canje por producto.</p>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </div>
                   </FormItem>
                 )}
               />
@@ -550,28 +586,40 @@ function ItemDialog({
                   name="min_points_redeemable"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Min puntos canjeables</FormLabel>
-                      <FormControl>
-                        <Input type="number" value={field.value ?? ""} onChange={field.onChange} />
-                      </FormControl>
-                    </FormItem>
-                  )}
+                          <FormLabel>Min puntos canjeables</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              disabled={!form.watch("allows_points_redemption")}
+                              value={field.value ?? ""}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
                 />
                 <FormField
                   control={form.control}
                   name="max_points_redeemable"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Max puntos canjeables</FormLabel>
-                      <FormControl>
-                        <Input type="number" value={field.value ?? ""} onChange={field.onChange} />
-                      </FormControl>
-                    </FormItem>
-                  )}
+                          <FormLabel>Max puntos canjeables</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              disabled={!form.watch("allows_points_redemption")}
+                              value={field.value ?? ""}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
                 />
               </div>
             </div>
-            <DialogFooter>
+              </div>
+            </div>
+            <DialogFooter className="shrink-0 border-t border-border bg-background px-6 py-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
@@ -661,6 +709,7 @@ export default function OwnerMenuPage() {
     prep_time_minutes: "",
     is_available: true,
     is_popular: false,
+    earns_points: false,
     allows_points_redemption: false,
     min_points_redeemable: 0,
     max_points_redeemable: "",
@@ -898,6 +947,7 @@ export default function OwnerMenuPage() {
                             setSelectedItem({
                               ...item,
                               menu_category: data.categories.find((category) => category.name === item.category)?.id || "",
+                              earns_points: Boolean(item.earns_points),
                               allows_points_redemption: Boolean(item.allows_points_redemption),
                               min_points_redeemable: item.min_points_redeemable ?? 0,
                               max_points_redeemable: item.max_points_redeemable ?? "",

@@ -436,5 +436,3 @@ Respuesta: asignar solo si `payment_status in {completed, cash_on_delivery_confi
 ---
 
 > **Listo para revisión.** Marca cualquier cambio en preguntas abiertas (sección 7) o sugerencias (sección 8) antes de empezar.
-
-
