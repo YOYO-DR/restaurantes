@@ -68,7 +68,59 @@ def test_customer_loyalty_returns_authenticated_user_data(api_client: APIClient)
     assert response.status_code == status.HTTP_200_OK
     assert response.data["current_points"] == 120
     assert response.data["total_earned"] == 300
-    assert response.data["current_level"] == "Varios"
+    assert response.data["current_level"] == "Base"
+    assert response.data["points_by_restaurant"] == [
+        {
+            "restaurant_id": str(restaurant.id),
+            "restaurant_name": "La Brasa",
+            "current_points": 120,
+            "total_earned": 300,
+            "current_level": "Base",
+        },
+    ]
     assert [reward["name"] for reward in response.data["available_rewards"]] == [
         "Postre gratis",
+    ]
+
+
+def test_customer_loyalty_filters_by_restaurant_and_returns_single_level(api_client: APIClient):
+    user = UserFactory()
+    tier_base = LoyaltyTier.objects.create(code="base", name="Base", min_points=0)
+    tier_vip = LoyaltyTier.objects.create(code="vip", name="VIP", min_points=500)
+    first_restaurant = RestaurantFactory(display_name="Norte")
+    second_restaurant = RestaurantFactory(display_name="Sur")
+
+    LoyaltyAccount.objects.create(
+        user=user,
+        restaurant=first_restaurant,
+        tier=tier_base,
+        current_points=120,
+        lifetime_points=320,
+    )
+    LoyaltyAccount.objects.create(
+        user=user,
+        restaurant=second_restaurant,
+        tier=tier_vip,
+        current_points=700,
+        lifetime_points=900,
+    )
+    api_client.force_authenticate(user=user)
+
+    response = api_client.get(
+        reverse("api:customer-loyalty-list"),
+        {"restaurant_id": str(second_restaurant.id)},
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["current_points"] == 700
+    assert response.data["total_earned"] == 900
+    assert response.data["current_level"] == "VIP"
+    assert response.data["points_by_restaurant"] == [
+        {
+            "restaurant_id": str(second_restaurant.id),
+            "restaurant_name": "Sur",
+            "current_points": 700,
+            "total_earned": 900,
+            "current_level": "VIP",
+        },
     ]

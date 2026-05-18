@@ -30,6 +30,7 @@ DEFAULT_OPERATOR_PERMISSIONS: dict[str, dict[str, bool]] = {
     "menu":           {"can_view": True,  "can_create": True,  "can_edit": True,  "can_delete": False},
     "inventario":     {"can_view": True,  "can_create": False, "can_edit": False, "can_delete": False},
     "clientes":       {"can_view": True,  "can_create": False, "can_edit": False, "can_delete": False},
+    "lealtad":        {"can_view": False, "can_create": False, "can_edit": False, "can_delete": False},
     "resenas":        {"can_view": True,  "can_create": False, "can_edit": True,  "can_delete": False},
     "analiticas":     {"can_view": True,  "can_create": False, "can_edit": False, "can_delete": False},
     "qr":             {"can_view": False, "can_create": False, "can_edit": False, "can_delete": False},

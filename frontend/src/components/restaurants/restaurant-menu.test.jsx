@@ -3,8 +3,25 @@ import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import { RestaurantMenu } from "@/components/restaurants/restaurant-menu"
 
+const authState = {
+  isAuthenticated: false,
+}
+
+const loyaltyState = {
+  data: { current_points: 0 },
+  isLoading: false,
+}
+
 vi.mock("@/context/cart-context", () => ({
   useCart: () => ({ addItem: vi.fn() }),
+}))
+
+vi.mock("@/context/auth-context", () => ({
+  useAuth: () => authState,
+}))
+
+vi.mock("@/hooks/use-orders", () => ({
+  useCustomerLoyalty: () => loyaltyState,
 }))
 
 vi.mock("sonner", () => ({
@@ -25,6 +42,9 @@ const categories = [
         currency_code: "COP",
         is_available: true,
         is_popular: true,
+        allows_points_redemption: true,
+        min_points_redeemable: 50,
+        max_points_redeemable: 120,
       },
       {
         id: "b",
@@ -34,13 +54,78 @@ const categories = [
         currency_code: "COP",
         is_available: true,
         is_popular: false,
+        allows_points_redemption: false,
       },
     ],
   },
 ]
 
 describe("RestaurantMenu", () => {
+  it("shows loyalty message only for eligible products", () => {
+    authState.isAuthenticated = false
+    loyaltyState.data = { current_points: 0 }
+
+    render(
+      <RestaurantMenu
+        categories={categories}
+        restaurant={{
+          id: "r1",
+          slug: "demo",
+          name: "Demo",
+          delivery_fee_amount: "0.00",
+          has_table_order: false,
+          category_navigation: "tabs",
+          search_enabled: true,
+          filters_enabled: true,
+          show_prices: true,
+          show_descriptions: true,
+          show_tags: true,
+          menu_layout: "cards",
+          image_size: "medium",
+        }}
+        isLoading={false}
+        error=""
+      />,
+    )
+
+    expect(screen.getByText("Puedes usar puntos aqui (min 50, max 120)")).toBeInTheDocument()
+    expect(screen.queryByText(/Ajiaco.*puntos/i)).not.toBeInTheDocument()
+  })
+
+  it("shows minimum points message for authenticated customers", () => {
+    authState.isAuthenticated = true
+    loyaltyState.data = { current_points: 20 }
+
+    render(
+      <RestaurantMenu
+        categories={categories}
+        restaurant={{
+          id: "r1",
+          slug: "demo",
+          name: "Demo",
+          delivery_fee_amount: "0.00",
+          has_table_order: false,
+          category_navigation: "tabs",
+          search_enabled: true,
+          filters_enabled: true,
+          show_prices: true,
+          show_descriptions: true,
+          show_tags: true,
+          menu_layout: "cards",
+          image_size: "medium",
+        }}
+        isLoading={false}
+        error=""
+      />,
+    )
+
+    expect(screen.getByText("Tienes 20 pts. Necesitas minimo 50 para usar descuento aqui.")).toBeInTheDocument()
+  })
+
   it("respects dropdown navigation and hidden fields", () => {
+    authState.isAuthenticated = false
+    loyaltyState.data = { current_points: 0 }
+
     render(
       <RestaurantMenu
         categories={categories}
@@ -71,6 +156,8 @@ describe("RestaurantMenu", () => {
   })
 
   it("filters popular items when enabled", async () => {
+    authState.isAuthenticated = false
+    loyaltyState.data = { current_points: 0 }
     const user = userEvent.setup()
 
     render(
@@ -103,6 +190,8 @@ describe("RestaurantMenu", () => {
   })
 
   it("shows empty state when filters remove all items", async () => {
+    authState.isAuthenticated = false
+    loyaltyState.data = { current_points: 0 }
     const user = userEvent.setup()
 
     render(

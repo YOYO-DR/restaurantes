@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { useOwnerOrdersContext } from "@/context/owner-orders-context"
 import { useOwnerRestaurants } from "@/hooks/use-restaurants"
 import { cn } from "@/lib/utils"
-import { BarChart3, Home, Package, Palette, QrCode, Settings, ShoppingBag, Star, User, UserCog, Users, Utensils, UtensilsCrossed } from "lucide-react"
+import { Award, BarChart3, Home, Package, Palette, QrCode, Settings, ShoppingBag, Star, User, UserCog, Users, Utensils, UtensilsCrossed } from "lucide-react"
 import { useAuth } from "@/context/auth-context"
 
 const ownerOnlyItems = ["/dashboard/restaurante/operadores"]
@@ -14,6 +14,7 @@ const MODULE_MAP = {
   "/dashboard/restaurante/menu": "menu",
   "/dashboard/restaurante/inventario": "inventario",
   "/dashboard/restaurante/clientes": "clientes",
+  "/dashboard/restaurante/lealtad": "lealtad",
   "/dashboard/restaurante/resenas": "resenas",
   "/dashboard/restaurante/analiticas": "analiticas",
   "/dashboard/restaurante/qr": "qr",
@@ -47,6 +48,11 @@ const menuItems = [
     title: "Clientes",
     href: "/dashboard/restaurante/clientes",
     icon: Users,
+  },
+  {
+    title: "Lealtad",
+    href: "/dashboard/restaurante/lealtad",
+    icon: Award,
   },
   {
     title: "Resenas",

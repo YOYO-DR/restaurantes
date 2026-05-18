@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/context/auth-context"
 import { useCart } from "@/context/cart-context"
 import { useCheckout, useCustomerAddresses } from "@/hooks/use-orders"
+import { useCustomerRedemptions } from "@/hooks/use-loyalty"
 import { saveGuestOrder } from "@/lib/guest-orders"
 import { formatCurrency, formatDeliveryWindow } from "@/lib/format"
 import { CheckCircle2, Clock3, Loader2, MapPin, ShoppingBag } from "lucide-react"
@@ -23,10 +24,13 @@ export default function CheckoutPage() {
   const { items, restaurant, orderType, tableId, tableNumber, clearCart } = useCart()
   const { addresses, isLoading: isLoadingAddresses, createAddress } = useCustomerAddresses(isAuthenticated)
   const { isSubmitting, submitOrder } = useCheckout()
+  const { redemptions } = useCustomerRedemptions("pending", isAuthenticated)
   const [selectedAddressId, setSelectedAddressId] = useState("")
   const [notes, setNotes] = useState("")
   const [newAddress, setNewAddress] = useState({ label: "", line1: "", city: "", notes: "" })
   const [guestCustomer, setGuestCustomer] = useState({ name: "", email: "", phone: "", address: "" })
+  const [selectedRedemptionId, setSelectedRedemptionId] = useState("")
+  const [lineRedemptionPoints, setLineRedemptionPoints] = useState({})
 
   const subtotal = useMemo(
     () => items.reduce((acc, item) => acc + item.price * item.quantity, 0),
@@ -34,6 +38,10 @@ export default function CheckoutPage() {
   )
   const deliveryFee = orderType === "delivery" ? Number(restaurant?.delivery_fee_amount || 0) : 0
   const total = subtotal + deliveryFee
+  const selectedRedemption = redemptions.find((entry) => entry.id === selectedRedemptionId)
+  const pointsReserved = Number(selectedRedemption?.points_available || 0)
+  const effectiveGlobalCap = selectedRedemption ? pointsReserved : 0
+  const totalLinePoints = Object.values(lineRedemptionPoints).reduce((acc, value) => acc + Number(value || 0), 0)
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -217,20 +225,90 @@ export default function CheckoutPage() {
               </Card>
             ) : null}
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Notas del pedido</CardTitle>
-              </CardHeader>
-              <CardContent>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Notas del pedido</CardTitle>
+                </CardHeader>
+                <CardContent>
                 <Textarea
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
                   placeholder="Sin cebolla, llamar al llegar, etc."
                   rows={3}
                 />
-              </CardContent>
-            </Card>
-          </section>
+                </CardContent>
+              </Card>
+
+              {isAuthenticated && redemptions.length > 0 ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Aplicar puntos</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Canje pendiente</Label>
+                      <select
+                        className="w-full rounded-md border border-input bg-background p-2 text-sm"
+                        value={selectedRedemptionId}
+                        onChange={(event) => {
+                          setSelectedRedemptionId(event.target.value)
+                          setLineRedemptionPoints({})
+                        }}
+                      >
+                        <option value="">No aplicar canje</option>
+                        {redemptions.map((redemption) => (
+                          <option key={redemption.id} value={redemption.id}>
+                            {redemption.reward_name} - {redemption.restaurant_name} ({redemption.points_available} pts)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {selectedRedemption ? (
+                      <div className="space-y-3 rounded-lg border border-border p-3">
+                        <p className="text-sm text-muted-foreground">
+                          Puedes distribuir hasta {effectiveGlobalCap} puntos en productos habilitados.
+                        </p>
+                        {items.map((item, index) => {
+                          const allows = Boolean(item.allows_points_redemption)
+                          const minPoints = Number(item.min_points_redeemable || 0)
+                          const maxPoints = item.max_points_redeemable == null ? effectiveGlobalCap : Number(item.max_points_redeemable)
+                          const currentPoints = Number(lineRedemptionPoints[index] || 0)
+                          const maxForThisItem = Math.max(Math.min(maxPoints, effectiveGlobalCap), 0)
+                          return (
+                            <div key={`${item.id}-${index}`} className="grid gap-2 rounded-md border border-border p-3 md:grid-cols-[1fr_180px] md:items-center">
+                              <div>
+                                <p className="font-medium">{item.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {allows
+                                    ? `Min ${minPoints} / Max ${maxForThisItem} puntos`
+                                    : "Este producto no admite canje con puntos"}
+                                </p>
+                              </div>
+                              <Input
+                                type="number"
+                                min={0}
+                                max={maxForThisItem}
+                                disabled={!allows}
+                                value={currentPoints}
+                                onChange={(event) => {
+                                  const nextValue = Number(event.target.value || 0)
+                                  setLineRedemptionPoints((current) => ({
+                                    ...current,
+                                    [index]: Math.max(0, Math.min(nextValue, maxForThisItem)),
+                                  }))
+                                }}
+                              />
+                            </div>
+                          )
+                        })}
+                        <p className="text-sm text-muted-foreground">Puntos distribuidos: {totalLinePoints}</p>
+                      </div>
+                    ) : null}
+                  </CardContent>
+                </Card>
+              ) : null}
+            </section>
 
           <aside>
             <Card className="sticky top-24">
@@ -274,6 +352,13 @@ export default function CheckoutPage() {
                         customer_email: guestCustomer.email,
                         customer_phone: guestCustomer.phone,
                         customer_notes: notes,
+                        loyalty_redemption_id: selectedRedemptionId || null,
+                        line_redemptions: selectedRedemptionId
+                          ? items.map((item, index) => ({
+                              order_item_index: index,
+                              points_to_apply: Number(lineRedemptionPoints[index] || 0),
+                            }))
+                          : [],
                         items: items.map((item) => ({
                           menu_item_id: item.id,
                           quantity: item.quantity,

@@ -13,6 +13,10 @@ from apps.customers.api.views import CustomerDashboardViewSet
 from apps.customers.api.views import CustomerPaymentMethodViewSet
 from apps.customers.api.views import FavoriteViewSet
 from apps.loyalty.api.views import CustomerLoyaltyViewSet
+from apps.loyalty.api.views import OwnerLoyaltyRewardViewSet
+from apps.loyalty.api.views import OwnerLoyaltyTierViewSet
+from apps.loyalty.api.views import OwnerRestaurantLoyaltyRedemptionViewSet
+from apps.loyalty.api.views import OwnerRestaurantLoyaltySettingViewSet
 from apps.menu.api.views import OwnerInventoryItemViewSet
 from apps.menu.api.views import OwnerInventoryMetadataViewSet
 from apps.menu.api.views import OwnerMenuCategoryViewSet
@@ -64,6 +68,18 @@ router.register(
 )
 router.register("notifications/center", NotificationCenterViewSet, basename="notification-center")
 router.register("customer/loyalty", CustomerLoyaltyViewSet, basename="customer-loyalty")
+router.register(
+    "owner/restaurant-loyalty-settings",
+    OwnerRestaurantLoyaltySettingViewSet,
+    basename="owner-loyalty-setting",
+)
+router.register("owner/loyalty-tiers", OwnerLoyaltyTierViewSet, basename="owner-loyalty-tier")
+router.register("owner/loyalty-rewards", OwnerLoyaltyRewardViewSet, basename="owner-loyalty-reward")
+router.register(
+    "owner/loyalty-redemptions",
+    OwnerRestaurantLoyaltyRedemptionViewSet,
+    basename="owner-loyalty-redemption",
+)
 router.register("checkout/orders", CheckoutViewSet, basename="checkout-order")
 router.register("customer/orders", CustomerOrderViewSet, basename="customer-order")
 router.register("owner/orders", OwnerOrderViewSet, basename="owner-order")

@@ -202,3 +202,7 @@ class PersonalizacionModulePermission(OperatorModulePermission):
 
 class ConfiguracionModulePermission(OperatorModulePermission):
     module = "configuracion"
+
+
+class LealtadModulePermission(OperatorModulePermission):
+    module = "lealtad"

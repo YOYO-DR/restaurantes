@@ -9,6 +9,7 @@ from apps.menu.models import InventoryStockMovement
 from apps.menu.models import MenuCategory
 from apps.menu.models import MenuItem
 from apps.menu.models import MenuItemImage
+from apps.menu.models import MenuItemLoyaltyConfig
 from apps.menu.models import UnitType
 from apps.restaurants.models import Restaurant
 
@@ -95,6 +96,13 @@ class OwnerMenuItemWriteSerializer(serializers.ModelSerializer):
         required=False,
         write_only=True,
     )
+    allows_points_redemption = serializers.BooleanField(required=False)
+    min_points_redeemable = serializers.IntegerField(required=False, min_value=0)
+    max_points_redeemable = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        min_value=1,
+    )
 
     class Meta:
         model = MenuItem
@@ -114,6 +122,9 @@ class OwnerMenuItemWriteSerializer(serializers.ModelSerializer):
             "gallery_images",
             "remove_primary_image",
             "remove_gallery_image_ids",
+            "allows_points_redemption",
+            "min_points_redeemable",
+            "max_points_redeemable",
         ]
         extra_kwargs = {
             "slug": {"required": False, "allow_blank": True},
@@ -266,8 +277,17 @@ class OwnerMenuItemWriteSerializer(serializers.ModelSerializer):
         gallery_images = validated_data.pop("gallery_images", [])
         validated_data.pop("remove_primary_image", None)
         validated_data.pop("remove_gallery_image_ids", None)
+        loyalty_payload = {
+            "allows_points_redemption": validated_data.pop("allows_points_redemption", False),
+            "min_points_redeemable": validated_data.pop("min_points_redeemable", 0),
+            "max_points_redeemable": validated_data.pop("max_points_redeemable", None),
+        }
         menu_item = super().create(validated_data)
         self._sync_images(menu_item, primary_image, gallery_images)
+        MenuItemLoyaltyConfig.objects.update_or_create(
+            menu_item=menu_item,
+            defaults=loyalty_payload,
+        )
         return menu_item
 
     def update(self, instance, validated_data):
@@ -275,9 +295,22 @@ class OwnerMenuItemWriteSerializer(serializers.ModelSerializer):
         gallery_images = validated_data.pop("gallery_images", [])
         remove_primary_image = validated_data.pop("remove_primary_image", False)
         remove_gallery_image_ids = validated_data.pop("remove_gallery_image_ids", [])
+        loyalty_payload = {
+            "allows_points_redemption": validated_data.pop("allows_points_redemption", None),
+            "min_points_redeemable": validated_data.pop("min_points_redeemable", None),
+            "max_points_redeemable": validated_data.pop("max_points_redeemable", None),
+        }
         menu_item = super().update(instance, validated_data)
         self._remove_images(menu_item, remove_primary_image, remove_gallery_image_ids)
         self._sync_images(menu_item, primary_image, gallery_images)
+        if any(value is not None for value in loyalty_payload.values()):
+            loyalty_config, _ = MenuItemLoyaltyConfig.objects.get_or_create(menu_item=menu_item)
+            if loyalty_payload["allows_points_redemption"] is not None:
+                loyalty_config.allows_points_redemption = loyalty_payload["allows_points_redemption"]
+            if loyalty_payload["min_points_redeemable"] is not None:
+                loyalty_config.min_points_redeemable = loyalty_payload["min_points_redeemable"]
+            loyalty_config.max_points_redeemable = loyalty_payload["max_points_redeemable"]
+            loyalty_config.save()
         return menu_item
 
 

@@ -11,6 +11,7 @@ from apps.core.permissions import PedidosModulePermission
 from apps.core.permissions import get_user_owned_or_operated_restaurant_ids
 from apps.core.permissions import is_admin_user
 from apps.loyalty.services import assign_points_for_order
+from apps.loyalty.services import revert_points_for_order
 from apps.orders.api.serializers import CheckoutSerializer
 from apps.orders.api.serializers import OrderCancelSerializer
 from apps.orders.api.serializers import OrderSerializer
@@ -19,6 +20,7 @@ from apps.orders.api.throttles import CheckoutOrderRateThrottle
 from apps.orders.models import Order
 from apps.orders.models import OrderStatus
 from apps.orders.models import OrderStatusHistory
+from apps.orders.constants import FINAL_STATUS_BY_ORDER_TYPE
 from apps.orders.services import notify_order_cancelled
 from apps.orders.services import notify_order_status_updated
 
@@ -180,6 +182,7 @@ class CheckoutViewSet(GenericViewSet):
             comment=reason,
         )
         notify_order_cancelled(order, cancelled_by=cancelled_by, reason=reason)
+        revert_points_for_order(order)
         notify_order_status_updated(order)
 
         return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)
@@ -223,7 +226,11 @@ class OwnerOrderViewSet(ReadOnlyModelViewSet):
             status=next_status,
             changed_by=request.user,
         )
-        if next_status.code == "delivered":
+        final_status_code = FINAL_STATUS_BY_ORDER_TYPE.get(order.order_type.code)
+        pickup_delivered_status = (
+            order.order_type.code == "pickup" and next_status.code == "delivered"
+        )
+        if (final_status_code and next_status.code == final_status_code) or pickup_delivered_status:
             assign_points_for_order(order)
 
         notify_order_status_updated(order)
@@ -259,6 +266,7 @@ class OwnerOrderViewSet(ReadOnlyModelViewSet):
             comment=reason,
         )
         notify_order_cancelled(order, cancelled_by="owner", reason=reason)
+        revert_points_for_order(order)
         notify_order_status_updated(order)
 
         return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)

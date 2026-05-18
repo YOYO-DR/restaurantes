@@ -17,6 +17,7 @@ from apps.core.permissions import ResenasEditPermission
 from apps.core.permissions import ResenasModulePermission
 from apps.core.permissions import get_user_owned_or_operated_restaurant_ids
 from apps.core.permissions import is_admin_user
+from apps.loyalty.models import RestaurantLoyaltySetting
 from apps.orders.models import OrderItem
 from apps.orders.services import filter_orders_by_scope
 from apps.restaurants.api.serializers import OwnerDashboardRecentOrderSerializer
@@ -56,6 +57,7 @@ class PublicRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
                 "hours",
                 "tables__status",
                 "menu_categories__menu_items__images",
+                "menu_categories__menu_items__loyalty_config",
             )
             .filter(status__code="active")
             .order_by("display_name")
@@ -125,6 +127,7 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
             "hours",
             "tables__status",
             "menu_categories__menu_items__images",
+            "menu_categories__menu_items__loyalty_config",
         )
         if is_admin_user(self.request.user):
             return queryset.order_by("display_name")
@@ -230,6 +233,11 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=["get"])
     def customers(self, request, pk=None):
         restaurant = self.get_object()
+        loyalty_setting = RestaurantLoyaltySetting.objects.filter(
+            restaurant=restaurant,
+        ).first()
+        loyalty_is_active = bool(loyalty_setting and loyalty_setting.is_active)
+        vip_threshold_orders = getattr(loyalty_setting, "vip_threshold_orders", 100) or 100
         order_scope = request.query_params.get("order_scope", "all").strip()
         scoped_orders = filter_orders_by_scope(
             restaurant.orders.select_related("user"),
@@ -261,9 +269,9 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
             total_spent = row["total_spent"] or 0
             average_ticket = total_spent / total_orders if total_orders else 0
             loyalty_account = loyalty_dict.get(row["user_id"]) if row["user_id"] else None
-            points = loyalty_account.current_points if loyalty_account else 0
-            tier = loyalty_account.tier.name if loyalty_account else "Base"
-            if points >= 1000:
+            points = loyalty_account.current_points if loyalty_is_active and loyalty_account else 0
+            tier = loyalty_account.tier.name if loyalty_is_active and loyalty_account else "-"
+            if total_orders >= vip_threshold_orders:
                 vip_count += 1
             favorite_items = list(
                 OrderItem.objects.filter(
@@ -314,6 +322,10 @@ class OwnerRestaurantViewSet(viewsets.ReadOnlyModelViewSet):
                     .count(),
                     "average_ticket": average_ticket,
                     "vip_customers": vip_count,
+                },
+                "loyalty": {
+                    "is_active": loyalty_is_active,
+                    "vip_threshold_orders": vip_threshold_orders,
                 },
                 "order_scope": order_scope,
                 "customers": customers,

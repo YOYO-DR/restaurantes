@@ -61,6 +61,14 @@ export default function ClientesRestaurantePage() {
 
       {isLoading ? null : (
         <>
+          {!data.loyalty?.is_active ? (
+            <Card className="border-amber-300 bg-amber-50">
+              <CardContent className="py-4 text-sm text-amber-900">
+                Tu programa de puntos esta desactivado. Activalo en Configuracion &gt; Lealtad.
+              </CardContent>
+            </Card>
+          ) : null}
+
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard icon={<Users className="h-6 w-6 text-primary" />} label="Total Clientes" value={data.metrics.total_customers} />
             <StatCard icon={<TrendingUp className="h-6 w-6 text-green-500" />} label="Nuevos este mes" value={data.metrics.new_customers_this_month} />
@@ -86,7 +94,7 @@ export default function ClientesRestaurantePage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Cliente</TableHead>
-                    <TableHead>Nivel</TableHead>
+                    {data.loyalty?.is_active ? <TableHead>Nivel</TableHead> : null}
                     <TableHead className="hidden md:table-cell">Pedidos</TableHead>
                     <TableHead className="hidden lg:table-cell">Total Gastado</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
@@ -108,9 +116,11 @@ export default function ClientesRestaurantePage() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <Badge className={tierStyles[client.tier] || tierStyles.Base}>{client.tier}</Badge>
-                      </TableCell>
+                      {data.loyalty?.is_active ? (
+                        <TableCell>
+                          <Badge className={tierStyles[client.tier] || tierStyles.Base}>{client.tier}</Badge>
+                        </TableCell>
+                      ) : null}
                       <TableCell className="hidden md:table-cell">{client.total_orders}</TableCell>
                       <TableCell className="hidden lg:table-cell">{formatCurrency(client.total_spent)}</TableCell>
                       <TableCell className="text-right">
@@ -159,7 +169,7 @@ export default function ClientesRestaurantePage() {
 
                                 <div className="grid grid-cols-3 gap-4">
                                   <MetricBlock label="Pedidos" value={selectedClient.total_orders} />
-                                  <MetricBlock label="Puntos" value={selectedClient.points} />
+                                  {data.loyalty?.is_active ? <MetricBlock label="Puntos" value={selectedClient.points} /> : null}
                                   <MetricBlock label="Gastado" value={formatCurrency(selectedClient.total_spent)} compact />
                                 </div>
 

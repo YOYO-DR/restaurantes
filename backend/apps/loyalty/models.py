@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from apps.core.models import BaseCatalogModel
@@ -6,8 +7,23 @@ from apps.core.models import BaseModel
 
 
 class LoyaltyTier(BaseCatalogModel):
+    restaurant = models.ForeignKey(
+        "restaurants.Restaurant",
+        on_delete=models.CASCADE,
+        related_name="loyalty_tiers",
+        null=True,
+        blank=True,
+    )
     min_points = models.PositiveIntegerField(default=0)
     max_points = models.PositiveIntegerField(blank=True, null=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("restaurant", "code"),
+                name="uniq_loyalty_tier_restaurant_code",
+            ),
+        ]
 
 
 class LoyaltyTransactionType(BaseCatalogModel):
@@ -57,6 +73,9 @@ class LoyaltyReward(BaseModel):
     description = models.TextField(blank=True)
     points_cost = models.PositiveIntegerField()
     is_active = models.BooleanField(default=True)
+    available_quantity = models.PositiveIntegerField(null=True, blank=True)
+    max_per_user = models.PositiveIntegerField(null=True, blank=True)
+    valid_until = models.DateField(null=True, blank=True)
 
     class Meta:
         db_table = "loyalty_rewards"
@@ -103,6 +122,14 @@ class LoyaltyRedemption(BaseModel):
         on_delete=models.PROTECT,
         related_name="redemptions",
     )
+    order = models.ForeignKey(
+        "orders.Order",
+        on_delete=models.SET_NULL,
+        related_name="loyalty_redemptions",
+        null=True,
+        blank=True,
+    )
+    points_applied = models.PositiveIntegerField(default=0)
 
     class Meta:
         db_table = "loyalty_redemptions"
@@ -121,6 +148,33 @@ class RestaurantLoyaltySetting(BaseModel):
         default=0,
     )
     points_earned = models.PositiveIntegerField(default=1)
+    max_redeemable_points_per_order = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+    )
+    max_points_per_order = models.PositiveIntegerField(null=True, blank=True)
+    vip_threshold_orders = models.PositiveIntegerField(default=100)
+    point_redeem_value = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         db_table = "restaurant_loyalty_settings"
+
+    def clean(self):
+        if self.is_active:
+            if self.currency_unit_amount <= 0:
+                raise ValidationError(
+                    {
+                        "currency_unit_amount": "Debe ser mayor a 0 cuando el programa esta activo.",
+                    },
+                )
+            if self.points_earned <= 0:
+                raise ValidationError(
+                    {
+                        "points_earned": "Debe ser mayor a 0 cuando el programa esta activo.",
+                    },
+                )

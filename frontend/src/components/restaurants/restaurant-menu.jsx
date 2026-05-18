@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { formatCurrency } from "@/lib/format"
 import { useCart } from "@/context/cart-context"
+import { useAuth } from "@/context/auth-context"
+import { useCustomerLoyalty } from "@/hooks/use-orders"
 import { Plus } from "lucide-react"
 
 export function RestaurantMenu({ categories, restaurant, isLoading, error }) {
@@ -15,6 +17,11 @@ export function RestaurantMenu({ categories, restaurant, isLoading, error }) {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeFilter, setActiveFilter] = useState("all")
   const { addItem } = useCart()
+  const { isAuthenticated } = useAuth()
+  const {
+    data: loyaltyData,
+    isLoading: isLoadingLoyalty,
+  } = useCustomerLoyalty(restaurant?.id || null, { enabled: Boolean(isAuthenticated && restaurant?.id) })
 
   const allItems = useMemo(
     () => categories.flatMap((category) => category.items.map((item) => ({ ...item, category: category.slug }))),
@@ -133,6 +140,9 @@ export function RestaurantMenu({ categories, restaurant, isLoading, error }) {
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold">{item.name}</h3>
                     {restaurant?.show_tags && item.is_popular ? <Badge variant="secondary" className="text-xs">Popular</Badge> : null}
+                    {item.allows_points_redemption ? (
+                      <FriendlyLoyaltyBadge item={item} isAuthenticated={isAuthenticated} loyaltyData={loyaltyData} isLoadingLoyalty={isLoadingLoyalty} />
+                    ) : null}
                   </div>
                   {restaurant?.show_descriptions ? <p className="line-clamp-3 text-sm text-muted-foreground">{item.description}</p> : null}
                 </div>
@@ -153,6 +163,9 @@ export function RestaurantMenu({ categories, restaurant, isLoading, error }) {
                       <div className="flex items-center gap-2">
                         <h3 className="font-medium">{item.name}</h3>
                         {restaurant?.show_tags && item.is_popular ? <Badge variant="secondary" className="text-xs">Popular</Badge> : null}
+                        {item.allows_points_redemption ? (
+                          <FriendlyLoyaltyBadge item={item} isAuthenticated={isAuthenticated} loyaltyData={loyaltyData} isLoadingLoyalty={isLoadingLoyalty} />
+                        ) : null}
                       </div>
                       {restaurant?.show_descriptions ? <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.description}</p> : null}
                     </div>
@@ -178,6 +191,35 @@ export function RestaurantMenu({ categories, restaurant, isLoading, error }) {
   )
 }
 
+function FriendlyLoyaltyBadge({ item, isAuthenticated, loyaltyData, isLoadingLoyalty }) {
+  if (!item.allows_points_redemption) {
+    return null
+  }
+
+  const minPoints = Number(item.min_points_redeemable || 0)
+  const maxPoints = item.max_points_redeemable == null ? null : Number(item.max_points_redeemable)
+
+  if (!isAuthenticated || isLoadingLoyalty) {
+    const maxLabel = maxPoints == null ? "sin maximo" : `max ${maxPoints}`
+    return (
+      <Badge variant="outline" className="text-xs text-emerald-700">
+        Puedes usar puntos aqui (min {minPoints}, {maxLabel})
+      </Badge>
+    )
+  }
+
+  const currentPoints = Number(loyaltyData?.current_points || 0)
+  const hasMinimum = currentPoints >= minPoints
+
+  return (
+    <Badge variant="outline" className={`text-xs ${hasMinimum ? "text-emerald-700" : "text-amber-700"}`}>
+      {hasMinimum
+        ? `Tienes ${currentPoints} pts. Puedes usar ${minPoints}${maxPoints == null ? " o mas" : ` a ${maxPoints}`} aqui.`
+        : `Tienes ${currentPoints} pts. Necesitas minimo ${minPoints} para usar descuento aqui.`}
+    </Badge>
+  )
+}
+
 function AddItemButton({ item, restaurant, addItem, compact = false }) {
   return (
     <Button
@@ -191,6 +233,9 @@ function AddItemButton({ item, restaurant, addItem, compact = false }) {
             name: item.name,
             price: Number(item.price_amount),
             currency: item.currency_code,
+            allows_points_redemption: Boolean(item.allows_points_redemption),
+            min_points_redeemable: item.min_points_redeemable ?? 0,
+            max_points_redeemable: item.max_points_redeemable ?? null,
           },
           restaurant
             ? {

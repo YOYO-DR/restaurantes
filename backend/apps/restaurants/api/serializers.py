@@ -355,6 +355,9 @@ class RestaurantDetailSerializer(serializers.ModelSerializer):
 class PublicMenuItemSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     images = serializers.SerializerMethodField()
+    allows_points_redemption = serializers.SerializerMethodField()
+    min_points_redeemable = serializers.SerializerMethodField()
+    max_points_redeemable = serializers.SerializerMethodField()
 
     class Meta:
         model = MenuItem
@@ -370,6 +373,9 @@ class PublicMenuItemSerializer(serializers.ModelSerializer):
             "prep_time_minutes",
             "image_url",
             "images",
+            "allows_points_redemption",
+            "min_points_redeemable",
+            "max_points_redeemable",
         ]
 
     def get_image_url(self, obj: MenuItem) -> str:
@@ -401,6 +407,20 @@ class PublicMenuItemSerializer(serializers.ModelSerializer):
             "is_primary": image.is_primary,
             "sort_order": image.sort_order,
         }
+
+    def get_allows_points_redemption(self, obj: MenuItem) -> bool:
+        config = getattr(obj, "loyalty_config", None)
+        return bool(config and config.allows_points_redemption)
+
+    def get_min_points_redeemable(self, obj: MenuItem) -> int:
+        config = getattr(obj, "loyalty_config", None)
+        return int(config.min_points_redeemable) if config else 0
+
+    def get_max_points_redeemable(self, obj: MenuItem) -> int | None:
+        config = getattr(obj, "loyalty_config", None)
+        if not config or config.max_points_redeemable is None:
+            return None
+        return int(config.max_points_redeemable)
 
 
 class PublicMenuCategorySerializer(serializers.ModelSerializer):
@@ -419,6 +439,9 @@ class OwnerMenuItemSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source="menu_category.name")
     image_url = serializers.SerializerMethodField()
     images = serializers.SerializerMethodField()
+    allows_points_redemption = serializers.SerializerMethodField()
+    min_points_redeemable = serializers.SerializerMethodField()
+    max_points_redeemable = serializers.SerializerMethodField()
 
     class Meta:
         model = MenuItem
@@ -435,6 +458,9 @@ class OwnerMenuItemSerializer(serializers.ModelSerializer):
             "category_name",
             "image_url",
             "images",
+            "allows_points_redemption",
+            "min_points_redeemable",
+            "max_points_redeemable",
         ]
 
     def get_image_url(self, obj: MenuItem) -> str:
@@ -466,6 +492,20 @@ class OwnerMenuItemSerializer(serializers.ModelSerializer):
             "is_primary": image.is_primary,
             "sort_order": image.sort_order,
         }
+
+    def get_allows_points_redemption(self, obj: MenuItem) -> bool:
+        config = getattr(obj, "loyalty_config", None)
+        return bool(config and config.allows_points_redemption)
+
+    def get_min_points_redeemable(self, obj: MenuItem) -> int:
+        config = getattr(obj, "loyalty_config", None)
+        return int(config.min_points_redeemable) if config else 0
+
+    def get_max_points_redeemable(self, obj: MenuItem) -> int | None:
+        config = getattr(obj, "loyalty_config", None)
+        if not config or config.max_points_redeemable is None:
+            return None
+        return int(config.max_points_redeemable)
 
 
 class OwnerMenuCategorySerializer(serializers.ModelSerializer):

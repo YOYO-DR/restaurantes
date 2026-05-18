@@ -52,7 +52,7 @@ function buildPersonalizationFormData(payload) {
 }
 
 export function getRestaurants() {
-  return apiJson("/api/restaurants/", {}, false)
+  return apiJson("/api/restaurants/")
 }
 
 export function getRestaurant(slug) {

@@ -39,6 +39,7 @@ import OwnerInventoryPage from "@/pages/dashboard/restaurante/inventario"
 import OwnerClientsPage from "@/pages/dashboard/restaurante/clientes"
 import OwnerReviewsPage from "@/pages/dashboard/restaurante/resenas"
 import OwnerAnalyticsPage from "@/pages/dashboard/restaurante/analiticas"
+import OwnerLoyaltyPage from "@/pages/dashboard/restaurante/lealtad"
 import OwnerProfilePage from "@/pages/dashboard/restaurante/perfil"
 import OwnerSettingsPage from "@/pages/dashboard/restaurante/configuracion"
 import OwnerOperadoresPage from "@/pages/dashboard/restaurante/operadores"
@@ -137,6 +138,7 @@ export default function App() {
             <Route path="clientes" element={<OwnerClientsPage />} />
             <Route path="resenas" element={<OwnerReviewsPage />} />
             <Route path="analiticas" element={<OwnerAnalyticsPage />} />
+            <Route path="lealtad" element={<OwnerLoyaltyPage />} />
             <Route path="qr" element={<Suspense fallback={<DashboardShellSkeleton />}><OwnerQrPage /></Suspense>} />
             <Route path="personalizacion" element={<Suspense fallback={<DashboardShellSkeleton />}><OwnerCustomizationPage /></Suspense>} />
             <Route
@@ -154,7 +156,7 @@ export default function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </AuthSessionProvider>
-      <Toaster />
+      <Toaster position="top-left" richColors />
     </BrowserRouter>
   )
 }

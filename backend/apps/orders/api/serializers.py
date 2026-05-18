@@ -5,6 +5,8 @@ from django.db import transaction
 from rest_framework import serializers
 
 from apps.customers.models import CustomerAddress
+from apps.loyalty.models import LoyaltyRedemption
+from apps.loyalty.services import apply_redemption_to_order
 from apps.orders.models import Order
 from apps.orders.models import OrderFulfillment
 from apps.orders.models import OrderItem
@@ -45,6 +47,11 @@ class CheckoutItemSerializer(serializers.Serializer):
     quantity = serializers.IntegerField(min_value=1)
 
 
+class CheckoutLineRedemptionSerializer(serializers.Serializer):
+    order_item_index = serializers.IntegerField(min_value=0)
+    points_to_apply = serializers.IntegerField(min_value=1)
+
+
 class CheckoutSerializer(serializers.Serializer):
     restaurant_id = serializers.UUIDField()
     order_type = serializers.ChoiceField(choices=("delivery", "pickup", "table"))
@@ -78,6 +85,11 @@ class CheckoutSerializer(serializers.Serializer):
         allow_blank=True,
         allow_null=True,
         max_length=255,
+    )
+    loyalty_redemption_id = serializers.UUIDField(required=False, allow_null=True)
+    line_redemptions = CheckoutLineRedemptionSerializer(
+        many=True,
+        required=False,
     )
 
     def validate(self, attrs):
@@ -211,7 +223,36 @@ class CheckoutSerializer(serializers.Serializer):
         attrs["subtotal_amount"] = subtotal
         attrs["delivery_fee_amount"] = delivery_fee
         attrs["service_fee_amount"] = service_fee
+        attrs["discount_amount"] = Decimal("0.00")
         attrs["total_amount"] = subtotal + delivery_fee + service_fee
+
+        loyalty_redemption_id = attrs.get("loyalty_redemption_id")
+        if loyalty_redemption_id:
+            if not is_authenticated:
+                raise serializers.ValidationError(
+                    {
+                        "loyalty_redemption_id": "Debes iniciar sesion para aplicar un canje.",
+                    },
+                )
+            redemption = LoyaltyRedemption.objects.filter(
+                id=loyalty_redemption_id,
+                loyalty_transaction__loyalty_account__user=request.user,
+                loyalty_reward__restaurant=restaurant,
+            ).first()
+            if not redemption:
+                raise serializers.ValidationError(
+                    {"loyalty_redemption_id": "El canje seleccionado no existe para este restaurante."},
+                )
+            attrs["loyalty_redemption"] = redemption
+
+            line_redemptions = attrs.get("line_redemptions") or []
+            if line_redemptions and len(line_redemptions) != len(attrs["items"]):
+                raise serializers.ValidationError(
+                    {
+                        "line_redemptions": "Debes enviar una linea por cada item cuando distribuyes canje por item.",
+                    },
+                )
+
         return attrs
 
     @transaction.atomic
@@ -230,7 +271,7 @@ class CheckoutSerializer(serializers.Serializer):
             subtotal_amount=validated_data["subtotal_amount"],
             delivery_fee_amount=validated_data["delivery_fee_amount"],
             service_fee_amount=validated_data["service_fee_amount"],
-            discount_amount=Decimal("0.00"),
+            discount_amount=validated_data["discount_amount"],
             total_amount=validated_data["total_amount"],
             currency_code="COP",
             customer_notes=validated_data.get("customer_notes", ""),
@@ -272,6 +313,20 @@ class CheckoutSerializer(serializers.Serializer):
             status=status,
             changed_by=request.user if request.user.is_authenticated else None,
         )
+
+        loyalty_redemption = validated_data.get("loyalty_redemption")
+        if loyalty_redemption:
+            discount_amount = apply_redemption_to_order(
+                order,
+                loyalty_redemption,
+                validated_data.get("line_redemptions") or [],
+            )
+            order.discount_amount = discount_amount
+            order.total_amount = max(
+                order.subtotal_amount + order.delivery_fee_amount + order.service_fee_amount - discount_amount,
+                Decimal("0.00"),
+            )
+            order.save(update_fields=["discount_amount", "total_amount", "updated_at"])
 
         if order.user_id and order.restaurant.orders.filter(user_id=order.user_id).count() == 1:
             from apps.notifications import realtime
@@ -442,7 +497,9 @@ class OrderSerializer(serializers.ModelSerializer):
 
 
 class OwnerOrderStatusUpdateSerializer(serializers.Serializer):
-    status_code = serializers.ChoiceField(choices=("preparing", "ready", "delivered"))
+    status_code = serializers.ChoiceField(
+        choices=("preparing", "ready", "delivered", "completed"),
+    )
 
 
 class OrderCancelSerializer(serializers.Serializer):

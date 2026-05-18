@@ -68,6 +68,20 @@ class MenuItem(BaseModel):
         indexes = [models.Index(fields=("restaurant", "menu_category", "is_available"))]
 
 
+class MenuItemLoyaltyConfig(BaseModel):
+    menu_item = models.OneToOneField(
+        MenuItem,
+        on_delete=models.CASCADE,
+        related_name="loyalty_config",
+    )
+    allows_points_redemption = models.BooleanField(default=False)
+    min_points_redeemable = models.PositiveIntegerField(default=0)
+    max_points_redeemable = models.PositiveIntegerField(null=True, blank=True)
+
+    class Meta:
+        db_table = "menu_item_loyalty_configs"
+
+
 class MenuItemTag(BaseModel):
     menu_item = models.ForeignKey(
         MenuItem,

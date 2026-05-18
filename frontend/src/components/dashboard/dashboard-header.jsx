@@ -50,6 +50,34 @@ function getNotificationMeta(item, activeRole) {
         actionPath: ordersPath,
         icon: Package,
       }
+    case "loyalty.points_earned":
+      return {
+        title: `+${p.points || 0} puntos`,
+        body: p.restaurant_name || p.description || "Se acreditaron puntos por tu pedido",
+        actionPath: "/dashboard/cliente/puntos",
+        icon: Package,
+      }
+    case "loyalty.points_reverted":
+      return {
+        title: `-${p.points || 0} puntos`,
+        body: p.description || "Se descontaron puntos",
+        actionPath: "/dashboard/cliente/puntos",
+        icon: Package,
+      }
+    case "loyalty.tier_upgraded":
+      return {
+        title: `Subiste a nivel ${p.tier || "nuevo"}`,
+        body: p.current_points != null ? `${p.current_points} puntos actuales` : "Nivel actualizado",
+        actionPath: "/dashboard/cliente/puntos",
+        icon: Package,
+      }
+    case "loyalty.reward_redeemed":
+      return {
+        title: `Canjeaste ${p.reward_name || "una recompensa"}`,
+        body: "Revisa tus puntos en el panel de lealtad",
+        actionPath: "/dashboard/cliente/puntos",
+        icon: Package,
+      }
     case "inventory.low_stock":
       return {
         title: `Stock bajo: ${p.item_name || p.menu_item_name || "producto"}`,

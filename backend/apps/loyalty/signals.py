@@ -32,6 +32,23 @@ def loyalty_transaction_post_save(sender, instance: LoyaltyTransaction, created:
                 "transaction_id": str(instance.id),
                 "points": instance.points_delta,
                 "restaurant_id": str(instance.loyalty_account.restaurant_id),
+                "restaurant_name": instance.loyalty_account.restaurant.display_name,
+                "order_code": instance.order.order_code if instance.order else "",
+                "description": instance.description,
+            },
+        )
+        return
+
+    if instance.tx_type.code == "earned_purchase_reverted":
+        realtime.notify_user(
+            user_id=instance.loyalty_account.user_id,
+            event_type="loyalty.points_reverted",
+            payload={
+                "transaction_id": str(instance.id),
+                "points": abs(instance.points_delta),
+                "restaurant_id": str(instance.loyalty_account.restaurant_id),
+                "restaurant_name": instance.loyalty_account.restaurant.display_name,
+                "order_code": instance.order.order_code if instance.order else "",
                 "description": instance.description,
             },
         )
@@ -57,6 +74,16 @@ def loyalty_redemption_post_save(sender, instance: LoyaltyRedemption, created: b
     if not created:
         return
 
+    realtime.notify_user(
+        user_id=instance.loyalty_transaction.loyalty_account.user_id,
+        event_type="loyalty.reward_canjeado",
+        payload={
+            "redemption_id": str(instance.id),
+            "reward_id": str(instance.loyalty_reward_id),
+            "reward_name": instance.loyalty_reward.name,
+            "status": instance.status.code,
+        },
+    )
     realtime.notify_user(
         user_id=instance.loyalty_transaction.loyalty_account.user_id,
         event_type="loyalty.reward_redeemed",

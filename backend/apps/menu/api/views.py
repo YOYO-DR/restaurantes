@@ -83,7 +83,11 @@ class OwnerMenuCategoryViewSet(ModelViewSet):
 class OwnerMenuCrudItemViewSet(ModelViewSet):
     permission_classes = [MenuModulePermission]
     serializer_class = OwnerMenuItemWriteSerializer
-    queryset = MenuItem.objects.select_related("restaurant", "menu_category")
+    queryset = MenuItem.objects.select_related(
+        "restaurant",
+        "menu_category",
+        "loyalty_config",
+    )
 
     def get_queryset(self):
         queryset = self.queryset.order_by("name")

@@ -12,6 +12,7 @@ REQUIRED_ORDER_STATUSES = (
     ("preparing", "Preparando"),
     ("ready", "Listo"),
     ("delivered", "Entregado"),
+    ("completed", "Completado"),
     ("cancelled", "Cancelado"),
 )
 

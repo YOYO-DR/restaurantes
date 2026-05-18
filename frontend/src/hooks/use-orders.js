@@ -332,6 +332,10 @@ export function useOwnerCustomers(orderScope = "all") {
       average_ticket: 0,
       vip_customers: 0,
     },
+    loyalty: {
+      is_active: false,
+      vip_threshold_orders: 100,
+    },
     customers: [],
   })
   const [isLoading, setIsLoading] = useState(true)
@@ -349,6 +353,10 @@ export function useOwnerCustomers(orderScope = "all") {
               new_customers_this_month: 0,
               average_ticket: 0,
               vip_customers: 0,
+            },
+            loyalty: {
+              is_active: false,
+              vip_threshold_orders: 100,
             },
             customers: [],
           })
@@ -632,31 +640,47 @@ export function useNotificationCenter() {
   return useNotificationCenterContext()
 }
 
-export function useCustomerLoyalty(restaurantId) {
+export function useCustomerLoyalty(restaurantId, options = {}) {
+  const { enabled = true } = options
   const [data, setData] = useState({
     current_points: 0,
     total_earned: 0,
     current_level: "Base",
     rewards_redeemed: 0,
+    is_active: false,
+    currency_unit_amount: "0.00",
+    points_earned: 0,
+    points_by_restaurant: [],
+    tiers: [],
     available_rewards: [],
     history: [],
   })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
 
-  useEffect(() => {
-    getCustomerLoyalty(restaurantId)
-      .then((payload) => {
-        setData(payload)
-        setError("")
-      })
-      .catch((loadError) => {
-        setError(loadError.message || "No fue posible cargar tus puntos")
-      })
-      .finally(() => setIsLoading(false))
-  }, [restaurantId])
+  const reload = useCallback(async () => {
+    if (!enabled) {
+      setIsLoading(false)
+      setError("")
+      return
+    }
+    setIsLoading(true)
+    try {
+      const payload = await getCustomerLoyalty(restaurantId)
+      setData(payload)
+      setError("")
+    } catch (loadError) {
+      setError(loadError.message || "No fue posible cargar tus puntos")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [enabled, restaurantId])
 
-  return { data, isLoading, error }
+  useEffect(() => {
+    reload()
+  }, [reload])
+
+  return { data, isLoading, error, reload }
 }
 
 export function useReorder() {

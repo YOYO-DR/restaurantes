@@ -355,6 +355,7 @@ OPERATOR_MODULES = [
     "menu",
     "inventario",
     "clientes",
+    "lealtad",
     "resenas",
     "analiticas",
     "qr",

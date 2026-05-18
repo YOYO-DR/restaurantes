@@ -1,28 +1,31 @@
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { DashboardShellSkeleton } from "@/components/ui/app-skeletons"
-import { Progress } from "@/components/ui/progress"
-import { useCustomerLoyalty } from "@/hooks/use-orders"
+import { Link } from "react-router-dom"
+import { useSearchParams } from "react-router-dom"
 import { Award, Gift, Star, TrendingUp } from "lucide-react"
 
-const LEVELS = [
-  { name: "Bronce", minPoints: 0, maxPoints: 500 },
-  { name: "Plata", minPoints: 501, maxPoints: 1000 },
-  { name: "Oro", minPoints: 1001, maxPoints: 2500 },
-  { name: "Platino", minPoints: 2501, maxPoints: 5000 },
-]
-
-import { useSearchParams, Link } from "react-router-dom"
+import { DashboardShellSkeleton } from "@/components/ui/app-skeletons"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { useRedeemReward } from "@/hooks/use-loyalty"
+import { useCustomerLoyalty } from "@/hooks/use-orders"
 
 export default function ClientPointsPage() {
   const [searchParams] = useSearchParams()
   const restaurantId = searchParams.get("restaurant_id")
-  const { data, isLoading, error } = useCustomerLoyalty(restaurantId)
-  const currentLevel = LEVELS.find((level) => level.name === data.current_level) || LEVELS[0]
-  const nextLevel = LEVELS[LEVELS.indexOf(currentLevel) + 1]
-  const progressToNextLevel = nextLevel
-    ? ((data.current_points - currentLevel.minPoints) / (nextLevel.minPoints - currentLevel.minPoints)) * 100
+  const { data, isLoading, error, reload } = useCustomerLoyalty(restaurantId)
+  const { redeem, isSubmitting } = useRedeemReward()
+
+  const selectedRestaurantSummary = restaurantId
+    ? data.points_by_restaurant?.find((entry) => entry.restaurant_id === restaurantId) || null
+    : null
+  const levelForProgress = selectedRestaurantSummary?.current_level || data.current_level
+  const pointsForProgress = selectedRestaurantSummary?.current_points ?? data.current_points
+  const currentTierIndex = data.tiers.findIndex((tier) => tier.name === levelForProgress)
+  const currentTier = currentTierIndex >= 0 ? data.tiers[currentTierIndex] : data.tiers[0]
+  const nextTier = currentTierIndex >= 0 ? data.tiers[currentTierIndex + 1] : null
+  const progressToNextLevel = nextTier
+    ? ((pointsForProgress - currentTier.min_points) / (nextTier.min_points - currentTier.min_points)) * 100
     : 100
 
   return (
@@ -30,37 +33,75 @@ export default function ClientPointsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Mis Puntos</h2>
-          <p className="text-muted-foreground">Acumula puntos y canjéalos por recompensas</p>
+          <p className="text-muted-foreground">Acumula puntos y canjealos por recompensas</p>
         </div>
-        {restaurantId && (
+        {restaurantId ? (
           <Button variant="outline" asChild>
             <Link to="/dashboard/cliente">Volver al resumen</Link>
           </Button>
-        )}
+        ) : null}
       </div>
 
       {isLoading ? <DashboardShellSkeleton /> : null}
       {error ? <div className="text-sm text-destructive">{error}</div> : null}
+
+      {!isLoading && restaurantId && !data.is_active ? (
+        <Card>
+          <CardContent className="py-6 text-sm text-muted-foreground">
+            Este restaurante no participa en el programa de puntos.
+          </CardContent>
+        </Card>
+      ) : null}
 
       {isLoading ? null : (
         <>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <MetricCard title="Puntos Disponibles" value={data.current_points.toLocaleString()} icon={<Star className="h-4 w-4 text-muted-foreground" />} highlight />
             <MetricCard title="Total Acumulados" value={data.total_earned.toLocaleString()} icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />} />
-            <MetricCard title="Nivel Actual" value={data.current_level} icon={<Award className="h-4 w-4 text-muted-foreground" />} />
+            <MetricCard title="Nivel Actual" value={levelForProgress} icon={<Award className="h-4 w-4 text-muted-foreground" />} />
             <MetricCard title="Recompensas Canjeadas" value={data.rewards_redeemed} icon={<Gift className="h-4 w-4 text-muted-foreground" />} />
           </div>
 
-          {nextLevel ? (
+          {!restaurantId && data.points_by_restaurant.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Puntos por restaurante</CardTitle>
+                <CardDescription>Selecciona uno para ver su progreso de nivel</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {data.points_by_restaurant.map((entry) => (
+                    <div key={entry.restaurant_id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                      <div>
+                        <p className="font-medium">{entry.restaurant_name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Nivel {entry.current_level} - {entry.current_points.toLocaleString()} pts
+                        </p>
+                      </div>
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to={`/dashboard/cliente/puntos?restaurant_id=${entry.restaurant_id}`}>Ver detalle</Link>
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ) : levelForProgress === "Varios" ? (
+            <Card>
+              <CardContent className="py-6 text-sm text-muted-foreground">
+                Tienes cuentas de puntos en varios restaurantes. Selecciona un restaurante para ver tu progreso por nivel.
+              </CardContent>
+            </Card>
+          ) : nextTier ? (
             <Card>
               <CardContent className="py-6">
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="text-sm font-medium">Progreso hacia nivel {nextLevel.name}</span>
-                  <span className="text-sm text-muted-foreground">{data.current_points} / {nextLevel.minPoints} puntos</span>
+                  <span className="text-sm font-medium">Progreso hacia nivel {nextTier.name}</span>
+                  <span className="text-sm text-muted-foreground">{pointsForProgress} / {nextTier.min_points} puntos</span>
                 </div>
-                <Progress value={progressToNextLevel} className="h-3" />
+                <Progress value={Math.max(0, Math.min(progressToNextLevel, 100))} className="h-3" />
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Te faltan {nextLevel.minPoints - data.current_points} puntos para alcanzar el nivel {nextLevel.name}
+                  Te faltan {Math.max(nextTier.min_points - pointsForProgress, 0)} puntos para alcanzar el nivel {nextTier.name}
                 </p>
               </CardContent>
             </Card>
@@ -86,7 +127,22 @@ export default function ClientPointsPage() {
                           <Star className="mr-1 h-3 w-3" />
                           {reward.points} pts
                         </Badge>
-                        <Button size="sm" disabled={data.current_points < reward.points} variant={data.current_points >= reward.points ? "default" : "outline"}>
+                        <Button
+                          size="sm"
+                          disabled={isSubmitting || data.current_points < reward.points}
+                          variant={data.current_points >= reward.points ? "default" : "outline"}
+                          onClick={async () => {
+                            if (!window.confirm(`Vas a canjear ${reward.points} puntos por '${reward.name}'. Deseas continuar?`)) {
+                              return
+                            }
+                            try {
+                              await redeem({ reward_id: reward.id })
+                              await reload()
+                            } catch {
+                              // handled by api layer toasts if any
+                            }
+                          }}
+                        >
                           Canjear
                         </Button>
                       </div>
@@ -110,7 +166,8 @@ export default function ClientPointsPage() {
                         <p className="text-sm text-muted-foreground">{item.date}</p>
                       </div>
                       <span className={`font-semibold ${item.type === "redeemed" ? "text-destructive" : "text-green-600"}`}>
-                        {item.points > 0 ? "+" : ""}{item.points}
+                        {item.points > 0 ? "+" : ""}
+                        {item.points}
                       </span>
                     </div>
                   ))}

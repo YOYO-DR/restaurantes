@@ -59,6 +59,9 @@ const itemSchema = z.object({
   prep_time_minutes: z.coerce.number().int().min(0, "Tiempo invalido").optional(),
   is_available: z.boolean().default(true),
   is_popular: z.boolean().default(false),
+  allows_points_redemption: z.boolean().default(false),
+  min_points_redeemable: z.coerce.number().int().min(0).optional(),
+  max_points_redeemable: z.coerce.number().int().min(1).optional(),
 })
 
 function CategoryDialog({ open, onOpenChange, onSubmit, initialValues, isSubmitting }) {
@@ -527,6 +530,47 @@ function ItemDialog({
                 )}
               />
             </div>
+            <div className="space-y-3 rounded-lg border border-border p-3">
+              <p className="text-sm font-medium">Canje con puntos</p>
+              <FormField
+                control={form.control}
+                name="allows_points_redemption"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-md border p-3">
+                    <FormLabel>Permitir canje de puntos</FormLabel>
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="min_points_redeemable"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Min puntos canjeables</FormLabel>
+                      <FormControl>
+                        <Input type="number" value={field.value ?? ""} onChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="max_points_redeemable"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Max puntos canjeables</FormLabel>
+                      <FormControl>
+                        <Input type="number" value={field.value ?? ""} onChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
@@ -617,6 +661,9 @@ export default function OwnerMenuPage() {
     prep_time_minutes: "",
     is_available: true,
     is_popular: false,
+    allows_points_redemption: false,
+    min_points_redeemable: 0,
+    max_points_redeemable: "",
   }
 
   return (
@@ -851,6 +898,9 @@ export default function OwnerMenuPage() {
                             setSelectedItem({
                               ...item,
                               menu_category: data.categories.find((category) => category.name === item.category)?.id || "",
+                              allows_points_redemption: Boolean(item.allows_points_redemption),
+                              min_points_redeemable: item.min_points_redeemable ?? 0,
+                              max_points_redeemable: item.max_points_redeemable ?? "",
                             })
                             setItemDialogOpen(true)
                           }}
@@ -945,6 +995,7 @@ export default function OwnerMenuPage() {
               ...values,
               restaurant: data.restaurant.id,
               prep_time_minutes: values.prep_time_minutes || null,
+              max_points_redeemable: values.max_points_redeemable || null,
               price_amount: String(values.price_amount),
             }
             if (selectedItem?.id) {

@@ -11,14 +11,24 @@ const TOAST_EVENTS = new Set([
   "inventory.low_stock",
   "inventory.out_of_stock",
   "order.cancelled",
+  "order.status_changed",
+  "loyalty.points_earned",
+  "loyalty.points_reverted",
+  "loyalty.tier_upgraded",
+  "loyalty.reward_redeemed",
 ])
 
-function toastMessageForEvent(message, payload) {
+export function toastMessageForEvent(message, payload) {
   if (message.event_type === "order.created") {
     return `Nuevo pedido ${payload.order_code || ""}`.trim()
   }
   if (message.event_type === "order.cancelled") {
-    return `Pedido cancelado ${payload.order_code || ""}`.trim()
+    return `Pedido ${payload.order_code || ""} cancelado`.trim()
+  }
+  if (message.event_type === "order.status_changed") {
+    const orderCode = payload.order_code || ""
+    const statusName = payload.status_name || "actualizado"
+    return `Pedido ${orderCode}: ${statusName}`.trim()
   }
   if (message.event_type === "order.chat_message") {
     const orderCode = payload.order_code || ""
@@ -31,7 +41,22 @@ function toastMessageForEvent(message, payload) {
   if (message.event_type === "inventory.low_stock") {
     return `Stock bajo de ${payload.inventory_item_name || "item"}`
   }
-  return "Nueva notificacion"
+  if (message.event_type === "loyalty.points_earned") {
+    const points = payload.points || 0
+    const restaurant = payload.restaurant_name || "tu restaurante"
+    return `Sumaste ${points} puntos en ${restaurant}`
+  }
+  if (message.event_type === "loyalty.points_reverted") {
+    const points = payload.points || 0
+    return `Se descontaron ${points} puntos por cancelacion`
+  }
+  if (message.event_type === "loyalty.tier_upgraded") {
+    return `Subiste a nivel ${payload.tier || "nuevo"}`
+  }
+  if (message.event_type === "loyalty.reward_redeemed") {
+    return `Canjeaste: ${payload.reward_name || "recompensa"}`
+  }
+  return "Tienes una nueva notificacion"
 }
 
 export function useRealtimeNotifications() {
