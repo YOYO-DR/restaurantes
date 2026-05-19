@@ -123,6 +123,11 @@ class CustomerLoyaltyViewSet(GenericViewSet):
                     "max_redeemable_points_per_order",
                     None,
                 ),
+                "max_customer_points_balance": getattr(
+                    loyalty_setting,
+                    "max_customer_points_balance",
+                    None,
+                ),
                 "point_redeem_value": str(
                     getattr(loyalty_setting, "point_redeem_value", "0.00")
                     if getattr(loyalty_setting, "point_redeem_value", None) is not None

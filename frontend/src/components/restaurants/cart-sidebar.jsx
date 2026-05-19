@@ -8,6 +8,21 @@ import { useCart } from "@/context/cart-context"
 import { formatCurrency } from "@/lib/format"
 import { Minus, Plus, ShoppingBag, Trash2, Truck, UtensilsCrossed } from "lucide-react"
 
+const ORDER_TYPE_DESCRIPTIONS = {
+  delivery: {
+    title: "Domicilio",
+    description: "Tu pedido sera entregado en la direccion que indiques al finalizar la compra.",
+  },
+  pickup: {
+    title: "Para recoger",
+    description: "Realiza tu pedido y pasalo a recoger por el restaurante cuando este listo.",
+  },
+  table: {
+    title: "Pedido en mesa",
+    description: "Ordena directamente desde tu mesa y recibe tu pedido sin levantarte.",
+  },
+}
+
 export function CartSidebar({ restaurant, compact = false, inline = false }) {
   const { items, orderType, setOrderType, tableId, setTableId, tableNumber, setTableNumber, updateQuantity, removeItem } = useCart()
 
@@ -95,6 +110,13 @@ export function CartSidebar({ restaurant, compact = false, inline = false }) {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+        ) : null}
+
+        {ORDER_TYPE_DESCRIPTIONS[orderType] ? (
+          <div className="rounded-lg border border-border bg-muted/30 p-3">
+            <p className="text-sm font-medium">{ORDER_TYPE_DESCRIPTIONS[orderType].title}</p>
+            <p className="text-xs text-muted-foreground">{ORDER_TYPE_DESCRIPTIONS[orderType].description}</p>
           </div>
         ) : null}
 

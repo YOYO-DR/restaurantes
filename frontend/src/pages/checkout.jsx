@@ -316,6 +316,9 @@ export default function CheckoutPage() {
                         <p className="text-sm text-muted-foreground">
                           Puedes distribuir hasta {effectiveGlobalCap} puntos en productos habilitados.
                         </p>
+                        <p className="text-xs text-muted-foreground rounded bg-muted px-2 py-1">
+                          Los productos donde apliques canje no generarán puntos en este pedido.
+                        </p>
                         {items.map((item, index) => {
                           const allows = Boolean(item.allows_points_redemption)
                           const minPoints = Number(item.min_points_redeemable || 0)

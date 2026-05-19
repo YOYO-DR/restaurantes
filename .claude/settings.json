@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(echo \"$CLAUDE_TOOL_INPUT\" | python3 -c \"import json,sys; print(json.load(sys.stdin).get('file_path', ''))\" 2>/dev/null); if [[ \"$f\" == */backend/*.py ]]; then cd /home/yoiner/Escritorio/programacion/proyectos/restaurantes && docker compose -f docker-compose.local.yml exec -T django ruff check --fix --quiet . 2>/dev/null; fi; exit 0"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(echo \"$CLAUDE_TOOL_INPUT\" | python3 -c \"import json,sys; print(json.load(sys.stdin).get('file_path', ''))\" 2>/dev/null); if echo \"$f\" | grep -qE '(\\.env$|docker-compose\\.local\\.yml$)'; then echo 'BLOQUEADO: archivo sensible de infraestructura. Pedí confirmación explícita al usuario antes de editar este archivo.' >&2; exit 1; fi; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}

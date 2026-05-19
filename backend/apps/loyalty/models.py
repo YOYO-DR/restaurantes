@@ -100,6 +100,8 @@ class LoyaltyTransaction(BaseModel):
         related_name="transactions",
     )
     points_delta = models.IntegerField()
+    points_uncapped = models.PositiveIntegerField(null=True, blank=True)
+    cap_applied = models.BooleanField(default=False)
     description = models.TextField(blank=True)
 
     class Meta:
@@ -129,6 +131,13 @@ class LoyaltyRedemption(BaseModel):
         null=True,
         blank=True,
     )
+    order_item = models.ForeignKey(
+        "orders.OrderItem",
+        on_delete=models.SET_NULL,
+        related_name="loyalty_redemptions",
+        null=True,
+        blank=True,
+    )
     points_applied = models.PositiveIntegerField(default=0)
 
     class Meta:
@@ -142,6 +151,7 @@ class RestaurantLoyaltySetting(BaseModel):
         related_name="loyalty_setting",
     )
     is_active = models.BooleanField(default=False)
+    max_customer_points_balance = models.PositiveIntegerField(null=True, blank=True)
     currency_unit_amount = models.DecimalField(
         max_digits=12,
         decimal_places=2,
@@ -178,3 +188,31 @@ class RestaurantLoyaltySetting(BaseModel):
                         "points_earned": "Debe ser mayor a 0 cuando el programa esta activo.",
                     },
                 )
+            if self.max_customer_points_balance is None or self.max_customer_points_balance <= 0:
+                raise ValidationError(
+                    {
+                        "max_customer_points_balance": "Debes definir un tope maximo de puntos por cliente (mayor a 0) cuando el programa esta activo.",
+                    },
+                )
+
+        if self.max_customer_points_balance is not None and self.pk:
+            original = RestaurantLoyaltySetting.objects.filter(pk=self.pk).values_list(
+                "max_customer_points_balance", flat=True
+            ).first()
+            if original is not None and self.max_customer_points_balance < original:
+                from apps.loyalty.models import LoyaltyAccount
+                max_client_balance = (
+                    LoyaltyAccount.objects.filter(restaurant_id=self.restaurant_id)
+                    .order_by("-current_points")
+                    .values_list("current_points", flat=True)
+                    .first()
+                ) or 0
+                if self.max_customer_points_balance < max_client_balance:
+                    raise ValidationError(
+                        {
+                            "max_customer_points_balance": (
+                                f"No puedes bajar el tope por debajo del cliente con mas puntos "
+                                f"({max_client_balance} puntos)."
+                            ),
+                        },
+                    )

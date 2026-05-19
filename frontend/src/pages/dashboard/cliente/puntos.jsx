@@ -64,6 +64,14 @@ export default function ClientPointsPage() {
             <MetricCard title="Recompensas Canjeadas" value={data.rewards_redeemed} icon={<Gift className="h-4 w-4 text-muted-foreground" />} />
           </div>
 
+          {data.max_customer_points_balance != null && (
+            <CapProgressCard
+              currentPoints={pointsForProgress}
+              maxBalance={data.max_customer_points_balance}
+              restaurantName={selectedRestaurantSummary?.restaurant_name}
+            />
+          )}
+
           {!restaurantId && data.points_by_restaurant.length > 0 ? (
             <Card>
               <CardHeader>
@@ -228,6 +236,33 @@ export default function ClientPointsPage() {
         </>
       )}
     </div>
+  )
+}
+
+function CapProgressCard({ currentPoints, maxBalance, restaurantName }) {
+  const atCap = currentPoints >= maxBalance
+  const pct = Math.min((currentPoints / maxBalance) * 100, 100)
+  return (
+    <Card className={atCap ? "border-yellow-400" : ""}>
+      <CardContent className="py-4 space-y-2">
+        {atCap ? (
+          <p className="text-sm font-medium text-yellow-700 dark:text-yellow-400">
+            Llegaste al tope de puntos{restaurantName ? ` en ${restaurantName}` : ""}. Canjeálos en los productos habilitados para seguir acumulando.
+          </p>
+        ) : (
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-medium">Tope de saldo{restaurantName ? ` en ${restaurantName}` : ""}</span>
+            <span className="text-muted-foreground">{currentPoints.toLocaleString()} / {maxBalance.toLocaleString()} pts</span>
+          </div>
+        )}
+        <Progress value={pct} className={`h-2 ${atCap ? "[&>div]:bg-yellow-400" : ""}`} />
+        {!atCap && (
+          <p className="text-xs text-muted-foreground">
+            Te faltan {(maxBalance - currentPoints).toLocaleString()} pts para llegar al tope
+          </p>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 

@@ -13,6 +13,7 @@ class RestaurantLoyaltySettingSerializer(serializers.ModelSerializer):
             "id",
             "restaurant",
             "is_active",
+            "max_customer_points_balance",
             "currency_unit_amount",
             "points_earned",
             "max_redeemable_points_per_order",
@@ -21,6 +22,47 @@ class RestaurantLoyaltySettingSerializer(serializers.ModelSerializer):
             "point_redeem_value",
         ]
         read_only_fields = ["id"]
+
+    def validate(self, attrs):
+        is_active = attrs.get("is_active", getattr(self.instance, "is_active", False))
+        max_balance = attrs.get(
+            "max_customer_points_balance",
+            getattr(self.instance, "max_customer_points_balance", None),
+        )
+
+        if is_active and (max_balance is None or max_balance <= 0):
+            raise serializers.ValidationError(
+                {
+                    "max_customer_points_balance": (
+                        "Debes definir un tope maximo de puntos por cliente (mayor a 0) "
+                        "cuando el programa esta activo."
+                    ),
+                }
+            )
+
+        # Validar bajada del tope solo en actualizaciones
+        if self.instance and "max_customer_points_balance" in attrs:
+            current_max = self.instance.max_customer_points_balance
+            new_max = attrs["max_customer_points_balance"]
+            if current_max is not None and new_max is not None and new_max < current_max:
+                from apps.loyalty.models import LoyaltyAccount
+                top_balance = (
+                    LoyaltyAccount.objects.filter(restaurant_id=self.instance.restaurant_id)
+                    .order_by("-current_points")
+                    .values_list("current_points", flat=True)
+                    .first()
+                ) or 0
+                if new_max < top_balance:
+                    raise serializers.ValidationError(
+                        {
+                            "max_customer_points_balance": (
+                                f"No puedes bajar el tope por debajo del cliente con mas puntos "
+                                f"({top_balance} puntos)."
+                            ),
+                        }
+                    )
+
+        return attrs
 
 
 class LoyaltyTierSerializer(serializers.ModelSerializer):

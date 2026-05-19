@@ -10,6 +10,16 @@ import {
 import { getOrderContactInfo } from "@/services/order-chat"
 import { Loader2, Mail, MapPin, Phone } from "lucide-react"
 
+const WEEKDAY_LABELS = ["Domingo", "Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado"]
+
+function format12h(time) {
+  if (!time) return "--:--"
+  const [hours, minutes] = time.split(":").map(Number)
+  const period = hours >= 12 ? "PM" : "AM"
+  const h12 = hours % 12 || 12
+  return `${h12}:${String(minutes).padStart(2, "0")} ${period}`
+}
+
 export function RestaurantContactDialog({ open, onOpenChange, order, trackingCode }) {
   const [contact, setContact] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -97,14 +107,19 @@ export function RestaurantContactDialog({ open, onOpenChange, order, trackingCod
               <div className="rounded-md border border-border p-3">
                 <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Horarios</p>
                 <div className="space-y-1">
-                  {contact.hours.map((entry) => (
-                    <div key={`${entry.weekday}-${entry.open_time || "closed"}`} className="flex items-center justify-between text-xs">
-                      <span>Dia {entry.weekday}</span>
-                      <span>
-                        {entry.is_closed ? "Cerrado" : `${entry.open_time || "--:--"} - ${entry.close_time || "--:--"}`}
-                      </span>
-                    </div>
-                  ))}
+                    {contact.hours.map((entry) => {
+                      const dayLabel = Number.isFinite(entry.weekday) && entry.weekday >= 0 && entry.weekday <= 6
+                        ? WEEKDAY_LABELS[entry.weekday]
+                        : `Dia ${entry.weekday}`
+                      return (
+                        <div key={`${entry.weekday}-${entry.open_time || "closed"}`} className="flex items-center justify-between text-xs">
+                          <span>{dayLabel}</span>
+                          <span>
+                            {entry.is_closed ? "Cerrado" : `${format12h(entry.open_time)} - ${format12h(entry.close_time)}`}
+                          </span>
+                        </div>
+                      )
+                    })}
                 </div>
               </div>
             ) : null}

@@ -13,6 +13,7 @@ from apps.loyalty.models import LoyaltyTransaction
 from apps.loyalty.models import LoyaltyTransactionType
 from apps.loyalty.models import RestaurantLoyaltySetting
 from apps.menu.models import MenuItemLoyaltyConfig
+from apps.notifications import realtime
 from apps.orders.constants import PAID_PAYMENT_STATUS_CODES
 from apps.orders.models import Order
 
@@ -44,14 +45,60 @@ def _eligible_total_amount(order: Order) -> Decimal:
         for config in MenuItemLoyaltyConfig.objects.filter(menu_item_id__in=menu_item_ids)
     }
 
+    # IDs de OrderItem que tuvieron canje aplicado en esta orden
+    redeemed_order_item_ids = set(
+        LoyaltyRedemption.objects.filter(
+            order=order,
+            status__code="applied",
+            order_item__isnull=False,
+        ).values_list("order_item_id", flat=True)
+    )
+
     eligible_total = Decimal("0.00")
     for order_item in order_items:
         if order_item.menu_item_id is None:
+            continue
+        if order_item.id in redeemed_order_item_ids:
             continue
         config = loyalty_configs.get(str(order_item.menu_item_id))
         if config is not None and config.earns_points:
             eligible_total += Decimal(order_item.line_total_amount)
     return eligible_total
+
+
+def _cap_notified_recently(account: LoyaltyAccount, hours: int = 24) -> bool:
+    from apps.notifications.models import NotificationEvent
+    cutoff = timezone.now() - timezone.timedelta(hours=hours)
+    return NotificationEvent.objects.filter(
+        user_id=account.user_id,
+        notification_type__code="loyalty_cap_reached",
+        payload_json__restaurant_id=str(account.restaurant_id),
+        sent_at__gte=cutoff,
+    ).exists()
+
+
+def _maybe_notify_cap_reached(
+    account: LoyaltyAccount,
+    order: Order,
+    awarded: int,
+    uncapped: int,
+    setting: RestaurantLoyaltySetting,
+) -> None:
+    if _cap_notified_recently(account):
+        return
+    realtime.notify_user(
+        user_id=account.user_id,
+        event_type="loyalty.cap_reached",
+        payload={
+            "restaurant_id": str(account.restaurant_id),
+            "restaurant_name": account.restaurant.display_name,
+            "current_points": account.current_points,
+            "max_balance": setting.max_customer_points_balance,
+            "awarded_this_order": awarded,
+            "would_have_awarded": uncapped,
+            "order_code": order.order_code if order else "",
+        },
+    )
 
 
 def get_tier_for(restaurant, lifetime_points: int) -> LoyaltyTier:
@@ -111,17 +158,21 @@ def assign_points_for_order(order: Order) -> None:
             "description": "Puntos obtenidos automaticamente por un pedido.",
         },
     )
-    if LoyaltyTransaction.objects.filter(order=order, tx_type=tx_type).exists():
+    # Idempotencia: cubre tanto earned_purchase como earned_purchase_capped
+    if LoyaltyTransaction.objects.filter(
+        order=order,
+        tx_type__code__in=["earned_purchase", "earned_purchase_capped"],
+    ).exists():
         return
 
     total_amount = _eligible_total_amount(order)
     if total_amount <= 0:
         return
     units_spent = _quantize_floor(total_amount / currency_unit_amount)
-    points_to_assign = units_spent * loyalty_setting.points_earned
+    points_uncapped = units_spent * loyalty_setting.points_earned
     if loyalty_setting.max_points_per_order is not None:
-        points_to_assign = min(points_to_assign, loyalty_setting.max_points_per_order)
-    if points_to_assign <= 0:
+        points_uncapped = min(points_uncapped, loyalty_setting.max_points_per_order)
+    if points_uncapped <= 0:
         return
 
     base_tier = get_tier_for(order.restaurant, 0)
@@ -131,11 +182,40 @@ def assign_points_for_order(order: Order) -> None:
         defaults={"tier": base_tier},
     )
 
+    # Soft cap por saldo del cliente
+    cap = loyalty_setting.max_customer_points_balance
+    if cap is not None:
+        room = max(cap - loyalty_account.current_points, 0)
+        points_to_assign = min(points_uncapped, room)
+    else:
+        points_to_assign = points_uncapped
+
+    cap_applied = cap is not None and points_to_assign < points_uncapped
+
+    if points_to_assign <= 0:
+        # Cliente ya en el tope — notificar si no se hizo recientemente
+        if cap is not None and loyalty_account.current_points >= cap:
+            _maybe_notify_cap_reached(loyalty_account, order, awarded=0, uncapped=points_uncapped, setting=loyalty_setting)
+        return
+
+    if cap_applied:
+        tx_type_to_use, _ = LoyaltyTransactionType.objects.get_or_create(
+            code="earned_purchase_capped",
+            defaults={
+                "name": "Puntos parciales por tope",
+                "description": "Puntos otorgados parcialmente por tope de saldo.",
+            },
+        )
+    else:
+        tx_type_to_use = tx_type
+
     LoyaltyTransaction.objects.create(
         loyalty_account=loyalty_account,
         order=order,
-        tx_type=tx_type,
+        tx_type=tx_type_to_use,
         points_delta=points_to_assign,
+        points_uncapped=points_uncapped if cap_applied else None,
+        cap_applied=cap_applied,
         description=f"Pedido completado: {order.order_code}",
     )
 
@@ -147,17 +227,19 @@ def assign_points_for_order(order: Order) -> None:
     )
     loyalty_account.save(update_fields=["current_points", "lifetime_points", "tier", "updated_at"])
 
+    if cap_applied:
+        _maybe_notify_cap_reached(loyalty_account, order, awarded=points_to_assign, uncapped=points_uncapped, setting=loyalty_setting)
+
 
 @transaction.atomic
 def revert_points_for_order(order: Order) -> None:
     if not order.user:
         return
 
-    earned_type = LoyaltyTransactionType.objects.filter(code="earned_purchase").first()
-    if not earned_type:
-        return
-
-    earned_tx = LoyaltyTransaction.objects.filter(order=order, tx_type=earned_type).first()
+    earned_tx = LoyaltyTransaction.objects.filter(
+        order=order,
+        tx_type__code__in=["earned_purchase", "earned_purchase_capped"],
+    ).first()
     if not earned_tx:
         return
 

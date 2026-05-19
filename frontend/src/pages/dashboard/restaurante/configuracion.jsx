@@ -7,8 +7,28 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { useOwnerRestaurantSettings } from "@/hooks/use-restaurants"
-import { Clock, Loader2, Store, Truck } from "lucide-react"
+import { Clock, Info, Loader2, Store, Truck } from "lucide-react"
+
+const ORDER_TYPE_INFO = {
+  delivery: {
+    label: "Habilitar delivery",
+    description: "Los clientes pueden solicitar domicilios. El pedido se entrega en la direccion que indiquen. Aplica costo de envio configurado.",
+  },
+  pickup: {
+    label: "Habilitar pickup",
+    description: "Los clientes pueden hacer pedidos para recoger en el restaurante. Realizan el pago en linea y pasan a retirar cuando este listo.",
+  },
+  table: {
+    label: "Habilitar pedidos en mesa",
+    description: "Los clientes que estan fisicamente en el restaurante pueden ordenar desde su mesa escaneando un codigo o seleccionando su mesa. Ideal para servicio sin mesero.",
+  },
+}
 
 export default function ConfiguracionRestaurantePage() {
   const { data, isLoading, isSaving, error, reload, saveSettings } = useOwnerRestaurantSettings()
@@ -155,9 +175,24 @@ export default function ConfiguracionRestaurantePage() {
               <CardDescription>Opciones de entrega y pedido</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <ToggleRow label="Habilitar delivery" checked={form.delivery_enabled} onCheckedChange={(checked) => setForm((current) => ({ ...current, delivery_enabled: checked }))} />
-              <ToggleRow label="Habilitar pickup" checked={form.pickup_enabled} onCheckedChange={(checked) => setForm((current) => ({ ...current, pickup_enabled: checked }))} />
-              <ToggleRow label="Habilitar pedidos en mesa" checked={form.table_order_enabled} onCheckedChange={(checked) => setForm((current) => ({ ...current, table_order_enabled: checked }))} />
+              <ToggleRowWithInfo
+                label={ORDER_TYPE_INFO.delivery.label}
+                description={ORDER_TYPE_INFO.delivery.description}
+                checked={form.delivery_enabled}
+                onCheckedChange={(checked) => setForm((current) => ({ ...current, delivery_enabled: checked }))}
+              />
+              <ToggleRowWithInfo
+                label={ORDER_TYPE_INFO.pickup.label}
+                description={ORDER_TYPE_INFO.pickup.description}
+                checked={form.pickup_enabled}
+                onCheckedChange={(checked) => setForm((current) => ({ ...current, pickup_enabled: checked }))}
+              />
+              <ToggleRowWithInfo
+                label={ORDER_TYPE_INFO.table.label}
+                description={ORDER_TYPE_INFO.table.description}
+                checked={form.table_order_enabled}
+                onCheckedChange={(checked) => setForm((current) => ({ ...current, table_order_enabled: checked }))}
+              />
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Costo de envio" type="number" value={String(form.delivery_fee_amount ?? "")} onChange={(value) => setForm((current) => ({ ...current, delivery_fee_amount: value }))} />
                 <Field label="Pedido minimo" type="number" value={String(form.min_order_amount ?? "")} onChange={(value) => setForm((current) => ({ ...current, min_order_amount: value }))} />
@@ -222,6 +257,25 @@ function ToggleRow({ label, checked, onCheckedChange }) {
     <div className="flex items-center justify-between rounded-lg border border-border p-4">
       <div>
         <p className="font-medium">{label}</p>
+      </div>
+      <Switch checked={checked} onCheckedChange={onCheckedChange} />
+    </div>
+  )
+}
+
+function ToggleRowWithInfo({ label, description, checked, onCheckedChange }) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-border p-4">
+      <div className="flex items-center gap-2">
+        <p className="font-medium">{label}</p>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-5 w-5">
+              <Info className="h-3.5 w-3.5 text-muted-foreground" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="max-w-xs text-sm">{description}</PopoverContent>
+        </Popover>
       </div>
       <Switch checked={checked} onCheckedChange={onCheckedChange} />
     </div>

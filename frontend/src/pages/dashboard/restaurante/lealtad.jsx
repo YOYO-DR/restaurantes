@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
+import { Loader2 } from "lucide-react"
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,7 +25,7 @@ export default function OwnerLoyaltyPage() {
   const restaurant = restaurants[0]
   const restaurantId = restaurant?.id
 
-  const { data: setting, save: saveSetting, isLoading: settingLoading } = useOwnerLoyaltySetting(restaurantId)
+  const { data: setting, save: saveSetting, isLoading: settingLoading, isSaving } = useOwnerLoyaltySetting(restaurantId)
   const tierApi = useOwnerLoyaltyTiers(restaurantId)
   const rewardApi = useOwnerLoyaltyRewards(restaurantId)
   const { redemptions } = useOwnerLoyaltyRedemptions(restaurantId)
@@ -33,6 +34,7 @@ export default function OwnerLoyaltyPage() {
 
   const settingState = useMemo(() => draftSetting || setting || {
     is_active: false,
+    max_customer_points_balance: "",
     currency_unit_amount: "1000.00",
     points_earned: 1,
     max_points_per_order: "",
@@ -79,6 +81,13 @@ export default function OwnerLoyaltyPage() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
+                <FieldWithHint
+                  label="Tope maximo de puntos por cliente"
+                  type="number"
+                  value={settingState.max_customer_points_balance ?? ""}
+                  onChange={(value) => setDraftSetting((current) => ({ ...(current || settingState), max_customer_points_balance: value ? Number(value) : null }))}
+                  hint="Maximo de puntos que un cliente puede acumular en tu restaurante. Cuando llega a este tope, no recibe mas puntos hasta que canjee. Obligatorio al activar el programa."
+                />
                 <FieldWithHint
                   label="Pesos por unidad"
                   value={settingState.currency_unit_amount}
@@ -129,7 +138,7 @@ export default function OwnerLoyaltyPage() {
               </div>
 
               <Button
-                disabled={settingLoading}
+                disabled={settingLoading || isSaving}
                 onClick={async () => {
                   try {
                     await saveSetting(draftSetting || settingState)
@@ -140,7 +149,14 @@ export default function OwnerLoyaltyPage() {
                   }
                 }}
               >
-                Guardar cambios
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Guardando...
+                  </>
+                ) : (
+                  "Guardar cambios"
+                )}
               </Button>
             </CardContent>
           </Card>

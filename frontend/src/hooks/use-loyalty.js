@@ -20,6 +20,7 @@ import {
 export function useOwnerLoyaltySetting(restaurantId) {
   const [data, setData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState("")
 
   const load = useCallback(async () => {
@@ -47,11 +48,17 @@ export function useOwnerLoyaltySetting(restaurantId) {
   return {
     data,
     isLoading,
+    isSaving,
     error,
     save: async (payload) => {
-      const updated = await updateOwnerLoyaltySetting(restaurantId, payload)
-      setData(updated)
-      return updated
+      setIsSaving(true)
+      try {
+        const updated = await updateOwnerLoyaltySetting(restaurantId, payload)
+        setData(updated)
+        return updated
+      } finally {
+        setIsSaving(false)
+      }
     },
     reload: load,
   }
