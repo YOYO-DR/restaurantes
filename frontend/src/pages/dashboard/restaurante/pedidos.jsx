@@ -11,12 +11,74 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useOwnerOrdersContext } from "@/context/owner-orders-context"
 import { formatCurrency } from "@/lib/format"
-import { CheckCircle, ChefHat, Clock, Loader2, MapPin, MessageCircle, Phone, ShoppingBag, Truck, User } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { OrderFilters } from "@/components/orders/order-filters"
+import { CheckCircle, ChefHat, ChevronLeft, ChevronRight, Clock, LayoutList, List, Loader2, MapPin, MessageCircle, Phone, ShoppingBag, Truck, User, X } from "lucide-react"
+
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 30, 50]
+
+function OrdersControls({ page, hasNext, hasPrev, setPage, pageSize, setPageSize, viewMode, setViewMode }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center gap-2">
+        <Button
+          variant={viewMode === "expanded" ? "default" : "outline"}
+          size="sm"
+          className="h-8 gap-1.5 px-3 text-xs"
+          onClick={() => setViewMode("expanded")}
+          title="Vista detallada"
+        >
+          <LayoutList className="h-3.5 w-3.5" />
+          Detallado
+        </Button>
+        <Button
+          variant={viewMode === "compact" ? "default" : "outline"}
+          size="sm"
+          className="h-8 gap-1.5 px-3 text-xs"
+          onClick={() => setViewMode("compact")}
+          title="Vista compacta"
+        >
+          <List className="h-3.5 w-3.5" />
+          Compacto
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Por página</span>
+          <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+            <SelectTrigger className="h-8 w-16 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZE_OPTIONS.map((n) => (
+                <SelectItem key={n} value={String(n)} className="text-xs">{n}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {(hasNext || hasPrev) ? (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="h-8" disabled={!hasPrev} onClick={() => setPage(page - 1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-xs text-muted-foreground">Pág. {page}</span>
+            <Button variant="outline" size="sm" className="h-8" disabled={!hasNext} onClick={() => setPage(page + 1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
 
 export default function OwnerOrdersPage() {
-  const { orders, isLoading, error, updateStatus, cancelOrder, updatingOrderId } = useOwnerOrdersContext()
+  const { orders, isLoading, isPageLoading, error, updateStatus, cancelOrder, updatingOrderId, page, hasNext, hasPrev, setPage, pageSize, setPageSize, filters, setFilters } = useOwnerOrdersContext()
   const [orderToCancel, setOrderToCancel] = useState(null)
   const [orderToChat, setOrderToChat] = useState(null)
+  const [viewMode, setViewMode] = useState("expanded")
   const newOrders = orders.filter((order) => order.status_code === "new")
   const preparingOrders = orders.filter((order) => order.status_code === "preparing")
   const readyOrders = orders.filter((order) => order.status_code === "ready")
@@ -66,34 +128,42 @@ export default function OwnerOrdersPage() {
               <TabsTrigger value="cancelled">Cancelados ({cancelledOrders.length})</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="all" className="space-y-4">
-              {orders.map((order) => (
-                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} onChat={setOrderToChat} updatingOrderId={updatingOrderId} />
+            <OrderFilters filters={filters} setFilters={setFilters} variant="owner" />
+
+            <OrdersControls
+              page={page} hasNext={hasNext} hasPrev={hasPrev} setPage={setPage}
+              pageSize={pageSize} setPageSize={setPageSize}
+              viewMode={viewMode} setViewMode={setViewMode}
+            />
+
+            <TabsContent value="all" className="space-y-2">
+              {isPageLoading ? <OrdersListSkeleton /> : orders.map((order) => (
+                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} onChat={setOrderToChat} updatingOrderId={updatingOrderId} compact={viewMode === "compact"} />
               ))}
             </TabsContent>
-            <TabsContent value="new" className="space-y-4">
-              {newOrders.map((order) => (
-                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} onChat={setOrderToChat} updatingOrderId={updatingOrderId} />
+            <TabsContent value="new" className="space-y-2">
+              {isPageLoading ? <OrdersListSkeleton /> : newOrders.map((order) => (
+                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} onChat={setOrderToChat} updatingOrderId={updatingOrderId} compact={viewMode === "compact"} />
               ))}
             </TabsContent>
-            <TabsContent value="preparing" className="space-y-4">
-              {preparingOrders.map((order) => (
-                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} onChat={setOrderToChat} updatingOrderId={updatingOrderId} />
+            <TabsContent value="preparing" className="space-y-2">
+              {isPageLoading ? <OrdersListSkeleton /> : preparingOrders.map((order) => (
+                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} onChat={setOrderToChat} updatingOrderId={updatingOrderId} compact={viewMode === "compact"} />
               ))}
             </TabsContent>
-            <TabsContent value="ready" className="space-y-4">
-              {readyOrders.map((order) => (
-                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} onChat={setOrderToChat} updatingOrderId={updatingOrderId} />
+            <TabsContent value="ready" className="space-y-2">
+              {isPageLoading ? <OrdersListSkeleton /> : readyOrders.map((order) => (
+                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} onChat={setOrderToChat} updatingOrderId={updatingOrderId} compact={viewMode === "compact"} />
               ))}
             </TabsContent>
-            <TabsContent value="completed" className="space-y-4">
-              {completedOrders.map((order) => (
-                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} onChat={setOrderToChat} updatingOrderId={updatingOrderId} />
+            <TabsContent value="completed" className="space-y-2">
+              {isPageLoading ? <OrdersListSkeleton /> : completedOrders.map((order) => (
+                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} onChat={setOrderToChat} updatingOrderId={updatingOrderId} compact={viewMode === "compact"} />
               ))}
             </TabsContent>
-            <TabsContent value="cancelled" className="space-y-4">
-              {cancelledOrders.map((order) => (
-                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} onChat={setOrderToChat} updatingOrderId={updatingOrderId} />
+            <TabsContent value="cancelled" className="space-y-2">
+              {isPageLoading ? <OrdersListSkeleton /> : cancelledOrders.map((order) => (
+                <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onCancel={setOrderToCancel} onChat={setOrderToChat} updatingOrderId={updatingOrderId} compact={viewMode === "compact"} />
               ))}
             </TabsContent>
           </Tabs>
@@ -150,16 +220,63 @@ function StatusMetric({ label, total, icon, highlight = false }) {
   )
 }
 
-function OrderCard({ order, onStatusChange, onCancel, onChat, updatingOrderId }) {
+function OrderCard({ order, onStatusChange, onCancel, onChat, updatingOrderId, compact = false }) {
   const { canEdit } = useOperatorPermission("pedidos")
   const unreadCount = useOrderChatUnreadCount({ orderId: order.id })
   const nextStatus = order.status_code === "new"
-    ? { code: "preparing", label: "Empezar a preparar", icon: <ChefHat className="mr-2 h-4 w-4" /> }
+    ? { code: "preparing", label: "Preparar", icon: <ChefHat className="h-4 w-4" /> }
     : order.status_code === "preparing"
-      ? { code: "ready", label: "Marcar como listo", icon: <CheckCircle className="mr-2 h-4 w-4" /> }
+      ? { code: "ready", label: "Listo", icon: <CheckCircle className="h-4 w-4" /> }
       : order.status_code === "ready"
-        ? { code: "delivered", label: "Marcar como entregado", icon: <Truck className="mr-2 h-4 w-4" /> }
+        ? { code: "delivered", label: "Entregado", icon: <Truck className="h-4 w-4" /> }
         : null
+
+  if (compact) {
+    return (
+      <div className={`flex items-center gap-3 rounded-lg border bg-card px-4 py-2.5 text-sm ${order.status_code === "new" ? "border-primary" : "border-border"}`}>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium">{order.order_code}</span>
+            <Badge variant={order.status_code === "delivered" ? "outline" : "default"} className="text-xs">{order.status_name}</Badge>
+            <Badge variant="outline" className="text-xs">{order.order_type_name}</Badge>
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {order.customer_name} · {order.items.length} prod. · {new Date(order.created_at).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}
+          </p>
+        </div>
+        <span className="shrink-0 font-bold text-primary">{formatCurrency(order.total_amount, order.currency_code)}</span>
+        <div className="flex shrink-0 items-center gap-1">
+          {canEdit && nextStatus ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1.5 px-2 text-xs"
+              disabled={updatingOrderId === order.id}
+              onClick={async () => {
+                try {
+                  await onStatusChange(order.id, nextStatus.code)
+                } catch (e) {
+                  toast.error(e.message || "Error al actualizar")
+                }
+              }}
+              title={nextStatus.label}
+            >
+              {updatingOrderId === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : nextStatus.icon}
+            </Button>
+          ) : null}
+          <Button variant="ghost" size="icon" className="relative h-8 w-8" onClick={() => onChat(order)} title="Chat">
+            <MessageCircle className="h-4 w-4" />
+            {unreadCount > 0 ? <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">{unreadCount}</span> : null}
+          </Button>
+          {!["delivered", "cancelled"].includes(order.status_code) ? (
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => onCancel(order)} disabled={updatingOrderId === order.id} title="Cancelar">
+              <X className="h-4 w-4" />
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <Card className={order.status_code === "new" ? "border-primary" : ""}>

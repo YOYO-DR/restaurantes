@@ -20,6 +20,7 @@ class RestaurantLoyaltySettingSerializer(serializers.ModelSerializer):
             "max_points_per_order",
             "vip_threshold_orders",
             "point_redeem_value",
+            "min_payment_denomination",
         ]
         read_only_fields = ["id"]
 

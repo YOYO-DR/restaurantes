@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { Footer } from "@/components/layout/footer"
 import { Header } from "@/components/layout/header"
+import { LoyaltyDirectRedemption } from "@/components/checkout/loyalty-direct-redemption"
 import { AddressListSkeleton } from "@/components/ui/app-skeletons"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -41,7 +42,6 @@ export default function CheckoutPage() {
     [items],
   )
   const deliveryFee = orderType === "delivery" ? Number(restaurant?.delivery_fee_amount || 0) : 0
-  const total = subtotal + deliveryFee
   const restaurantRedemptions = redemptions.filter((entry) => String(entry.restaurant_id) === String(restaurant?.id))
   const selectedRedemption = restaurantRedemptions.find((entry) => entry.id === selectedRedemptionId)
   const quickRewards = (loyaltyData.available_rewards || []).filter(
@@ -51,6 +51,45 @@ export default function CheckoutPage() {
   const pointsReserved = Number(selectedRedemption?.points_available || 0)
   const effectiveGlobalCap = selectedRedemption ? pointsReserved : 0
   const totalLinePoints = Object.values(lineRedemptionPoints).reduce((acc, value) => acc + Number(value || 0), 0)
+
+  // Descuento directo por puntos (flujo nuevo)
+  const pointRedeemValue = Number(loyaltyData?.point_redeem_value || 0)
+  const directDiscount = selectedRedemptionId
+    ? 0
+    : totalLinePoints * pointRedeemValue
+
+  // Condiciones para mostrar el bloque de canje directo
+  const hasEligibleItems = items.some((item) => Boolean(item.allows_points_redemption))
+  const loyaltyActive = Boolean(loyaltyData?.is_active)
+  const hasPointRedeemValue = pointRedeemValue > 0
+  const currentPoints = Number(loyaltyData?.current_points || 0)
+  const denomination = Number(loyaltyData?.min_payment_denomination || 0)
+  const showDirectRedemption =
+    isAuthenticated &&
+    loyaltyActive &&
+    hasPointRedeemValue &&
+    currentPoints > 0 &&
+    hasEligibleItems &&
+    !selectedRedemptionId
+
+  // Ajuste por denominacion: el total a pagar debe ser multiplo de denomination
+  const rawTotalAfterDiscount = subtotal + deliveryFee - directDiscount
+  let effectiveDiscount = directDiscount
+  let effectivePoints = totalLinePoints
+  let unusedPointsDenomination = 0
+  if (!selectedRedemptionId && denomination > 0 && rawTotalAfterDiscount > 0 && directDiscount > 0) {
+    const remainder = rawTotalAfterDiscount % denomination
+    if (remainder !== 0) {
+      const roundedTotal = rawTotalAfterDiscount - remainder + denomination
+      const maxDiscount = subtotal + deliveryFee - roundedTotal
+      const adjustedPoints = maxDiscount > 0 ? Math.floor(maxDiscount / pointRedeemValue) : 0
+      effectiveDiscount = adjustedPoints * pointRedeemValue
+      effectivePoints = adjustedPoints
+      unusedPointsDenomination = totalLinePoints - adjustedPoints
+    }
+  }
+
+  const total = Math.max(subtotal + deliveryFee - effectiveDiscount, 0)
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -248,10 +287,42 @@ export default function CheckoutPage() {
                 </CardContent>
               </Card>
 
+              {isAuthenticated && loyaltyActive && !hasPointRedeemValue ? (
+                <Card>
+                  <CardContent className="py-4 text-sm text-muted-foreground">
+                    Este restaurante aún no configuró el valor de cada punto. Cuando lo haga podrás usar tus puntos aquí.
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              {isAuthenticated && loyaltyActive && hasPointRedeemValue && currentPoints === 0 && hasEligibleItems ? (
+                <Card>
+                  <CardContent className="py-4 text-sm text-muted-foreground">
+                    Aún no tienes puntos en este restaurante. Sigue pidiendo para acumular y usarlos en futuras compras.
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              {showDirectRedemption ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Usa tus puntos en este pedido</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <LoyaltyDirectRedemption
+                      items={items}
+                      loyaltyData={loyaltyData}
+                      lineRedemptionPoints={lineRedemptionPoints}
+                      setLineRedemptionPoints={setLineRedemptionPoints}
+                    />
+                  </CardContent>
+                </Card>
+              ) : null}
+
               {isAuthenticated && (restaurantRedemptions.length > 0 || quickRewards.length > 0) ? (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Aplicar puntos</CardTitle>
+                    <CardTitle>Canjes de recompensas</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {quickRewards.length > 0 ? (
@@ -272,9 +343,7 @@ export default function CheckoutPage() {
                           size="sm"
                           disabled={isRedeemingNow || !selectedQuickReward}
                           onClick={async () => {
-                            if (!selectedQuickReward) {
-                              return
-                            }
+                            if (!selectedQuickReward) return
                             try {
                               const created = await redeem({ reward_id: selectedQuickReward.id })
                               await reloadRedemptions()
@@ -292,15 +361,16 @@ export default function CheckoutPage() {
                       </div>
                     ) : null}
 
-                    <div className="space-y-2">
-                      <Label>Canje pendiente</Label>
-                      <select
-                        className="w-full rounded-md border border-input bg-background p-2 text-sm"
-                        value={selectedRedemptionId}
-                        onChange={(event) => {
-                          setSelectedRedemptionId(event.target.value)
-                          setLineRedemptionPoints({})
-                        }}
+                    {restaurantRedemptions.length > 0 ? (
+                      <div className="space-y-2">
+                        <Label>Canje pendiente</Label>
+                        <select
+                          className="w-full rounded-md border border-input bg-background p-2 text-sm"
+                          value={selectedRedemptionId}
+                          onChange={(event) => {
+                            setSelectedRedemptionId(event.target.value)
+                            setLineRedemptionPoints({})
+                          }}
                         >
                           <option value="">No aplicar canje</option>
                           {restaurantRedemptions.map((redemption) => (
@@ -308,51 +378,50 @@ export default function CheckoutPage() {
                               {redemption.reward_name} - {redemption.restaurant_name} ({redemption.points_available} pts)
                             </option>
                           ))}
-                      </select>
-                    </div>
+                        </select>
 
-                    {selectedRedemption ? (
-                      <div className="space-y-3 rounded-lg border border-border p-3">
-                        <p className="text-sm text-muted-foreground">
-                          Puedes distribuir hasta {effectiveGlobalCap} puntos en productos habilitados.
-                        </p>
-                        <p className="text-xs text-muted-foreground rounded bg-muted px-2 py-1">
-                          Los productos donde apliques canje no generarán puntos en este pedido.
-                        </p>
-                        {items.map((item, index) => {
-                          const allows = Boolean(item.allows_points_redemption)
-                          const minPoints = Number(item.min_points_redeemable || 0)
-                          const maxPoints = item.max_points_redeemable == null ? effectiveGlobalCap : Number(item.max_points_redeemable)
-                          const currentPoints = Number(lineRedemptionPoints[index] || 0)
-                          const maxForThisItem = Math.max(Math.min(maxPoints, effectiveGlobalCap), 0)
-                          return (
-                            <div key={`${item.id}-${index}`} className="grid gap-2 rounded-md border border-border p-3 md:grid-cols-[1fr_180px] md:items-center">
-                              <div>
-                                <p className="font-medium">{item.name}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {allows
-                                    ? `Min ${minPoints} / Max ${maxForThisItem} puntos`
-                                    : "Este producto no admite canje con puntos"}
-                                </p>
-                              </div>
-                              <Input
-                                type="number"
-                                min={0}
-                                max={maxForThisItem}
-                                disabled={!allows}
-                                value={currentPoints}
-                                onChange={(event) => {
-                                  const nextValue = Number(event.target.value || 0)
-                                  setLineRedemptionPoints((current) => ({
-                                    ...current,
-                                    [index]: Math.max(0, Math.min(nextValue, maxForThisItem)),
-                                  }))
-                                }}
-                              />
-                            </div>
-                          )
-                        })}
-                        <p className="text-sm text-muted-foreground">Puntos distribuidos: {totalLinePoints}</p>
+                        {selectedRedemption ? (
+                          <div className="space-y-3 rounded-lg border border-border p-3">
+                            <p className="text-sm text-muted-foreground">
+                              Distribuye hasta {effectiveGlobalCap} puntos en productos habilitados.
+                            </p>
+                            <p className="text-xs text-muted-foreground rounded bg-muted px-2 py-1">
+                              Los productos donde apliques canje no generarán puntos en este pedido.
+                            </p>
+                            {items.map((item, index) => {
+                              const allows = Boolean(item.allows_points_redemption)
+                              const minPts = Number(item.min_points_redeemable || 0)
+                              const maxPts = item.max_points_redeemable == null ? effectiveGlobalCap : Number(item.max_points_redeemable)
+                              const curPts = Number(lineRedemptionPoints[index] || 0)
+                              const maxForItem = Math.max(Math.min(maxPts, effectiveGlobalCap), 0)
+                              return (
+                                <div key={`${item.id}-${index}`} className="grid gap-2 rounded-md border border-border p-3 md:grid-cols-[1fr_180px] md:items-center">
+                                  <div>
+                                    <p className="font-medium">{item.name}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {allows ? `Min ${minPts} / Máx ${maxForItem} pts` : "No admite canje"}
+                                    </p>
+                                  </div>
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    max={maxForItem}
+                                    disabled={!allows}
+                                    value={curPts}
+                                    onChange={(event) => {
+                                      const next = Number(event.target.value || 0)
+                                      setLineRedemptionPoints((current) => ({
+                                        ...current,
+                                        [index]: Math.max(0, Math.min(next, maxForItem)),
+                                      }))
+                                    }}
+                                  />
+                                </div>
+                              )
+                            })}
+                            <p className="text-sm text-muted-foreground">Puntos distribuidos: {totalLinePoints}</p>
+                          </div>
+                        ) : null}
                       </div>
                     ) : null}
                   </CardContent>
@@ -383,6 +452,19 @@ export default function CheckoutPage() {
                       <span>{formatCurrency(deliveryFee)}</span>
                     </div>
                   ) : null}
+                  {effectiveDiscount > 0 ? (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-emerald-700">
+                        <span>Descuento puntos ({effectivePoints} pts)</span>
+                        <span>−{formatCurrency(effectiveDiscount)}</span>
+                      </div>
+                      {unusedPointsDenomination > 0 ? (
+                        <p className="rounded bg-blue-50 px-2 py-1 text-xs text-blue-700">
+                          Se aplican {effectivePoints} pts (de {totalLinePoints} selec.) para que el total sea múltiplo de ${denomination}. Los {unusedPointsDenomination} pts sobrantes quedan en tu cuenta.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <div className="flex items-center justify-between border-t border-border pt-3 font-semibold">
                     <span>Total</span>
                     <span className="text-primary">{formatCurrency(total)}</span>
@@ -403,12 +485,12 @@ export default function CheckoutPage() {
                         customer_phone: guestCustomer.phone,
                         customer_notes: notes,
                         loyalty_redemption_id: selectedRedemptionId || null,
-                        line_redemptions: selectedRedemptionId
-                          ? items.map((item, index) => ({
-                              order_item_index: index,
-                              points_to_apply: Number(lineRedemptionPoints[index] || 0),
-                            }))
-                          : [],
+                        line_redemptions: items
+                          .map((item, index) => ({
+                            order_item_index: index,
+                            points_to_apply: Number(lineRedemptionPoints[index] || 0),
+                          }))
+                          .filter((line) => line.points_to_apply > 0),
                         items: items.map((item) => ({
                           menu_item_id: item.id,
                           quantity: item.quantity,

@@ -17,6 +17,8 @@ class LoyaltyTier(BaseCatalogModel):
     min_points = models.PositiveIntegerField(default=0)
     max_points = models.PositiveIntegerField(blank=True, null=True)
 
+    code = models.CharField(max_length=60, unique=False)
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -118,7 +120,10 @@ class LoyaltyRedemption(BaseModel):
         LoyaltyReward,
         on_delete=models.PROTECT,
         related_name="redemptions",
+        null=True,
+        blank=True,
     )
+    is_direct = models.BooleanField(default=False)
     status = models.ForeignKey(
         LoyaltyRedemptionStatus,
         on_delete=models.PROTECT,
@@ -169,6 +174,11 @@ class RestaurantLoyaltySetting(BaseModel):
         decimal_places=2,
         null=True,
         blank=True,
+    )
+    min_payment_denomination = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        default=100,
     )
 
     class Meta:

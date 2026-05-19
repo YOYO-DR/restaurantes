@@ -74,23 +74,24 @@ def loyalty_redemption_post_save(sender, instance: LoyaltyRedemption, created: b
     if not created:
         return
 
+    # Canjes directos (sin LoyaltyReward asociada) no generan notificacion de recompensa
+    if instance.loyalty_reward_id is None:
+        return
+
+    reward_name = instance.loyalty_reward.name if instance.loyalty_reward else ""
+    payload = {
+        "redemption_id": str(instance.id),
+        "reward_id": str(instance.loyalty_reward_id),
+        "reward_name": reward_name,
+        "status": instance.status.code,
+    }
     realtime.notify_user(
         user_id=instance.loyalty_transaction.loyalty_account.user_id,
         event_type="loyalty.reward_canjeado",
-        payload={
-            "redemption_id": str(instance.id),
-            "reward_id": str(instance.loyalty_reward_id),
-            "reward_name": instance.loyalty_reward.name,
-            "status": instance.status.code,
-        },
+        payload=payload,
     )
     realtime.notify_user(
         user_id=instance.loyalty_transaction.loyalty_account.user_id,
         event_type="loyalty.reward_redeemed",
-        payload={
-            "redemption_id": str(instance.id),
-            "reward_id": str(instance.loyalty_reward_id),
-            "reward_name": instance.loyalty_reward.name,
-            "status": instance.status.code,
-        },
+        payload=payload,
     )

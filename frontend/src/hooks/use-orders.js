@@ -83,11 +83,19 @@ export function useCustomerAddresses(enabled = true) {
   }
 }
 
+const EMPTY_FILTERS = { q: "", order_type: "", date_from: "", date_to: "" }
+
 export function useCustomerOrders() {
   const [orders, setOrders] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isPageLoading, setIsPageLoading] = useState(false)
   const [error, setError] = useState("")
   const [updatingOrderId, setUpdatingOrderId] = useState("")
+  const [page, setPage] = useState(1)
+  const [hasNext, setHasNext] = useState(false)
+  const [hasPrev, setHasPrev] = useState(false)
+  const [pageSize, setPageSize] = useState(10)
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
 
   const mergeOrder = useCallback((nextOrder) => {
     setOrders((current) => {
@@ -99,10 +107,18 @@ export function useCustomerOrders() {
     })
   }, [])
 
-  useEffect(() => {
-    getCustomerOrders()
+  const loadPage = useCallback((targetPage) => {
+    if (targetPage === 1) {
+      setIsLoading(true)
+    } else {
+      setIsPageLoading(true)
+    }
+    getCustomerOrders(targetPage, pageSize, filters)
       .then((data) => {
-        setOrders(data)
+        setOrders(data.results || [])
+        setHasNext(Boolean(data.next))
+        setHasPrev(Boolean(data.previous))
+        setPage(targetPage)
         setError("")
       })
       .catch((loadError) => {
@@ -110,15 +126,29 @@ export function useCustomerOrders() {
       })
       .finally(() => {
         setIsLoading(false)
+        setIsPageLoading(false)
       })
-  }, [])
+  }, [pageSize, filters])
+
+  useEffect(() => {
+    loadPage(1)
+  }, [loadPage])
 
   return {
     orders,
     isLoading,
+    isPageLoading,
     error,
     updatingOrderId,
     mergeOrder,
+    page,
+    hasNext,
+    hasPrev,
+    pageSize,
+    setPageSize,
+    filters,
+    setFilters,
+    setPage: loadPage,
     cancelOrder: async (orderId, reason) => {
       setUpdatingOrderId(orderId)
       try {
@@ -135,8 +165,14 @@ export function useCustomerOrders() {
 export function useOwnerOrders() {
   const [orders, setOrders] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isPageLoading, setIsPageLoading] = useState(false)
   const [error, setError] = useState("")
   const [updatingOrderId, setUpdatingOrderId] = useState("")
+  const [page, setPage] = useState(1)
+  const [hasNext, setHasNext] = useState(false)
+  const [hasPrev, setHasPrev] = useState(false)
+  const [pageSize, setPageSize] = useState(10)
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
 
   const mergeOrder = useCallback((nextOrder) => {
     setOrders((current) => {
@@ -148,30 +184,49 @@ export function useOwnerOrders() {
     })
   }, [])
 
-  const loadOrders = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const data = await getOwnerOrders()
-      setOrders(data)
-      setError("")
-    } catch (loadError) {
-      setError(loadError.message || "No fue posible cargar los pedidos")
-    } finally {
-      setIsLoading(false)
+  const loadPage = useCallback((targetPage) => {
+    if (targetPage === 1) {
+      setIsLoading(true)
+    } else {
+      setIsPageLoading(true)
     }
-  }, [])
+    getOwnerOrders(targetPage, pageSize, filters)
+      .then((data) => {
+        setOrders(data.results || [])
+        setHasNext(Boolean(data.next))
+        setHasPrev(Boolean(data.previous))
+        setPage(targetPage)
+        setError("")
+      })
+      .catch((loadError) => {
+        setError(loadError.message || "No fue posible cargar los pedidos")
+      })
+      .finally(() => {
+        setIsLoading(false)
+        setIsPageLoading(false)
+      })
+  }, [pageSize, filters])
 
   useEffect(() => {
-    loadOrders()
-  }, [loadOrders])
+    loadPage(1)
+  }, [loadPage])
 
   return {
     orders,
     isLoading,
+    isPageLoading,
     error,
     updatingOrderId,
     mergeOrder,
-    reloadOrders: loadOrders,
+    page,
+    hasNext,
+    hasPrev,
+    pageSize,
+    setPageSize,
+    filters,
+    setFilters,
+    setPage: loadPage,
+    reloadOrders: loadPage,
     updateStatus: async (orderId, statusCode) => {
       setUpdatingOrderId(orderId)
       try {
@@ -654,6 +709,7 @@ export function useCustomerLoyalty(restaurantId, options = {}) {
     tiers: [],
     available_rewards: [],
     history: [],
+    min_payment_denomination: null,
   })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")

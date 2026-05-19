@@ -1,0 +1,45 @@
+- generic [ref=e2]:
+  - generic [ref=e196]:
+    - generic [ref=e197]:
+      - link "FoodHub" [ref=e198] [cursor=pointer]:
+        - /url: /
+        - img [ref=e200]
+        - generic [ref=e203]: FoodHub
+      - generic [ref=e204]:
+        - heading "Bienvenido de vuelta a FoodHub" [level=1] [ref=e205]
+        - paragraph [ref=e206]: Gestiona tu restaurante, recibe pedidos y crece tu negocio desde una sola plataforma.
+      - paragraph [ref=e207]: © 2026 FoodHub. Todos los derechos reservados.
+    - generic [ref=e209]:
+      - link "Volver al inicio" [ref=e211] [cursor=pointer]:
+        - /url: /
+        - img [ref=e212]
+        - text: Volver al inicio
+      - generic [ref=e214]:
+        - heading "Iniciar sesion" [level=2] [ref=e215]
+        - paragraph [ref=e216]: Ingresa tus credenciales para acceder a tu cuenta
+      - generic [ref=e217]:
+        - generic [ref=e218]:
+          - generic [ref=e219]:
+            - generic [ref=e220]: Correo electronico
+            - textbox "Correo electronico" [ref=e221]:
+              - /placeholder: correo@ejemplo.com
+          - generic [ref=e222]:
+            - generic [ref=e223]:
+              - generic [ref=e224]: Contrasena
+              - link "Olvidaste tu contrasena?" [ref=e225] [cursor=pointer]:
+                - /url: /recuperar-contrasena
+            - generic [ref=e226]:
+              - textbox "Contrasena" [ref=e227]:
+                - /placeholder: "********"
+              - button [ref=e228]:
+                - img [ref=e229]
+        - button "Iniciar sesion" [ref=e232]
+        - generic [ref=e237]: o continua con
+        - button "Continuar con Google" [ref=e238]:
+          - img
+          - text: Continuar con Google
+      - paragraph [ref=e239]:
+        - text: No tienes cuenta?
+        - link "Registrate aqui" [ref=e240] [cursor=pointer]:
+          - /url: /registro
+  - region "Notifications alt+T"

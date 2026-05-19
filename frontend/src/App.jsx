@@ -6,6 +6,7 @@ import { ProtectedRoute } from "@/components/auth/protected-route"
 import { PublicOnlyRoute } from "@/components/auth/public-only-route"
 import { AuthSessionProvider } from "@/components/auth/auth-session-provider"
 import { useRealtimeNotifications } from "@/hooks/use-realtime-notifications"
+import { NotificationCenterProvider } from "@/context/notification-center-context"
 import { PublicLayout } from "@/layouts/public-layout"
 import { AdminLayout } from "@/layouts/admin-layout"
 import { ClientLayout } from "@/layouts/client-layout"
@@ -57,9 +58,10 @@ function RealtimeBootstrap() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthSessionProvider>
-        <RealtimeBootstrap />
-        <Routes>
+      <NotificationCenterProvider>
+        <AuthSessionProvider>
+          <RealtimeBootstrap />
+          <Routes>
           <Route element={<PublicLayout />}>
             <Route path="/" element={<HomePage />} />
             <Route
@@ -154,9 +156,10 @@ export default function App() {
           </Route>
 
           <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-      </AuthSessionProvider>
-      <Toaster position="top-left" richColors />
+          </Routes>
+        </AuthSessionProvider>
+        <Toaster position="top-left" richColors />
+      </NotificationCenterProvider>
     </BrowserRouter>
   )
 }

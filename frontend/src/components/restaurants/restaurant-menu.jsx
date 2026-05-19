@@ -197,10 +197,31 @@ function FriendlyLoyaltyBadge({ item, isAuthenticated, loyaltyData, isLoadingLoy
   const shouldShowNoPoints = isAuthenticated && isProgramActive && !earnsPoints
   const currentPoints = Number(loyaltyData?.current_points || 0)
   const hasMinimum = currentPoints >= minPoints
+  const pointRedeemValue = Number(loyaltyData?.point_redeem_value || 0)
+  const priceAmount = Number(item.price_amount || 0)
 
   if (!earnsPoints && !allowsRedemption && !shouldShowNoPoints) {
     return null
   }
+
+  const redemptionHint = (() => {
+    if (!isAuthenticated || isLoadingLoyalty) {
+      const rangeText = maxPoints == null
+        ? `mínimo ${minPoints} pts`
+        : `entre ${minPoints} y ${maxPoints} pts`
+      const valueText = pointRedeemValue > 0 && priceAmount > 0
+        ? ` (hasta ${formatCurrency(Math.min(maxPoints != null ? maxPoints * pointRedeemValue : priceAmount, priceAmount))} de descuento)`
+        : ""
+      return `Acepta canje: aplica puntos como descuento en este plato (${rangeText}${valueText}).`
+    }
+    if (hasMinimum) {
+      const maxDiscount = pointRedeemValue > 0 && (maxPoints != null || priceAmount > 0)
+        ? formatCurrency(Math.min((maxPoints != null ? maxPoints : Math.floor(priceAmount / pointRedeemValue)) * pointRedeemValue, priceAmount))
+        : null
+      return `Acepta canje: tienes ${currentPoints} pts — aplica mínimo ${minPoints}${maxPoints != null ? ` y máximo ${maxPoints}` : ""} pts en este plato${maxDiscount ? ` (hasta ${maxDiscount} de descuento)` : ""}.`
+    }
+    return `Acepta canje: te faltan ${Math.max(minPoints - currentPoints, 0)} pts para usar puntos en este plato (mínimo ${minPoints}).`
+  })()
 
   return (
     <div className="flex flex-wrap items-center gap-1">
@@ -212,13 +233,7 @@ function FriendlyLoyaltyBadge({ item, isAuthenticated, loyaltyData, isLoadingLoy
         <LoyaltyPill
           text="Acepta canje"
           tone={isAuthenticated && !isLoadingLoyalty && !hasMinimum ? "amber" : "green"}
-          hint={
-            isAuthenticated && !isLoadingLoyalty
-              ? hasMinimum
-                ? `Acepta canje: puedes pagar parte de este plato con puntos. Tienes ${currentPoints} puntos (minimo ${minPoints}${maxPoints == null ? "" : `, maximo ${maxPoints}`}).`
-                : `Acepta canje: puedes pagar parte de este plato con puntos. Te faltan ${Math.max(minPoints - currentPoints, 0)} puntos para alcanzar el minimo ${minPoints}.`
-              : `Acepta canje: puedes pagar parte de este plato con puntos (minimo ${minPoints}${maxPoints == null ? "" : `, maximo ${maxPoints}`}).`
-          }
+          hint={redemptionHint}
         />
       ) : null}
 

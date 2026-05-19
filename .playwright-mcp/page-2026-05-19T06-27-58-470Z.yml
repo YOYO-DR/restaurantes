@@ -1,0 +1,233 @@
+- generic [ref=e2]:
+  - generic [ref=e410]:
+    - complementary [ref=e411]:
+      - link "FoodHub" [ref=e413] [cursor=pointer]:
+        - /url: /
+        - img [ref=e415]
+        - generic [ref=e418]: FoodHub
+      - generic [ref=e420]:
+        - paragraph [ref=e421]: Tu restaurante
+        - paragraph [ref=e422]: Un resaurante
+        - generic [ref=e425]: Abierto
+      - navigation [ref=e426]:
+        - link "Dashboard" [ref=e427] [cursor=pointer]:
+          - /url: /dashboard/restaurante
+          - generic [ref=e428]:
+            - img [ref=e429]
+            - text: Dashboard
+        - link "Pedidos 2" [ref=e432] [cursor=pointer]:
+          - /url: /dashboard/restaurante/pedidos
+          - generic [ref=e433]:
+            - img [ref=e434]
+            - text: Pedidos
+          - generic [ref=e437]: "2"
+        - link "Menu" [ref=e438] [cursor=pointer]:
+          - /url: /dashboard/restaurante/menu
+          - generic [ref=e439]:
+            - img [ref=e440]
+            - text: Menu
+        - link "Inventario" [ref=e445] [cursor=pointer]:
+          - /url: /dashboard/restaurante/inventario
+          - generic [ref=e446]:
+            - img [ref=e447]
+            - text: Inventario
+        - link "Clientes" [ref=e451] [cursor=pointer]:
+          - /url: /dashboard/restaurante/clientes
+          - generic [ref=e452]:
+            - img [ref=e453]
+            - text: Clientes
+        - link "Lealtad" [ref=e458] [cursor=pointer]:
+          - /url: /dashboard/restaurante/lealtad
+          - generic [ref=e459]:
+            - img [ref=e460]
+            - text: Lealtad
+        - link "Resenas" [ref=e463] [cursor=pointer]:
+          - /url: /dashboard/restaurante/resenas
+          - generic [ref=e464]:
+            - img [ref=e465]
+            - text: Resenas
+        - link "Analiticas" [ref=e467] [cursor=pointer]:
+          - /url: /dashboard/restaurante/analiticas
+          - generic [ref=e468]:
+            - img [ref=e469]
+            - text: Analiticas
+        - link "Codigo QR" [ref=e471] [cursor=pointer]:
+          - /url: /dashboard/restaurante/qr
+          - generic [ref=e472]:
+            - img [ref=e473]
+            - text: Codigo QR
+        - link "Personalizacion" [ref=e479] [cursor=pointer]:
+          - /url: /dashboard/restaurante/personalizacion
+          - generic [ref=e480]:
+            - img [ref=e481]
+            - text: Personalizacion
+        - link "Operadores" [ref=e487] [cursor=pointer]:
+          - /url: /dashboard/restaurante/operadores
+          - generic [ref=e488]:
+            - img [ref=e489]
+            - text: Operadores
+        - link "Mi Perfil" [ref=e501] [cursor=pointer]:
+          - /url: /dashboard/restaurante/perfil
+          - generic [ref=e502]:
+            - img [ref=e503]
+            - text: Mi Perfil
+        - link "Configuracion" [ref=e506] [cursor=pointer]:
+          - /url: /dashboard/restaurante/configuracion
+          - generic [ref=e507]:
+            - img [ref=e508]
+            - text: Configuracion
+    - generic [ref=e511]:
+      - banner [ref=e512]:
+        - heading "Mi Restaurante" [level=1] [ref=e514]
+        - generic [ref=e515]:
+          - combobox [ref=e516]:
+            - generic: Dueno de restaurante
+            - img
+          - button "Cambiar tema" [ref=e517]:
+            - img
+          - button "6" [ref=e518]:
+            - img
+            - generic [ref=e519]: "6"
+          - button "DU" [ref=e520]:
+            - generic [ref=e522]: DU
+      - main [ref=e523]:
+        - generic [ref=e524]:
+          - generic [ref=e525]:
+            - generic [ref=e526]:
+              - heading "Dashboard" [level=2] [ref=e527]
+              - paragraph [ref=e528]: Resumen de tu restaurante Un resaurante
+            - generic [ref=e529]:
+              - combobox [ref=e530]:
+                - generic: Todas las ordenes
+                - img
+              - link "Ver todos los pedidos" [ref=e531] [cursor=pointer]:
+                - /url: /dashboard/restaurante/pedidos
+                - text: Ver todos los pedidos
+                - img
+          - generic [ref=e532]:
+            - generic [ref=e533]:
+              - generic [ref=e534]:
+                - generic [ref=e535]: Ventas Hoy
+                - img [ref=e536]
+              - generic [ref=e539]: $ 14.200
+            - generic [ref=e540]:
+              - generic [ref=e541]:
+                - generic [ref=e542]: Pedidos Hoy
+                - img [ref=e543]
+              - generic [ref=e547]: "1"
+            - generic [ref=e548]:
+              - generic [ref=e549]:
+                - generic [ref=e550]: Clientes de la Semana
+                - img [ref=e551]
+              - generic [ref=e557]: "2"
+            - generic [ref=e558]:
+              - generic [ref=e559]:
+                - generic [ref=e560]: Calificacion
+                - img [ref=e561]
+              - generic [ref=e563]:
+                - generic [ref=e564]:
+                  - generic [ref=e565]: "0.00"
+                  - img [ref=e566]
+                - paragraph [ref=e568]: 0 resenas
+          - generic [ref=e569]:
+            - generic [ref=e570]:
+              - generic [ref=e571]:
+                - generic [ref=e572]: Pedidos Recientes
+                - generic [ref=e573]: 0 nuevos
+              - generic [ref=e575]:
+                - generic [ref=e576]:
+                  - generic [ref=e577]:
+                    - generic [ref=e578]:
+                      - paragraph [ref=e579]: ORD-0025
+                      - generic [ref=e580]: Cancelado
+                    - paragraph [ref=e581]: cliente uno
+                    - paragraph [ref=e582]: HAmburguesa doble carne, Coca cola
+                  - generic [ref=e583]:
+                    - paragraph [ref=e584]: $ 14.200
+                    - generic [ref=e585]:
+                      - img [ref=e586]
+                      - text: 12:16 a. m.
+                    - generic [ref=e589]: Pickup
+                - generic [ref=e590]:
+                  - generic [ref=e591]:
+                    - generic [ref=e592]:
+                      - paragraph [ref=e593]: ORD-0024
+                      - generic [ref=e594]: Cancelado
+                    - paragraph [ref=e595]: cliente uno
+                    - paragraph [ref=e596]: Coca cola, HAmburguesa doble carne
+                  - generic [ref=e597]:
+                    - paragraph [ref=e598]: $ 15.500
+                    - generic [ref=e599]:
+                      - img [ref=e600]
+                      - text: 11:00 p. m.
+                    - generic [ref=e603]: Mesa
+                - generic [ref=e604]:
+                  - generic [ref=e605]:
+                    - generic [ref=e606]:
+                      - paragraph [ref=e607]: ORD-0023
+                      - generic [ref=e608]: Entregado
+                    - paragraph [ref=e609]: cliente uno
+                    - paragraph [ref=e610]: HAmburguesa doble carne, Coca cola
+                  - generic [ref=e611]:
+                    - paragraph [ref=e612]: $ 15.500
+                    - generic [ref=e613]:
+                      - img [ref=e614]
+                      - text: 10:38 p. m.
+                    - generic [ref=e617]: Pickup
+                - generic [ref=e618]:
+                  - generic [ref=e619]:
+                    - generic [ref=e620]:
+                      - paragraph [ref=e621]: ORD-0022
+                      - generic [ref=e622]: Entregado
+                    - paragraph [ref=e623]: cliente uno
+                    - paragraph [ref=e624]: Coca cola, HAmburguesa doble carne
+                  - generic [ref=e625]:
+                    - paragraph [ref=e626]: $ 15.500
+                    - generic [ref=e627]:
+                      - img [ref=e628]
+                      - text: 08:21 p. m.
+                    - generic [ref=e631]: Pickup
+                - generic [ref=e632]:
+                  - generic [ref=e633]:
+                    - generic [ref=e634]:
+                      - paragraph [ref=e635]: ORD-0021
+                      - generic [ref=e636]: Entregado
+                    - paragraph [ref=e637]: cliente uno
+                    - paragraph [ref=e638]: HAmburguesa doble carne, Coca cola
+                  - generic [ref=e639]:
+                    - paragraph [ref=e640]: $ 15.500
+                    - generic [ref=e641]:
+                      - img [ref=e642]
+                      - text: 07:50 p. m.
+                    - generic [ref=e645]: Pickup
+            - generic [ref=e646]:
+              - generic [ref=e648]: Productos Mas Vendidos
+              - generic [ref=e650]:
+                - generic [ref=e651]:
+                  - generic [ref=e652]:
+                    - generic [ref=e653]: "#1"
+                    - generic [ref=e654]:
+                      - paragraph [ref=e655]: Coca cola
+                      - paragraph [ref=e656]: 22 pedidos
+                  - paragraph [ref=e657]: $ 77.000
+                - generic [ref=e658]:
+                  - generic [ref=e659]:
+                    - generic [ref=e660]: "#2"
+                    - generic [ref=e661]:
+                      - paragraph [ref=e662]: HAmburguesa doble carne
+                      - paragraph [ref=e663]: 9 pedidos
+                  - paragraph [ref=e664]: $ 108.000
+          - generic [ref=e666]:
+            - generic [ref=e667]:
+              - heading "Ventas de este mes" [level=3] [ref=e668]
+              - paragraph [ref=e669]: $ 183.700
+              - generic [ref=e670]:
+                - img [ref=e671]
+                - generic [ref=e674]: Resumen mensual de ingresos del restaurante
+            - link "Ver analiticas completas" [ref=e675] [cursor=pointer]:
+              - /url: /dashboard/restaurante/analiticas
+  - region "Notifications alt+T":
+    - list:
+      - listitem [ref=e676]:
+        - img [ref=e678]
+        - generic [ref=e681]: Sesion iniciada con exito

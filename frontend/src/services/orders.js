@@ -122,8 +122,15 @@ export function updateAccountProfile(payload) {
   })
 }
 
-export function getCustomerOrders() {
-  return apiJson("/api/customer/orders/")
+export function getCustomerOrders(page = 1, pageSize = 10, filters = {}) {
+  const params = new URLSearchParams()
+  params.set("page", page)
+  params.set("page_size", pageSize)
+  if (filters.q) params.set("q", filters.q)
+  if (filters.order_type) params.set("order_type", filters.order_type)
+  if (filters.date_from) params.set("date_from", filters.date_from)
+  if (filters.date_to) params.set("date_to", filters.date_to)
+  return apiJson(`/api/customer/orders/?${params.toString()}`)
 }
 
 export function createCheckoutOrder(payload) {
@@ -141,8 +148,15 @@ export function getCheckoutOrderStatus(orderId) {
   return apiJson(`/api/checkout/orders/${orderId}/status/`)
 }
 
-export function getOwnerOrders() {
-  return apiJson("/api/owner/orders/")
+export function getOwnerOrders(page = 1, pageSize = 10, filters = {}) {
+  const params = new URLSearchParams()
+  params.set("page", page)
+  params.set("page_size", pageSize)
+  if (filters.q) params.set("q", filters.q)
+  if (filters.order_type) params.set("order_type", filters.order_type)
+  if (filters.date_from) params.set("date_from", filters.date_from)
+  if (filters.date_to) params.set("date_to", filters.date_to)
+  return apiJson(`/api/owner/orders/?${params.toString()}`)
 }
 
 export function updateOwnerOrderStatus(orderId, statusCode) {

@@ -625,7 +625,8 @@ def test_customer_can_list_own_orders(api_client: APIClient):
     response = api_client.get(reverse("api:customer-order-list"))
 
     assert response.status_code == status.HTTP_200_OK
-    assert len(response.data) == 1
+    assert response.data["count"] == 1
+    assert len(response.data["results"]) == 1
 
 
 def test_owner_can_list_restaurant_orders(api_client: APIClient):
@@ -652,7 +653,8 @@ def test_owner_can_list_restaurant_orders(api_client: APIClient):
     response = api_client.get(reverse("api:owner-order-list"))
 
     assert response.status_code == status.HTTP_200_OK
-    assert len(response.data) == 1
+    assert response.data["count"] == 1
+    assert len(response.data["results"]) == 1
 
 
 def test_owner_can_update_order_status(api_client: APIClient):
@@ -714,7 +716,8 @@ def test_operator_can_list_orders_for_assigned_restaurant(api_client: APIClient)
     response = api_client.get(reverse("api:owner-order-list"))
 
     assert response.status_code == status.HTTP_200_OK
-    assert len(response.data) == 1
+    assert response.data["count"] == 1
+    assert len(response.data["results"]) == 1
 
 
 def test_operator_can_update_order_status_for_assigned_restaurant(
@@ -915,7 +918,7 @@ def test_customer_order_list_includes_menu_item_id_for_reorder(api_client: APICl
     response = api_client.get(reverse("api:customer-order-list"))
 
     assert response.status_code == status.HTTP_200_OK
-    order_item = response.data[0]["items"][0]
+    order_item = response.data["results"][0]["items"][0]
     assert "menu_item_id" in order_item
     assert str(order_item["menu_item_id"]) == str(item.id)
     assert order_item["quantity"] == 2
@@ -939,7 +942,7 @@ def test_customer_order_list_includes_restaurant_slug_for_reorder(api_client: AP
     response = api_client.get(reverse("api:customer-order-list"))
 
     assert response.status_code == status.HTTP_200_OK
-    order_data = response.data[0]
+    order_data = response.data["results"][0]
     assert "restaurant_slug" in order_data
     assert order_data["restaurant_slug"] == restaurant.slug
 
@@ -962,7 +965,7 @@ def test_customer_order_list_includes_restaurant_capabilities_for_reorder(api_cl
     response = api_client.get(reverse("api:customer-order-list"))
 
     assert response.status_code == status.HTTP_200_OK
-    order_data = response.data[0]
+    order_data = response.data["results"][0]
     assert "restaurant_has_delivery" in order_data
     assert "restaurant_has_pickup" in order_data
     assert "restaurant_has_table_order" in order_data

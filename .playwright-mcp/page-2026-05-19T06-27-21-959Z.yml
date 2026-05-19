@@ -1,0 +1,433 @@
+- generic:
+  - generic:
+    - generic:
+      - complementary:
+        - generic:
+          - link:
+            - /url: /
+            - generic:
+              - img
+            - generic: FoodHub
+        - navigation:
+          - link:
+            - /url: /dashboard/cliente
+            - img
+            - text: Inicio
+          - link:
+            - /url: /dashboard/cliente/pedidos
+            - img
+            - text: Mis Pedidos
+          - link:
+            - /url: /dashboard/cliente/puntos
+            - img
+            - text: Mis Puntos
+          - link:
+            - /url: /dashboard/cliente/direcciones
+            - img
+            - text: Direcciones
+          - link:
+            - /url: /dashboard/cliente/favoritos
+            - img
+            - text: Favoritos
+          - link:
+            - /url: /dashboard/cliente/perfil
+            - img
+            - text: Mi Perfil
+          - link:
+            - /url: /dashboard/cliente/configuracion
+            - img
+            - text: Configuracion
+        - generic:
+          - link:
+            - /url: /restaurantes
+            - img
+            - text: Ver Restaurantes
+      - generic:
+        - banner:
+          - generic:
+            - heading [level=1]: Mi Cuenta
+          - generic:
+            - button:
+              - img
+            - button:
+              - img
+              - generic: "14"
+            - button [expanded]:
+              - generic:
+                - generic: CU
+        - main:
+          - generic:
+            - generic:
+              - heading [level=2]: Mis Pedidos
+              - paragraph: Historial y seguimiento de tus pedidos
+            - generic:
+              - tablist:
+                - tab [selected]: Todos
+                - tab: Activos (0)
+                - tab: Completados
+                - tab: Cancelados (2)
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                    - textbox:
+                      - /placeholder: Buscar por restaurante o código…
+                  - combobox:
+                    - generic: Todos los tipos
+                    - img
+                - generic:
+                  - button: Hoy
+                  - button: Esta semana
+                  - button: Este mes
+              - generic:
+                - generic:
+                  - button:
+                    - img
+                    - text: Detallado
+                  - button:
+                    - img
+                    - text: Compacto
+                - generic:
+                  - generic:
+                    - generic: Por página
+                    - combobox:
+                      - generic: "10"
+                      - img
+                  - generic:
+                    - button [disabled]:
+                      - img
+                    - generic: Pág. 1
+                    - button:
+                      - img
+              - tabpanel:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic: Un resaurante
+                        - generic: Cancelado
+                      - paragraph: ORD-0025 - 19/5/2026, 12:16:25 a. m.
+                    - generic: Pickup
+                  - generic:
+                    - generic:
+                      - paragraph: A nombre de cliente uno
+                      - generic:
+                        - generic: 1x HAmburguesa doble carne
+                        - generic: $ 12.000
+                      - generic:
+                        - generic: 1x Coca cola
+                        - generic: $ 3.500
+                      - generic:
+                        - generic: Total
+                        - generic: $ 14.200
+                    - generic:
+                      - paragraph:
+                        - strong: "Cancelado por:"
+                        - text: restaurante
+                      - strong: "Motivo de cancelacion:"
+                      - text: Se acabo
+                    - generic:
+                      - button:
+                        - img
+                        - text: Contactar
+                      - button:
+                        - img
+                        - text: Chat
+                      - button:
+                        - img
+                        - text: Repetir pedido
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic: Un resaurante
+                        - generic: Cancelado
+                      - paragraph: ORD-0024 - 18/5/2026, 11:00:00 p. m.
+                    - generic: Mesa
+                  - generic:
+                    - generic:
+                      - paragraph: A nombre de cliente uno
+                      - generic:
+                        - generic: 1x Coca cola
+                        - generic: $ 3.500
+                      - generic:
+                        - generic: 1x HAmburguesa doble carne
+                        - generic: $ 12.000
+                      - generic:
+                        - generic: Total
+                        - generic: $ 15.500
+                    - generic:
+                      - img
+                      - generic: Mesa 1
+                    - generic:
+                      - paragraph:
+                        - strong: "Cancelado por:"
+                        - text: restaurante
+                      - strong: "Motivo de cancelacion:"
+                      - text: paila
+                    - generic:
+                      - button:
+                        - img
+                        - text: Contactar
+                      - button:
+                        - img
+                        - text: Chat
+                      - button:
+                        - img
+                        - text: Repetir pedido
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic: Un resaurante
+                        - generic: Entregado
+                      - paragraph: ORD-0023 - 17/5/2026, 10:38:01 p. m.
+                    - generic: Pickup
+                  - generic:
+                    - generic:
+                      - paragraph: A nombre de cliente uno
+                      - generic:
+                        - generic: 1x HAmburguesa doble carne
+                        - generic: $ 12.000
+                      - generic:
+                        - generic: 1x Coca cola
+                        - generic: $ 3.500
+                      - generic:
+                        - generic: Total
+                        - generic: $ 15.500
+                    - generic:
+                      - button:
+                        - img
+                        - text: Contactar
+                      - button:
+                        - img
+                        - text: Chat
+                      - button:
+                        - img
+                        - text: Repetir pedido
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic: Un resaurante
+                        - generic: Entregado
+                      - paragraph: ORD-0022 - 17/5/2026, 8:21:30 p. m.
+                    - generic: Pickup
+                  - generic:
+                    - generic:
+                      - paragraph: A nombre de cliente uno
+                      - generic:
+                        - generic: 1x Coca cola
+                        - generic: $ 3.500
+                      - generic:
+                        - generic: 1x HAmburguesa doble carne
+                        - generic: $ 12.000
+                      - generic:
+                        - generic: Total
+                        - generic: $ 15.500
+                    - generic:
+                      - button:
+                        - img
+                        - text: Contactar
+                      - button:
+                        - img
+                        - text: Chat
+                      - button:
+                        - img
+                        - text: Repetir pedido
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic: Un resaurante
+                        - generic: Entregado
+                      - paragraph: ORD-0021 - 17/5/2026, 7:50:44 p. m.
+                    - generic: Pickup
+                  - generic:
+                    - generic:
+                      - paragraph: A nombre de cliente uno
+                      - generic:
+                        - generic: 1x HAmburguesa doble carne
+                        - generic: $ 12.000
+                      - generic:
+                        - generic: 1x Coca cola
+                        - generic: $ 3.500
+                      - generic:
+                        - generic: Total
+                        - generic: $ 15.500
+                    - generic:
+                      - button:
+                        - img
+                        - text: Contactar
+                      - button:
+                        - img
+                        - text: Chat
+                      - button:
+                        - img
+                        - text: Repetir pedido
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic: Un resaurante
+                        - generic: Entregado
+                      - paragraph: ORD-0020 - 17/5/2026, 7:45:15 p. m.
+                    - generic: Pickup
+                  - generic:
+                    - generic:
+                      - paragraph: A nombre de cliente uno
+                      - generic:
+                        - generic: 1x Coca cola
+                        - generic: $ 3.500
+                      - generic:
+                        - generic: 1x HAmburguesa doble carne
+                        - generic: $ 12.000
+                      - generic:
+                        - generic: Total
+                        - generic: $ 15.500
+                    - generic:
+                      - button:
+                        - img
+                        - text: Contactar
+                      - button:
+                        - img
+                        - text: Chat
+                      - button:
+                        - img
+                        - text: Repetir pedido
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic: Un resaurante
+                        - generic: Entregado
+                      - paragraph: ORD-0019 - 17/5/2026, 7:41:01 p. m.
+                    - generic: Pickup
+                  - generic:
+                    - generic:
+                      - paragraph: A nombre de cliente uno
+                      - generic:
+                        - generic: 1x Coca cola
+                        - generic: $ 3.500
+                      - generic:
+                        - generic: 1x HAmburguesa doble carne
+                        - generic: $ 12.000
+                      - generic:
+                        - generic: Total
+                        - generic: $ 15.500
+                    - generic:
+                      - button:
+                        - img
+                        - text: Contactar
+                      - button:
+                        - img
+                        - text: Chat
+                      - button:
+                        - img
+                        - text: Repetir pedido
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic: Un resaurante
+                        - generic: Entregado
+                      - paragraph: ORD-0018 - 17/5/2026, 12:20:27 a. m.
+                    - generic: Pickup
+                  - generic:
+                    - generic:
+                      - paragraph: A nombre de cliente uno
+                      - generic:
+                        - generic: 1x Coca cola
+                        - generic: $ 3.500
+                      - generic:
+                        - generic: 1x HAmburguesa doble carne
+                        - generic: $ 12.000
+                      - generic:
+                        - generic: Total
+                        - generic: $ 15.500
+                    - generic:
+                      - button:
+                        - img
+                        - text: Contactar
+                      - button:
+                        - img
+                        - text: Chat
+                      - button:
+                        - img
+                        - text: Repetir pedido
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic: Un resaurante
+                        - generic: Entregado
+                      - paragraph: ORD-0017 - 17/5/2026, 12:09:00 a. m.
+                    - generic: Pickup
+                  - generic:
+                    - generic:
+                      - paragraph: A nombre de cliente uno
+                      - generic:
+                        - generic: 1x HAmburguesa doble carne
+                        - generic: $ 12.000
+                      - generic:
+                        - generic: 1x Coca cola
+                        - generic: $ 3.500
+                      - generic:
+                        - generic: Total
+                        - generic: $ 15.500
+                    - generic:
+                      - button:
+                        - img
+                        - text: Contactar
+                      - button:
+                        - img
+                        - text: Chat
+                      - button:
+                        - img
+                        - text: Repetir pedido
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic: Un resaurante
+                        - generic: Entregado
+                      - paragraph: ORD-0016 - 16/5/2026, 11:49:23 p. m.
+                    - generic: Delivery
+                  - generic:
+                    - generic:
+                      - paragraph: A nombre de cliente uno
+                      - generic:
+                        - generic: 2x Coca cola
+                        - generic: $ 7.000
+                      - generic:
+                        - generic: Total
+                        - generic: $ 7.000
+                    - generic:
+                      - img
+                      - generic: "carrera 2b #12-53"
+                    - generic:
+                      - button:
+                        - img
+                        - text: Contactar
+                      - button:
+                        - img
+                        - text: Chat
+                      - button:
+                        - img
+                        - text: Repetir pedido
+    - region "Notifications alt+T"
+  - menu "CU" [active] [ref=e352]:
+    - generic [ref=e354]:
+      - paragraph [ref=e355]: cliente uno
+      - paragraph [ref=e356]: Cliente
+    - separator [ref=e357]
+    - menuitem "Mi perfil" [ref=e358]:
+      - img
+      - generic [ref=e359]: Mi perfil
+    - menuitem "Configuracion" [ref=e360]:
+      - img
+      - generic [ref=e361]: Configuracion
+    - separator [ref=e362]
+    - menuitem "Cerrar sesion" [ref=e363]:
+      - img
+      - generic [ref=e364]: Cerrar sesion

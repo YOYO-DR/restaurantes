@@ -6,6 +6,7 @@ from rest_framework import serializers
 
 from apps.customers.models import CustomerAddress
 from apps.loyalty.models import LoyaltyRedemption
+from apps.loyalty.services import apply_direct_line_redemptions
 from apps.loyalty.services import apply_redemption_to_order
 from apps.orders.models import Order
 from apps.orders.models import OrderFulfillment
@@ -227,6 +228,8 @@ class CheckoutSerializer(serializers.Serializer):
         attrs["total_amount"] = subtotal + delivery_fee + service_fee
 
         loyalty_redemption_id = attrs.get("loyalty_redemption_id")
+        line_redemptions = attrs.get("line_redemptions") or []
+
         if loyalty_redemption_id:
             if not is_authenticated:
                 raise serializers.ValidationError(
@@ -245,13 +248,21 @@ class CheckoutSerializer(serializers.Serializer):
                 )
             attrs["loyalty_redemption"] = redemption
 
-            line_redemptions = attrs.get("line_redemptions") or []
             if line_redemptions and len(line_redemptions) != len(attrs["items"]):
                 raise serializers.ValidationError(
                     {
                         "line_redemptions": "Debes enviar una linea por cada item cuando distribuyes canje por item.",
                     },
                 )
+        elif line_redemptions:
+            # Canje directo por linea sin LoyaltyReward previa
+            if not is_authenticated:
+                raise serializers.ValidationError(
+                    {
+                        "line_redemptions": "Debes iniciar sesion para aplicar puntos en el pedido.",
+                    },
+                )
+            attrs["direct_line_redemptions"] = line_redemptions
 
         return attrs
 
@@ -315,6 +326,8 @@ class CheckoutSerializer(serializers.Serializer):
         )
 
         loyalty_redemption = validated_data.get("loyalty_redemption")
+        direct_lines = validated_data.get("direct_line_redemptions") or []
+
         if loyalty_redemption:
             discount_amount = apply_redemption_to_order(
                 order,
@@ -327,6 +340,15 @@ class CheckoutSerializer(serializers.Serializer):
                 Decimal("0.00"),
             )
             order.save(update_fields=["discount_amount", "total_amount", "updated_at"])
+        elif direct_lines:
+            discount_amount = apply_direct_line_redemptions(order, direct_lines)
+            if discount_amount > Decimal("0.00"):
+                order.discount_amount = discount_amount
+                order.total_amount = max(
+                    order.subtotal_amount + order.delivery_fee_amount + order.service_fee_amount - discount_amount,
+                    Decimal("0.00"),
+                )
+                order.save(update_fields=["discount_amount", "total_amount", "updated_at"])
 
         if order.user_id and order.restaurant.orders.filter(user_id=order.user_id).count() == 1:
             from apps.notifications import realtime

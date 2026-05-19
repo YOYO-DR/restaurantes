@@ -1,0 +1,140 @@
+- generic [ref=e2]:
+  - generic [ref=e55]:
+    - complementary [ref=e56]:
+      - link "FoodHub" [ref=e58] [cursor=pointer]:
+        - /url: /
+        - img [ref=e60]
+        - generic [ref=e63]: FoodHub
+      - navigation [ref=e64]:
+        - link "Inicio" [ref=e65] [cursor=pointer]:
+          - /url: /dashboard/cliente
+          - img [ref=e66]
+          - text: Inicio
+        - link "Mis Pedidos" [ref=e69] [cursor=pointer]:
+          - /url: /dashboard/cliente/pedidos
+          - img [ref=e70]
+          - text: Mis Pedidos
+        - link "Mis Puntos" [ref=e73] [cursor=pointer]:
+          - /url: /dashboard/cliente/puntos
+          - img [ref=e74]
+          - text: Mis Puntos
+        - link "Direcciones" [ref=e76] [cursor=pointer]:
+          - /url: /dashboard/cliente/direcciones
+          - img [ref=e77]
+          - text: Direcciones
+        - link "Favoritos" [ref=e80] [cursor=pointer]:
+          - /url: /dashboard/cliente/favoritos
+          - img [ref=e81]
+          - text: Favoritos
+        - link "Mi Perfil" [ref=e83] [cursor=pointer]:
+          - /url: /dashboard/cliente/perfil
+          - img [ref=e84]
+          - text: Mi Perfil
+        - link "Configuracion" [ref=e87] [cursor=pointer]:
+          - /url: /dashboard/cliente/configuracion
+          - img [ref=e88]
+          - text: Configuracion
+      - link "Ver Restaurantes" [ref=e92] [cursor=pointer]:
+        - /url: /restaurantes
+        - img [ref=e93]
+        - text: Ver Restaurantes
+    - generic [ref=e96]:
+      - banner [ref=e97]:
+        - heading "Mi Cuenta" [level=1] [ref=e99]
+        - generic [ref=e100]:
+          - button "Cambiar tema" [ref=e101]:
+            - img
+          - button "14" [ref=e102]:
+            - img
+            - generic [ref=e103]: "14"
+          - button "CU" [ref=e104]:
+            - generic [ref=e106]: CU
+      - main [ref=e107]:
+        - generic [ref=e108]:
+          - generic [ref=e109]:
+            - heading "Hola, cliente uno!" [level=2] [ref=e110]
+            - generic [ref=e111]:
+              - paragraph [ref=e112]: Bienvenido a tu cuenta de FoodHub
+              - combobox [ref=e113]:
+                - generic: Todas las ordenes
+                - img
+          - generic [ref=e114]:
+            - generic [ref=e115]:
+              - generic [ref=e116]:
+                - generic [ref=e117]: Total Pedidos
+                - img [ref=e118]
+              - generic [ref=e122]: "14"
+            - generic [ref=e123]:
+              - generic [ref=e124]:
+                - generic [ref=e125]: Puntos Acumulados
+                - img [ref=e126]
+              - generic [ref=e129]: "2"
+            - generic [ref=e130]:
+              - generic [ref=e131]:
+                - generic [ref=e132]: Restaurantes Favoritos
+                - img [ref=e133]
+              - generic [ref=e137]: "0"
+            - generic [ref=e138]:
+              - generic [ref=e139]:
+                - generic [ref=e140]: Tiempo Promedio
+                - img [ref=e141]
+              - generic [ref=e145]: 0 min
+          - generic [ref=e146]:
+            - generic [ref=e147]:
+              - generic [ref=e148]:
+                - generic [ref=e149]: Pedidos Recientes
+                - link "Ver todos" [ref=e150] [cursor=pointer]:
+                  - /url: /dashboard/cliente/pedidos
+                  - text: Ver todos
+                  - img
+              - generic [ref=e152]:
+                - generic [ref=e153]:
+                  - generic [ref=e154]:
+                    - paragraph [ref=e155]: Un resaurante
+                    - paragraph [ref=e156]: HAmburguesa doble carne, Coca cola
+                    - paragraph [ref=e157]: 19/5/2026
+                  - generic [ref=e158]:
+                    - generic [ref=e159]: Cancelado
+                    - paragraph [ref=e160]: $ 14.200
+                - generic [ref=e161]:
+                  - generic [ref=e162]:
+                    - paragraph [ref=e163]: Un resaurante
+                    - paragraph [ref=e164]: Coca cola, HAmburguesa doble carne
+                    - paragraph [ref=e165]: 18/5/2026
+                  - generic [ref=e166]:
+                    - generic [ref=e167]: Cancelado
+                    - paragraph [ref=e168]: $ 15.500
+                - generic [ref=e169]:
+                  - generic [ref=e170]:
+                    - paragraph [ref=e171]: Un resaurante
+                    - paragraph [ref=e172]: HAmburguesa doble carne, Coca cola
+                    - paragraph [ref=e173]: 17/5/2026
+                  - generic [ref=e174]:
+                    - generic [ref=e175]: Entregado
+                    - paragraph [ref=e176]: $ 15.500
+            - generic [ref=e178]:
+              - generic [ref=e179]: Restaurantes Favoritos
+              - link "Ver todos" [ref=e180] [cursor=pointer]:
+                - /url: /dashboard/cliente/favoritos
+                - text: Ver todos
+                - img
+          - generic [ref=e181]:
+            - heading "Tus Puntos de Fidelidad" [level=3] [ref=e182]
+            - generic [ref=e183]:
+              - generic [ref=e186]:
+                - heading "Puntos Totales" [level=4] [ref=e187]
+                - generic [ref=e188]: "2"
+                - paragraph [ref=e189]: Acumulados en todos los restaurantes
+              - generic [ref=e191]:
+                - generic [ref=e192]:
+                  - generic [ref=e193]:
+                    - heading "Un resaurante" [level=4] [ref=e194]
+                    - generic [ref=e195]: Base
+                  - generic [ref=e196]: 2 pts
+                - link "Ver historial" [ref=e197] [cursor=pointer]:
+                  - /url: /dashboard/cliente/puntos?restaurant_id=e0c31c9a-71a9-4939-94bb-3b7779d70e86
+  - region "Notifications alt+T":
+    - list:
+      - listitem [ref=e198]:
+        - img [ref=e200]
+        - generic [ref=e203]: Sesion iniciada con exito

@@ -21,12 +21,72 @@ import { useCart } from "@/context/cart-context"
 import { realtimeClient } from "@/lib/realtime-client"
 import { useCustomerOrders, useReorder } from "@/hooks/use-orders"
 import { formatCurrency, formatDeliveryWindow } from "@/lib/format"
-import { Clock, Loader2, MapPin, MessageCircle, Phone, RotateCcw, ShoppingBag } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { OrderFilters } from "@/components/orders/order-filters"
+import { ChevronLeft, ChevronRight, Clock, LayoutList, List, Loader2, MapPin, MessageCircle, Phone, RotateCcw, ShoppingBag, X } from "lucide-react"
 
 const ACTIVE_STATUSES = ["new", "preparing", "ready"]
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 30, 50]
+
+function OrdersControls({ page, hasNext, hasPrev, setPage, pageSize, setPageSize, viewMode, setViewMode }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center gap-2">
+        <Button
+          variant={viewMode === "expanded" ? "default" : "outline"}
+          size="sm"
+          className="h-8 gap-1.5 px-3 text-xs"
+          onClick={() => setViewMode("expanded")}
+          title="Vista detallada"
+        >
+          <LayoutList className="h-3.5 w-3.5" />
+          Detallado
+        </Button>
+        <Button
+          variant={viewMode === "compact" ? "default" : "outline"}
+          size="sm"
+          className="h-8 gap-1.5 px-3 text-xs"
+          onClick={() => setViewMode("compact")}
+          title="Vista compacta"
+        >
+          <List className="h-3.5 w-3.5" />
+          Compacto
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Por página</span>
+          <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+            <SelectTrigger className="h-8 w-16 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZE_OPTIONS.map((n) => (
+                <SelectItem key={n} value={String(n)} className="text-xs">{n}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {(hasNext || hasPrev) ? (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="h-8" disabled={!hasPrev} onClick={() => setPage(page - 1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-xs text-muted-foreground">Pág. {page}</span>
+            <Button variant="outline" size="sm" className="h-8" disabled={!hasNext} onClick={() => setPage(page + 1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
 
 export default function ClientOrdersPage() {
-  const { orders, isLoading, error, mergeOrder, cancelOrder, updatingOrderId } = useCustomerOrders()
+  const { orders, isLoading, isPageLoading, error, mergeOrder, cancelOrder, updatingOrderId, page, hasNext, hasPrev, setPage, pageSize, setPageSize, filters, setFilters } = useCustomerOrders()
   const { reorder, isReordering } = useReorder()
   const { items: cartItems, restaurant: cartRestaurant } = useCart()
   const [orderToCancel, setOrderToCancel] = useState(null)
@@ -34,6 +94,7 @@ export default function ClientOrdersPage() {
   const [orderToContact, setOrderToContact] = useState(null)
   const [orderToChat, setOrderToChat] = useState(null)
   const [reorderingId, setReorderingId] = useState(null)
+  const [viewMode, setViewMode] = useState("expanded")
 
   const handleOrderUpdate = useCallback((payload) => {
     mergeOrder(payload)
@@ -83,80 +144,94 @@ export default function ClientOrdersPage() {
       {error ? <div className="text-sm text-destructive">{error}</div> : null}
 
       {isLoading ? null : (
-        <Tabs defaultValue="all" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="all">Todos</TabsTrigger>
-            <TabsTrigger value="active">Activos ({activeOrders.length})</TabsTrigger>
-            <TabsTrigger value="completed">Completados</TabsTrigger>
-            <TabsTrigger value="cancelled">Cancelados ({cancelledOrders.length})</TabsTrigger>
-          </TabsList>
+        <>
+          <Tabs defaultValue="all" className="space-y-6">
+            <TabsList>
+              <TabsTrigger value="all">Todos</TabsTrigger>
+              <TabsTrigger value="active">Activos ({activeOrders.length})</TabsTrigger>
+              <TabsTrigger value="completed">Completados</TabsTrigger>
+              <TabsTrigger value="cancelled">Cancelados ({cancelledOrders.length})</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="all" className="space-y-4">
-            {orders.map((order) => (
-              <OrderCard
-                key={order.id}
-                order={order}
-                onCancel={setOrderToCancel}
-                onReorder={handleReorderClick}
-                onContact={setOrderToContact}
-                onChat={setOrderToChat}
-                reorderingId={reorderingId}
-                updatingOrderId={updatingOrderId}
-              />
-            ))}
-          </TabsContent>
+            <OrderFilters filters={filters} setFilters={setFilters} variant="customer" />
 
-          <TabsContent value="active" className="space-y-4">
-            {activeOrders.length ? (
-                activeOrders.map((order) => (
-                  <OrderCard
-                    key={order.id}
-                    order={order}
-                    onCancel={setOrderToCancel}
-                    onReorder={handleReorderClick}
-                    onContact={setOrderToContact}
-                    onChat={setOrderToChat}
-                    reorderingId={reorderingId}
-                    updatingOrderId={updatingOrderId}
-                  />
-                ))
-            ) : (
-              <Card>
-                <CardContent className="py-12 text-center text-muted-foreground">No tienes pedidos activos</CardContent>
-              </Card>
-            )}
-          </TabsContent>
+            <OrdersControls
+              page={page} hasNext={hasNext} hasPrev={hasPrev} setPage={setPage}
+              pageSize={pageSize} setPageSize={setPageSize}
+              viewMode={viewMode} setViewMode={setViewMode}
+            />
 
-          <TabsContent value="completed" className="space-y-4">
-            {completedOrders.map((order) => (
-              <OrderCard
-                key={order.id}
-                order={order}
-                onCancel={setOrderToCancel}
-                onReorder={handleReorderClick}
-                onContact={setOrderToContact}
-                onChat={setOrderToChat}
-                reorderingId={reorderingId}
-                updatingOrderId={updatingOrderId}
-              />
-            ))}
-          </TabsContent>
+            <TabsContent value="all" className="space-y-2">
+              {isPageLoading ? <OrdersListSkeleton /> : orders.map((order) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  onCancel={setOrderToCancel}
+                  onReorder={handleReorderClick}
+                  onContact={setOrderToContact}
+                  onChat={setOrderToChat}
+                  reorderingId={reorderingId}
+                  updatingOrderId={updatingOrderId}
+                  compact={viewMode === "compact"}
+                />
+              ))}
+            </TabsContent>
 
-          <TabsContent value="cancelled" className="space-y-4">
-            {cancelledOrders.map((order) => (
-              <OrderCard
-                key={order.id}
-                order={order}
-                onCancel={setOrderToCancel}
-                onReorder={handleReorderClick}
-                onContact={setOrderToContact}
-                onChat={setOrderToChat}
-                reorderingId={reorderingId}
-                updatingOrderId={updatingOrderId}
-              />
-            ))}
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="active" className="space-y-2">
+              {isPageLoading ? <OrdersListSkeleton /> : activeOrders.length ? (
+                  activeOrders.map((order) => (
+                    <OrderCard
+                      key={order.id}
+                      order={order}
+                      onCancel={setOrderToCancel}
+                      onReorder={handleReorderClick}
+                      onContact={setOrderToContact}
+                      onChat={setOrderToChat}
+                      reorderingId={reorderingId}
+                      updatingOrderId={updatingOrderId}
+                      compact={viewMode === "compact"}
+                    />
+                  ))
+              ) : (
+                <Card>
+                  <CardContent className="py-12 text-center text-muted-foreground">No tienes pedidos activos</CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="completed" className="space-y-2">
+              {isPageLoading ? <OrdersListSkeleton /> : completedOrders.map((order) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  onCancel={setOrderToCancel}
+                  onReorder={handleReorderClick}
+                  onContact={setOrderToContact}
+                  onChat={setOrderToChat}
+                  reorderingId={reorderingId}
+                  updatingOrderId={updatingOrderId}
+                  compact={viewMode === "compact"}
+                />
+              ))}
+            </TabsContent>
+
+            <TabsContent value="cancelled" className="space-y-2">
+              {isPageLoading ? <OrdersListSkeleton /> : cancelledOrders.map((order) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  onCancel={setOrderToCancel}
+                  onReorder={handleReorderClick}
+                  onContact={setOrderToContact}
+                  onChat={setOrderToChat}
+                  reorderingId={reorderingId}
+                  updatingOrderId={updatingOrderId}
+                  compact={viewMode === "compact"}
+                />
+              ))}
+            </TabsContent>
+          </Tabs>
+        </>
       )}
 
       <CancelOrderDialog
@@ -231,9 +306,42 @@ export default function ClientOrdersPage() {
   )
 }
 
-function OrderCard({ order, onCancel, onReorder, onContact, onChat, reorderingId, updatingOrderId }) {
+function OrderCard({ order, onCancel, onReorder, onContact, onChat, reorderingId, updatingOrderId, compact = false }) {
   const isThisReordering = reorderingId === order.id
   const unreadCount = useOrderChatUnreadCount({ orderId: order.id })
+  const isActive = !["delivered", "cancelled"].includes(order.status_code)
+
+  if (compact) {
+    return (
+      <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-2.5 text-sm">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium">{order.restaurant_name}</span>
+            <Badge variant={order.status_code === "delivered" ? "outline" : "default"} className="text-xs">{order.status_name}</Badge>
+            <Badge variant="outline" className="text-xs">{order.order_type_name}</Badge>
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {order.order_code} · {order.items.length} producto{order.items.length !== 1 ? "s" : ""} · {new Date(order.created_at).toLocaleDateString("es-CO", { day: "2-digit", month: "short" })}
+          </p>
+        </div>
+        <span className="shrink-0 font-semibold text-primary">{formatCurrency(order.total_amount, order.currency_code)}</span>
+        <div className="flex shrink-0 items-center gap-1">
+          <Button variant="ghost" size="icon" className="relative h-8 w-8" onClick={() => onChat(order)} title="Chat">
+            <MessageCircle className="h-4 w-4" />
+            {unreadCount > 0 ? <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">{unreadCount}</span> : null}
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onReorder(order)} disabled={isThisReordering} title="Repetir">
+            {isThisReordering ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+          </Button>
+          {isActive ? (
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => onCancel(order)} disabled={updatingOrderId === order.id} title="Cancelar">
+              <X className="h-4 w-4" />
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <Card>

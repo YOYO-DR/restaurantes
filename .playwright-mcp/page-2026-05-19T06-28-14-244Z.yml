@@ -1,0 +1,512 @@
+- generic [ref=e2]:
+  - generic [ref=e10]:
+    - complementary [ref=e11]:
+      - link "FoodHub" [ref=e13] [cursor=pointer]:
+        - /url: /
+        - img [ref=e15]
+        - generic [ref=e18]: FoodHub
+      - generic [ref=e20]:
+        - paragraph [ref=e21]: Tu restaurante
+        - paragraph [ref=e22]: Un resaurante
+        - generic [ref=e25]: Abierto
+      - navigation [ref=e26]:
+        - link "Dashboard" [ref=e27] [cursor=pointer]:
+          - /url: /dashboard/restaurante
+          - generic [ref=e28]:
+            - img [ref=e29]
+            - text: Dashboard
+        - link "Pedidos 2" [ref=e32] [cursor=pointer]:
+          - /url: /dashboard/restaurante/pedidos
+          - generic [ref=e33]:
+            - img [ref=e34]
+            - text: Pedidos
+          - generic [ref=e37]: "2"
+        - link "Menu" [ref=e38] [cursor=pointer]:
+          - /url: /dashboard/restaurante/menu
+          - generic [ref=e39]:
+            - img [ref=e40]
+            - text: Menu
+        - link "Inventario" [ref=e45] [cursor=pointer]:
+          - /url: /dashboard/restaurante/inventario
+          - generic [ref=e46]:
+            - img [ref=e47]
+            - text: Inventario
+        - link "Clientes" [ref=e51] [cursor=pointer]:
+          - /url: /dashboard/restaurante/clientes
+          - generic [ref=e52]:
+            - img [ref=e53]
+            - text: Clientes
+        - link "Lealtad" [ref=e58] [cursor=pointer]:
+          - /url: /dashboard/restaurante/lealtad
+          - generic [ref=e59]:
+            - img [ref=e60]
+            - text: Lealtad
+        - link "Resenas" [ref=e63] [cursor=pointer]:
+          - /url: /dashboard/restaurante/resenas
+          - generic [ref=e64]:
+            - img [ref=e65]
+            - text: Resenas
+        - link "Analiticas" [ref=e67] [cursor=pointer]:
+          - /url: /dashboard/restaurante/analiticas
+          - generic [ref=e68]:
+            - img [ref=e69]
+            - text: Analiticas
+        - link "Codigo QR" [ref=e71] [cursor=pointer]:
+          - /url: /dashboard/restaurante/qr
+          - generic [ref=e72]:
+            - img [ref=e73]
+            - text: Codigo QR
+        - link "Personalizacion" [ref=e79] [cursor=pointer]:
+          - /url: /dashboard/restaurante/personalizacion
+          - generic [ref=e80]:
+            - img [ref=e81]
+            - text: Personalizacion
+        - link "Operadores" [ref=e87] [cursor=pointer]:
+          - /url: /dashboard/restaurante/operadores
+          - generic [ref=e88]:
+            - img [ref=e89]
+            - text: Operadores
+        - link "Mi Perfil" [ref=e101] [cursor=pointer]:
+          - /url: /dashboard/restaurante/perfil
+          - generic [ref=e102]:
+            - img [ref=e103]
+            - text: Mi Perfil
+        - link "Configuracion" [ref=e106] [cursor=pointer]:
+          - /url: /dashboard/restaurante/configuracion
+          - generic [ref=e107]:
+            - img [ref=e108]
+            - text: Configuracion
+    - generic [ref=e111]:
+      - banner [ref=e112]:
+        - heading "Mi Restaurante" [level=1] [ref=e114]
+        - generic [ref=e115]:
+          - combobox [ref=e116]:
+            - generic: Dueno de restaurante
+            - img
+          - button "Cambiar tema" [ref=e117]:
+            - img
+          - button "6" [ref=e118]:
+            - img
+            - generic [ref=e119]: "6"
+          - button "DU" [ref=e120]:
+            - generic [ref=e122]: DU
+      - main [ref=e123]:
+        - generic [ref=e124]:
+          - generic [ref=e125]:
+            - generic [ref=e126]:
+              - heading "Pedidos" [level=2] [ref=e127]
+              - paragraph [ref=e128]: Gestiona los pedidos de tu restaurante
+            - generic [ref=e130]: 0 nuevos
+          - generic [ref=e132]:
+            - generic [ref=e134]:
+              - generic [ref=e135]:
+                - paragraph [ref=e136]: Nuevos
+                - paragraph [ref=e137]: "0"
+              - img [ref=e138]
+            - generic [ref=e142]:
+              - generic [ref=e143]:
+                - paragraph [ref=e144]: Preparando
+                - paragraph [ref=e145]: "0"
+              - img [ref=e146]
+            - generic [ref=e149]:
+              - generic [ref=e150]:
+                - paragraph [ref=e151]: Listos
+                - paragraph [ref=e152]: "0"
+              - img [ref=e153]
+            - generic [ref=e159]:
+              - generic [ref=e160]:
+                - paragraph [ref=e161]: Completados
+                - paragraph [ref=e162]: "8"
+              - img [ref=e163]
+            - generic [ref=e167]:
+              - generic [ref=e168]:
+                - paragraph [ref=e169]: Cancelados
+                - paragraph [ref=e170]: "2"
+              - img [ref=e171]
+          - generic [ref=e174]:
+            - tablist [ref=e175]:
+              - tab "Todos" [selected] [ref=e176]
+              - tab "Nuevos (0)" [ref=e177]
+              - tab "Preparando (0)" [ref=e178]
+              - tab "Listos (0)" [ref=e179]
+              - tab "Completados (8)" [ref=e180]
+              - tab "Cancelados (2)" [ref=e181]
+            - generic [ref=e182]:
+              - generic [ref=e183]:
+                - generic [ref=e184]:
+                  - img [ref=e185]
+                  - textbox "Buscar por cliente, código o teléfono…" [ref=e188]
+                - combobox [ref=e189]:
+                  - generic: Todos los tipos
+                  - img
+              - generic [ref=e190]:
+                - button "Hoy" [ref=e191]
+                - button "Ayer" [ref=e192]
+                - button "Esta semana" [ref=e193]
+                - button "Este mes" [ref=e194]
+            - generic [ref=e195]:
+              - generic [ref=e196]:
+                - button "Detallado" [ref=e197]:
+                  - img
+                  - text: Detallado
+                - button "Compacto" [ref=e198]:
+                  - img
+                  - text: Compacto
+              - generic [ref=e199]:
+                - generic [ref=e200]:
+                  - generic [ref=e201]: Por página
+                  - combobox [ref=e202]:
+                    - generic: "10"
+                    - img
+                - generic [ref=e203]:
+                  - button [disabled]:
+                    - img
+                  - generic [ref=e204]: Pág. 1
+                  - button [ref=e205]:
+                    - img
+            - tabpanel "Todos" [ref=e206]:
+              - generic [ref=e207]:
+                - generic [ref=e208]:
+                  - generic [ref=e209]:
+                    - generic [ref=e210]:
+                      - generic [ref=e211]: ORD-0025
+                      - generic [ref=e212]: Cancelado
+                      - generic [ref=e213]: Pickup
+                    - generic [ref=e214]:
+                      - generic [ref=e215]:
+                        - img [ref=e216]
+                        - text: cliente uno
+                      - generic [ref=e219]:
+                        - img [ref=e220]
+                        - text: 12:16 a. m.
+                  - paragraph [ref=e223]: $ 14.200
+                - generic [ref=e224]:
+                  - generic [ref=e226]:
+                    - generic [ref=e227]:
+                      - generic [ref=e228]: 1x HAmburguesa doble carne
+                      - generic [ref=e229]: $ 12.000
+                    - generic [ref=e230]:
+                      - generic [ref=e231]: 1x Coca cola
+                      - generic [ref=e232]: $ 3.500
+                  - generic [ref=e233]:
+                    - img [ref=e234]
+                    - generic [ref=e236]: "3148743538"
+                  - generic [ref=e237]:
+                    - paragraph [ref=e238]:
+                      - strong [ref=e239]: "Cancelado por:"
+                      - text: restaurante
+                    - strong [ref=e240]: "Motivo de cancelacion:"
+                    - text: Se acabo
+                  - generic [ref=e241]:
+                    - button "Llamar" [disabled]:
+                      - img
+                      - text: Llamar
+                    - button "Chat" [ref=e242]:
+                      - img
+                      - text: Chat
+              - generic [ref=e243]:
+                - generic [ref=e244]:
+                  - generic [ref=e245]:
+                    - generic [ref=e246]:
+                      - generic [ref=e247]: ORD-0024
+                      - generic [ref=e248]: Cancelado
+                      - generic [ref=e249]: Mesa
+                    - generic [ref=e250]:
+                      - generic [ref=e251]:
+                        - img [ref=e252]
+                        - text: cliente uno
+                      - generic [ref=e255]:
+                        - img [ref=e256]
+                        - text: 11:00 p. m.
+                  - paragraph [ref=e259]: $ 15.500
+                - generic [ref=e260]:
+                  - generic [ref=e262]:
+                    - generic [ref=e263]:
+                      - generic [ref=e264]: 1x Coca cola
+                      - generic [ref=e265]: $ 3.500
+                    - generic [ref=e266]:
+                      - generic [ref=e267]: 1x HAmburguesa doble carne
+                      - generic [ref=e268]: $ 12.000
+                  - generic [ref=e269]:
+                    - img [ref=e270]
+                    - generic [ref=e273]: Mesa 1
+                  - generic [ref=e274]:
+                    - img [ref=e275]
+                    - generic [ref=e277]: "3148743538"
+                  - generic [ref=e278]:
+                    - paragraph [ref=e279]:
+                      - strong [ref=e280]: "Cancelado por:"
+                      - text: restaurante
+                    - strong [ref=e281]: "Motivo de cancelacion:"
+                    - text: paila
+                  - generic [ref=e282]:
+                    - button "Llamar" [disabled]:
+                      - img
+                      - text: Llamar
+                    - button "Chat" [ref=e283]:
+                      - img
+                      - text: Chat
+              - generic [ref=e284]:
+                - generic [ref=e285]:
+                  - generic [ref=e286]:
+                    - generic [ref=e287]:
+                      - generic [ref=e288]: ORD-0023
+                      - generic [ref=e289]: Entregado
+                      - generic [ref=e290]: Pickup
+                    - generic [ref=e291]:
+                      - generic [ref=e292]:
+                        - img [ref=e293]
+                        - text: cliente uno
+                      - generic [ref=e296]:
+                        - img [ref=e297]
+                        - text: 10:38 p. m.
+                  - paragraph [ref=e300]: $ 15.500
+                - generic [ref=e301]:
+                  - generic [ref=e303]:
+                    - generic [ref=e304]:
+                      - generic [ref=e305]: 1x HAmburguesa doble carne
+                      - generic [ref=e306]: $ 12.000
+                    - generic [ref=e307]:
+                      - generic [ref=e308]: 1x Coca cola
+                      - generic [ref=e309]: $ 3.500
+                  - generic [ref=e310]:
+                    - img [ref=e311]
+                    - generic [ref=e313]: "3148743538"
+                  - generic [ref=e314]:
+                    - button "Llamar" [disabled]:
+                      - img
+                      - text: Llamar
+                    - button "Chat" [ref=e315]:
+                      - img
+                      - text: Chat
+              - generic [ref=e316]:
+                - generic [ref=e317]:
+                  - generic [ref=e318]:
+                    - generic [ref=e319]:
+                      - generic [ref=e320]: ORD-0022
+                      - generic [ref=e321]: Entregado
+                      - generic [ref=e322]: Pickup
+                    - generic [ref=e323]:
+                      - generic [ref=e324]:
+                        - img [ref=e325]
+                        - text: cliente uno
+                      - generic [ref=e328]:
+                        - img [ref=e329]
+                        - text: 08:21 p. m.
+                  - paragraph [ref=e332]: $ 15.500
+                - generic [ref=e333]:
+                  - generic [ref=e335]:
+                    - generic [ref=e336]:
+                      - generic [ref=e337]: 1x Coca cola
+                      - generic [ref=e338]: $ 3.500
+                    - generic [ref=e339]:
+                      - generic [ref=e340]: 1x HAmburguesa doble carne
+                      - generic [ref=e341]: $ 12.000
+                  - generic [ref=e342]:
+                    - img [ref=e343]
+                    - generic [ref=e345]: "3148743538"
+                  - generic [ref=e346]:
+                    - button "Llamar" [disabled]:
+                      - img
+                      - text: Llamar
+                    - button "Chat" [ref=e347]:
+                      - img
+                      - text: Chat
+              - generic [ref=e348]:
+                - generic [ref=e349]:
+                  - generic [ref=e350]:
+                    - generic [ref=e351]:
+                      - generic [ref=e352]: ORD-0021
+                      - generic [ref=e353]: Entregado
+                      - generic [ref=e354]: Pickup
+                    - generic [ref=e355]:
+                      - generic [ref=e356]:
+                        - img [ref=e357]
+                        - text: cliente uno
+                      - generic [ref=e360]:
+                        - img [ref=e361]
+                        - text: 07:50 p. m.
+                  - paragraph [ref=e364]: $ 15.500
+                - generic [ref=e365]:
+                  - generic [ref=e367]:
+                    - generic [ref=e368]:
+                      - generic [ref=e369]: 1x HAmburguesa doble carne
+                      - generic [ref=e370]: $ 12.000
+                    - generic [ref=e371]:
+                      - generic [ref=e372]: 1x Coca cola
+                      - generic [ref=e373]: $ 3.500
+                  - generic [ref=e374]:
+                    - img [ref=e375]
+                    - generic [ref=e377]: "3148743538"
+                  - generic [ref=e378]:
+                    - button "Llamar" [disabled]:
+                      - img
+                      - text: Llamar
+                    - button "Chat" [ref=e379]:
+                      - img
+                      - text: Chat
+              - generic [ref=e380]:
+                - generic [ref=e381]:
+                  - generic [ref=e382]:
+                    - generic [ref=e383]:
+                      - generic [ref=e384]: ORD-0020
+                      - generic [ref=e385]: Entregado
+                      - generic [ref=e386]: Pickup
+                    - generic [ref=e387]:
+                      - generic [ref=e388]:
+                        - img [ref=e389]
+                        - text: cliente uno
+                      - generic [ref=e392]:
+                        - img [ref=e393]
+                        - text: 07:45 p. m.
+                  - paragraph [ref=e396]: $ 15.500
+                - generic [ref=e397]:
+                  - generic [ref=e399]:
+                    - generic [ref=e400]:
+                      - generic [ref=e401]: 1x Coca cola
+                      - generic [ref=e402]: $ 3.500
+                    - generic [ref=e403]:
+                      - generic [ref=e404]: 1x HAmburguesa doble carne
+                      - generic [ref=e405]: $ 12.000
+                  - generic [ref=e406]:
+                    - img [ref=e407]
+                    - generic [ref=e409]: "3148743538"
+                  - generic [ref=e410]:
+                    - button "Llamar" [disabled]:
+                      - img
+                      - text: Llamar
+                    - button "Chat" [ref=e411]:
+                      - img
+                      - text: Chat
+              - generic [ref=e412]:
+                - generic [ref=e413]:
+                  - generic [ref=e414]:
+                    - generic [ref=e415]:
+                      - generic [ref=e416]: ORD-0019
+                      - generic [ref=e417]: Entregado
+                      - generic [ref=e418]: Pickup
+                    - generic [ref=e419]:
+                      - generic [ref=e420]:
+                        - img [ref=e421]
+                        - text: cliente uno
+                      - generic [ref=e424]:
+                        - img [ref=e425]
+                        - text: 07:41 p. m.
+                  - paragraph [ref=e428]: $ 15.500
+                - generic [ref=e429]:
+                  - generic [ref=e431]:
+                    - generic [ref=e432]:
+                      - generic [ref=e433]: 1x Coca cola
+                      - generic [ref=e434]: $ 3.500
+                    - generic [ref=e435]:
+                      - generic [ref=e436]: 1x HAmburguesa doble carne
+                      - generic [ref=e437]: $ 12.000
+                  - generic [ref=e438]:
+                    - img [ref=e439]
+                    - generic [ref=e441]: "3148743538"
+                  - generic [ref=e442]:
+                    - button "Llamar" [disabled]:
+                      - img
+                      - text: Llamar
+                    - button "Chat" [ref=e443]:
+                      - img
+                      - text: Chat
+              - generic [ref=e444]:
+                - generic [ref=e445]:
+                  - generic [ref=e446]:
+                    - generic [ref=e447]:
+                      - generic [ref=e448]: ORD-0018
+                      - generic [ref=e449]: Entregado
+                      - generic [ref=e450]: Pickup
+                    - generic [ref=e451]:
+                      - generic [ref=e452]:
+                        - img [ref=e453]
+                        - text: cliente uno
+                      - generic [ref=e456]:
+                        - img [ref=e457]
+                        - text: 12:20 a. m.
+                  - paragraph [ref=e460]: $ 15.500
+                - generic [ref=e461]:
+                  - generic [ref=e463]:
+                    - generic [ref=e464]:
+                      - generic [ref=e465]: 1x Coca cola
+                      - generic [ref=e466]: $ 3.500
+                    - generic [ref=e467]:
+                      - generic [ref=e468]: 1x HAmburguesa doble carne
+                      - generic [ref=e469]: $ 12.000
+                  - generic [ref=e470]:
+                    - img [ref=e471]
+                    - generic [ref=e473]: "3148743538"
+                  - generic [ref=e474]:
+                    - button "Llamar" [disabled]:
+                      - img
+                      - text: Llamar
+                    - button "Chat" [ref=e475]:
+                      - img
+                      - text: Chat
+              - generic [ref=e476]:
+                - generic [ref=e477]:
+                  - generic [ref=e478]:
+                    - generic [ref=e479]:
+                      - generic [ref=e480]: ORD-0017
+                      - generic [ref=e481]: Entregado
+                      - generic [ref=e482]: Pickup
+                    - generic [ref=e483]:
+                      - generic [ref=e484]:
+                        - img [ref=e485]
+                        - text: cliente uno
+                      - generic [ref=e488]:
+                        - img [ref=e489]
+                        - text: 12:09 a. m.
+                  - paragraph [ref=e492]: $ 15.500
+                - generic [ref=e493]:
+                  - generic [ref=e495]:
+                    - generic [ref=e496]:
+                      - generic [ref=e497]: 1x HAmburguesa doble carne
+                      - generic [ref=e498]: $ 12.000
+                    - generic [ref=e499]:
+                      - generic [ref=e500]: 1x Coca cola
+                      - generic [ref=e501]: $ 3.500
+                  - generic [ref=e502]:
+                    - img [ref=e503]
+                    - generic [ref=e505]: "3148743538"
+                  - generic [ref=e506]:
+                    - button "Llamar" [disabled]:
+                      - img
+                      - text: Llamar
+                    - button "Chat" [ref=e507]:
+                      - img
+                      - text: Chat
+              - generic [ref=e508]:
+                - generic [ref=e509]:
+                  - generic [ref=e510]:
+                    - generic [ref=e511]:
+                      - generic [ref=e512]: ORD-0016
+                      - generic [ref=e513]: Entregado
+                      - generic [ref=e514]: Delivery
+                    - generic [ref=e515]:
+                      - generic [ref=e516]:
+                        - img [ref=e517]
+                        - text: cliente uno
+                      - generic [ref=e520]:
+                        - img [ref=e521]
+                        - text: 11:49 p. m.
+                  - paragraph [ref=e524]: $ 7.000
+                - generic [ref=e525]:
+                  - generic [ref=e528]:
+                    - generic [ref=e529]: 2x Coca cola
+                    - generic [ref=e530]: $ 7.000
+                  - generic [ref=e531]:
+                    - img [ref=e532]
+                    - generic [ref=e535]: "carrera 2b #12-53"
+                  - generic [ref=e536]:
+                    - img [ref=e537]
+                    - generic [ref=e539]: "3148743538"
+                  - generic [ref=e540]:
+                    - button "Llamar" [disabled]:
+                      - img
+                      - text: Llamar
+                    - button "Chat" [ref=e541]:
+                      - img
+                      - text: Chat
+  - region "Notifications alt+T"

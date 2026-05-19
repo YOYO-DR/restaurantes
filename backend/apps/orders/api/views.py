@@ -1,6 +1,8 @@
+from django.db import models
 from rest_framework import permissions
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.viewsets import ReadOnlyModelViewSet
@@ -25,12 +27,19 @@ from apps.orders.services import notify_order_cancelled
 from apps.orders.services import notify_order_status_updated
 
 
+class OrderPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
 class CustomerOrderViewSet(ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticatedUser]
     serializer_class = OrderSerializer
+    pagination_class = OrderPagination
 
     def get_queryset(self):
-        return (
+        qs = (
             Order.objects.filter(user=self.request.user)
             .select_related(
                 "restaurant",
@@ -44,6 +53,30 @@ class CustomerOrderViewSet(ReadOnlyModelViewSet):
             .prefetch_related("status_history__status")
             .order_by("-created_at")
         )
+
+        params = self.request.query_params
+
+        q = params.get("q", "").strip()
+        if q:
+            qs = qs.filter(
+                models.Q(restaurant__display_name__icontains=q)
+                | models.Q(restaurant__name__icontains=q)
+                | models.Q(order_code__icontains=q)
+            )
+
+        order_type = params.get("order_type", "").strip()
+        if order_type:
+            qs = qs.filter(order_type__code=order_type)
+
+        date_from = params.get("date_from", "").strip()
+        if date_from:
+            qs = qs.filter(created_at__date__gte=date_from)
+
+        date_to = params.get("date_to", "").strip()
+        if date_to:
+            qs = qs.filter(created_at__date__lte=date_to)
+
+        return qs
 
 
 class CheckoutViewSet(GenericViewSet):
@@ -191,9 +224,10 @@ class CheckoutViewSet(GenericViewSet):
 class OwnerOrderViewSet(ReadOnlyModelViewSet):
     permission_classes = [PedidosModulePermission]
     serializer_class = OrderSerializer
+    pagination_class = OrderPagination
 
     def get_queryset(self):
-        queryset = (
+        qs = (
             Order.objects.select_related(
                 "restaurant",
                 "status",
@@ -205,10 +239,33 @@ class OwnerOrderViewSet(ReadOnlyModelViewSet):
             .prefetch_related("status_history__status")
             .order_by("-created_at")
         )
-        if is_admin_user(self.request.user):
-            return queryset
-        restaurant_ids = get_user_owned_or_operated_restaurant_ids(self.request.user)
-        return queryset.filter(restaurant_id__in=restaurant_ids)
+        if not is_admin_user(self.request.user):
+            restaurant_ids = get_user_owned_or_operated_restaurant_ids(self.request.user)
+            qs = qs.filter(restaurant_id__in=restaurant_ids)
+
+        params = self.request.query_params
+
+        q = params.get("q", "").strip()
+        if q:
+            qs = qs.filter(
+                models.Q(customer_name__icontains=q)
+                | models.Q(customer_phone__icontains=q)
+                | models.Q(order_code__icontains=q)
+            )
+
+        order_type = params.get("order_type", "").strip()
+        if order_type:
+            qs = qs.filter(order_type__code=order_type)
+
+        date_from = params.get("date_from", "").strip()
+        if date_from:
+            qs = qs.filter(created_at__date__gte=date_from)
+
+        date_to = params.get("date_to", "").strip()
+        if date_to:
+            qs = qs.filter(created_at__date__lte=date_to)
+
+        return qs
 
     @action(detail=True, methods=["patch"])
     def status(self, request, pk=None):

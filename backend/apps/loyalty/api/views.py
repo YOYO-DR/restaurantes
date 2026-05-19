@@ -133,6 +133,9 @@ class CustomerLoyaltyViewSet(GenericViewSet):
                     if getattr(loyalty_setting, "point_redeem_value", None) is not None
                     else "",
                 ),
+                "min_payment_denomination": getattr(
+                    loyalty_setting, "min_payment_denomination", None
+                ),
                 "points_by_restaurant": points_by_restaurant,
                 "tiers": LoyaltyTierSerializer(tiers, many=True).data,
                 "available_rewards": [

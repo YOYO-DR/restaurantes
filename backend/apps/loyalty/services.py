@@ -1,4 +1,5 @@
 from decimal import Decimal
+from decimal import ROUND_CEILING
 from decimal import ROUND_FLOOR
 
 from django.db import transaction
@@ -20,6 +21,65 @@ from apps.orders.models import Order
 
 def _quantize_floor(value: Decimal) -> int:
     return int(value.to_integral_value(rounding=ROUND_FLOOR))
+
+
+def _apply_denomination_rounding(
+    lines: list[dict],
+    points_total: int,
+    point_redeem_value: Decimal,
+    total_before_discount: Decimal,
+    denomination: int,
+) -> tuple[list[dict], int, int]:
+    """
+    Ajusta la distribucion de puntos para que el total a pagar sea un multiplo
+    de `denomination` redondeando HACIA ARRIBA (nunca baja del multiplo siguiente).
+
+    Devuelve (lines_ajustadas, points_total_ajustado, puntos_sobrantes).
+    """
+    if denomination <= 0 or points_total <= 0:
+        return lines, points_total, 0
+
+    discount_requested = Decimal(points_total) * point_redeem_value
+    total_after_discount = total_before_discount - discount_requested
+
+    if total_after_discount <= Decimal("0"):
+        return lines, points_total, 0
+
+    # Calcular el multiplo siguiente (hacia arriba) del total
+    denomination_d = Decimal(denomination)
+    rounded_total = (total_after_discount / denomination_d).to_integral_value(
+        rounding=ROUND_CEILING
+    ) * denomination_d
+
+    # Si ya es multiplo exacto, no hay ajuste
+    if rounded_total == total_after_discount:
+        return lines, points_total, 0
+
+    # El descuento maximo que deja el total en el multiplo hacia arriba
+    max_discount = total_before_discount - rounded_total
+    if max_discount <= Decimal("0"):
+        return lines, 0, points_total
+
+    adjusted_total = _quantize_floor(max_discount / point_redeem_value)
+    if adjusted_total >= points_total:
+        return lines, points_total, 0
+
+    unused = points_total - adjusted_total
+
+    # Redistribuir proporcionalmente entre las lineas
+    original_sum = sum(line["points"] for line in lines)
+    adjusted_lines = []
+    distributed = 0
+    for i, line in enumerate(lines):
+        if i == len(lines) - 1:
+            pts = max(adjusted_total - distributed, 0)
+        else:
+            pts = int(line["points"] * adjusted_total / original_sum)
+        if pts > 0:
+            adjusted_lines.append({**line, "points": pts})
+            distributed += pts
+
+    return adjusted_lines, adjusted_total, unused
 
 
 def _has_paid_transaction(order: Order) -> bool:
@@ -236,41 +296,144 @@ def revert_points_for_order(order: Order) -> None:
     if not order.user:
         return
 
+    # --- 1. Revertir puntos GANADOS (compra que llego a estado final) ---
     earned_tx = LoyaltyTransaction.objects.filter(
         order=order,
         tx_type__code__in=["earned_purchase", "earned_purchase_capped"],
     ).first()
-    if not earned_tx:
+
+    if earned_tx:
+        reverted_type, _ = LoyaltyTransactionType.objects.get_or_create(
+            code="earned_purchase_reverted",
+            defaults={
+                "name": "Puntos revertidos por cancelacion",
+                "description": "Reversion automatica de puntos por orden cancelada.",
+            },
+        )
+        if not LoyaltyTransaction.objects.filter(order=order, tx_type=reverted_type).exists():
+            points_to_revert = abs(earned_tx.points_delta)
+            loyalty_account = earned_tx.loyalty_account
+
+            LoyaltyTransaction.objects.create(
+                loyalty_account=loyalty_account,
+                order=order,
+                tx_type=reverted_type,
+                points_delta=-points_to_revert,
+                description=f"Reversion por cancelacion: {order.order_code}",
+            )
+            loyalty_account.current_points = max(loyalty_account.current_points - points_to_revert, 0)
+            loyalty_account.lifetime_points = max(loyalty_account.lifetime_points - points_to_revert, 0)
+            loyalty_account.tier = get_tier_for(loyalty_account.restaurant, loyalty_account.lifetime_points)
+            loyalty_account.save(update_fields=["current_points", "lifetime_points", "tier", "updated_at"])
+
+    # --- 2. Devolver puntos CANJEADOS directamente en el pedido ---
+    _revert_direct_redemptions_for_order(order)
+
+    # --- 3. Devolver puntos de recompensas LoyaltyReward ya aplicadas ---
+    _revert_applied_reward_redemptions_for_order(order)
+
+
+def _revert_direct_redemptions_for_order(order: Order) -> None:
+    """Devuelve los puntos descontados via canje directo (direct_redemption) al cancelar."""
+    direct_txs = list(
+        LoyaltyTransaction.objects.filter(
+            order=order,
+            tx_type__code="direct_redemption",
+        ).select_related("loyalty_account")
+    )
+    if not direct_txs:
         return
 
-    reverted_type, _ = LoyaltyTransactionType.objects.get_or_create(
-        code="earned_purchase_reverted",
+    refund_type, _ = LoyaltyTransactionType.objects.get_or_create(
+        code="direct_redemption_refunded",
         defaults={
-            "name": "Puntos revertidos por cancelacion",
-            "description": "Reversion automatica de puntos por orden cancelada.",
+            "name": "Canje directo devuelto por cancelacion",
+            "description": "Devolucion de puntos de canje directo al cancelar el pedido.",
         },
     )
-    if LoyaltyTransaction.objects.filter(order=order, tx_type=reverted_type).exists():
+    cancelled_status, _ = LoyaltyRedemptionStatus.objects.get_or_create(
+        code="cancelled",
+        defaults={"name": "Cancelado", "description": "Canje cancelado."},
+    )
+
+    for tx in direct_txs:
+        if LoyaltyTransaction.objects.filter(
+            loyalty_account=tx.loyalty_account,
+            order=order,
+            tx_type=refund_type,
+        ).exists():
+            continue
+
+        points_to_return = abs(tx.points_delta)
+        account = tx.loyalty_account
+
+        LoyaltyTransaction.objects.create(
+            loyalty_account=account,
+            order=order,
+            tx_type=refund_type,
+            points_delta=points_to_return,
+            description=f"Devolucion de canje por cancelacion: {order.order_code}",
+        )
+
+        account.current_points += points_to_return
+        account.save(update_fields=["current_points", "updated_at"])
+
+        LoyaltyRedemption.objects.filter(
+            loyalty_transaction=tx,
+            is_direct=True,
+        ).update(status=cancelled_status)
+
+
+def _revert_applied_reward_redemptions_for_order(order: Order) -> None:
+    """Devuelve puntos de LoyaltyReward canjeadas y ya aplicadas al pedido."""
+    applied_redemptions = list(
+        LoyaltyRedemption.objects.filter(
+            order=order,
+            status__code="applied",
+            loyalty_reward__isnull=False,
+            is_direct=False,
+        ).select_related(
+            "loyalty_transaction__loyalty_account",
+            "loyalty_reward",
+            "status",
+        )
+    )
+    if not applied_redemptions:
         return
 
-    points_to_revert = abs(earned_tx.points_delta)
-    loyalty_account = earned_tx.loyalty_account
-
-    LoyaltyTransaction.objects.create(
-        loyalty_account=loyalty_account,
-        order=order,
-        tx_type=reverted_type,
-        points_delta=-points_to_revert,
-        description=f"Reversion por cancelacion: {order.order_code}",
+    refund_type, _ = LoyaltyTransactionType.objects.get_or_create(
+        code="reward_redemption_refunded",
+        defaults={
+            "name": "Recompensa devuelta por cancelacion",
+            "description": "Devolucion de puntos de recompensa al cancelar el pedido.",
+        },
+    )
+    cancelled_status, _ = LoyaltyRedemptionStatus.objects.get_or_create(
+        code="cancelled",
+        defaults={"name": "Cancelado", "description": "Canje cancelado."},
     )
 
-    loyalty_account.current_points = max(loyalty_account.current_points - points_to_revert, 0)
-    loyalty_account.lifetime_points = max(loyalty_account.lifetime_points - points_to_revert, 0)
-    loyalty_account.tier = get_tier_for(
-        loyalty_account.restaurant,
-        loyalty_account.lifetime_points,
-    )
-    loyalty_account.save(update_fields=["current_points", "lifetime_points", "tier", "updated_at"])
+    for redemption in applied_redemptions:
+        account = redemption.loyalty_transaction.loyalty_account
+        points_to_return = abs(redemption.loyalty_transaction.points_delta)
+
+        LoyaltyTransaction.objects.create(
+            loyalty_account=account,
+            order=order,
+            tx_type=refund_type,
+            points_delta=points_to_return,
+            description=f"Devolucion de recompensa por cancelacion: {order.order_code}",
+        )
+        account.current_points += points_to_return
+        account.save(update_fields=["current_points", "updated_at"])
+
+        reward = redemption.loyalty_reward
+        if reward.available_quantity is not None:
+            reward.available_quantity += 1
+            reward.save(update_fields=["available_quantity", "updated_at"])
+
+        redemption.status = cancelled_status
+        redemption.save(update_fields=["status", "updated_at"])
 
 
 @transaction.atomic
@@ -377,6 +540,147 @@ def cancel_redemption(user, redemption: LoyaltyRedemption) -> LoyaltyRedemption:
     redemption.status = cancelled_status
     redemption.save(update_fields=["status", "updated_at"])
     return redemption
+
+
+@transaction.atomic
+def apply_direct_line_redemptions(
+    order: Order,
+    line_redemptions: list[dict],
+) -> Decimal:
+    """
+    Canje directo sin LoyaltyReward: descuenta puntos del balance del usuario
+    y crea LoyaltyRedemption por cada linea con puntos > 0.
+    Devuelve el descuento total en pesos.
+    line_redemptions = [{"order_item_index": int, "points_to_apply": int}, ...]
+    """
+    if not order.user:
+        return Decimal("0.00")
+
+    try:
+        loyalty_setting = order.restaurant.loyalty_setting
+    except RestaurantLoyaltySetting.DoesNotExist:
+        return Decimal("0.00")
+
+    if not loyalty_setting.is_active:
+        return Decimal("0.00")
+
+    point_redeem_value = (
+        Decimal(loyalty_setting.point_redeem_value)
+        if loyalty_setting.point_redeem_value is not None
+        else None
+    )
+    if point_redeem_value is None or point_redeem_value <= Decimal("0"):
+        raise ValueError("El restaurante no configuro la equivalencia de canje por punto.")
+
+    loyalty_account = LoyaltyAccount.objects.select_for_update().filter(
+        user=order.user,
+        restaurant=order.restaurant,
+    ).first()
+    if not loyalty_account or loyalty_account.current_points <= 0:
+        return Decimal("0.00")
+
+    order_items = list(order.items.select_related("menu_item"))
+
+    tx_type, _ = LoyaltyTransactionType.objects.get_or_create(
+        code="direct_redemption",
+        defaults={
+            "name": "Canje directo en pedido",
+            "description": "Descuento directo de puntos aplicado en el checkout.",
+        },
+    )
+    applied_status, _ = LoyaltyRedemptionStatus.objects.get_or_create(
+        code="applied",
+        defaults={"name": "Aplicado", "description": "Canje aplicado a una orden."},
+    )
+
+    lines_to_apply = []
+    points_total = 0
+
+    for line in line_redemptions:
+        item_index = int(line.get("order_item_index", -1))
+        points_for_item = int(line.get("points_to_apply", 0))
+        if points_for_item <= 0:
+            continue
+        if item_index < 0 or item_index >= len(order_items):
+            raise ValueError("Indice de item invalido para aplicar canje directo.")
+
+        order_item = order_items[item_index]
+        config = MenuItemLoyaltyConfig.objects.filter(menu_item=order_item.menu_item).first()
+        if not config or not config.allows_points_redemption:
+            raise ValueError(f"El producto '{order_item.item_name_snapshot}' no admite canje.")
+        if points_for_item < config.min_points_redeemable:
+            raise ValueError(
+                f"Debes aplicar al menos {config.min_points_redeemable} puntos en '{order_item.item_name_snapshot}'.",
+            )
+        if config.max_points_redeemable is not None and points_for_item > config.max_points_redeemable:
+            raise ValueError(
+                f"Superaste el maximo de {config.max_points_redeemable} puntos en '{order_item.item_name_snapshot}'.",
+            )
+
+        # B3: cap de descuento por linea al precio del item
+        max_points_by_price = _quantize_floor(
+            Decimal(order_item.line_total_amount) / point_redeem_value
+        )
+        if points_for_item > max_points_by_price:
+            raise ValueError(
+                f"Los puntos en '{order_item.item_name_snapshot}' exceden el precio del producto. "
+                f"Maximo {max_points_by_price} puntos para ese item.",
+            )
+
+        lines_to_apply.append({"order_item": order_item, "points": points_for_item})
+        points_total += points_for_item
+
+    if points_total <= 0:
+        return Decimal("0.00")
+
+    if points_total > loyalty_account.current_points:
+        raise ValueError("No tienes puntos suficientes para aplicar este canje.")
+
+    if (
+        loyalty_setting.max_redeemable_points_per_order is not None
+        and points_total > loyalty_setting.max_redeemable_points_per_order
+    ):
+        raise ValueError(
+            f"Superaste el maximo de {loyalty_setting.max_redeemable_points_per_order} puntos por pedido.",
+        )
+
+    # Redondeo de denominacion: el total a pagar debe ser multiplo de min_payment_denomination
+    denomination = loyalty_setting.min_payment_denomination
+    if denomination:
+        total_before_discount = Decimal(order.total_amount)
+        lines_to_apply, points_total, _unused = _apply_denomination_rounding(
+            lines_to_apply,
+            points_total,
+            point_redeem_value,
+            total_before_discount,
+            denomination,
+        )
+        if points_total <= 0:
+            return Decimal("0.00")
+
+    loyalty_transaction = LoyaltyTransaction.objects.create(
+        loyalty_account=loyalty_account,
+        order=order,
+        tx_type=tx_type,
+        points_delta=-points_total,
+        description=f"Canje directo en pedido: {order.order_code}",
+    )
+
+    for line in lines_to_apply:
+        LoyaltyRedemption.objects.create(
+            loyalty_transaction=loyalty_transaction,
+            loyalty_reward=None,
+            order=order,
+            order_item=line["order_item"],
+            status=applied_status,
+            points_applied=line["points"],
+            is_direct=True,
+        )
+
+    loyalty_account.current_points = max(loyalty_account.current_points - points_total, 0)
+    loyalty_account.save(update_fields=["current_points", "updated_at"])
+
+    return (Decimal(points_total) * point_redeem_value).quantize(Decimal("0.01"))
 
 
 @transaction.atomic

@@ -41,6 +41,7 @@ export default function OwnerLoyaltyPage() {
     max_redeemable_points_per_order: "",
     vip_threshold_orders: 100,
     point_redeem_value: "",
+    min_payment_denomination: 100,
   }, [draftSetting, setting])
 
   if (!restaurantId) {
@@ -128,13 +129,27 @@ export default function OwnerLoyaltyPage() {
                   onChange={(value) => setDraftSetting((current) => ({ ...(current || settingState), point_redeem_value: value || null }))}
                   hint="Cuantos pesos vale cada punto al canjear. Ejemplo: si vale 10, 100 puntos descuentan $1000."
                 />
+                <FieldWithHint
+                  label="Denominacion minima de pago"
+                  type="number"
+                  value={settingState.min_payment_denomination ?? ""}
+                  onChange={(value) => setDraftSetting((current) => ({ ...(current || settingState), min_payment_denomination: value ? Number(value) : null }))}
+                  hint="El total a pagar siempre quedara en multiplo de este valor. Util cuando los pagos son en efectivo (billetes de $100, $200, etc.). Ejemplo: 100 → el total queda en $1600, nunca en $1560. Vacio = sin restriccion."
+                />
               </div>
 
-              <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+              <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground space-y-1">
                 <p>Acumulacion: Por cada ${Number(settingState.currency_unit_amount || 0).toLocaleString()} tus clientes ganan {settingState.points_earned || 0} punto(s).</p>
                 <p>
                   Canje: Cada 100 puntos valen ${Math.round(Number(settingState.point_redeem_value || 0) * 100).toLocaleString()} de descuento.
                 </p>
+                {settingState.min_payment_denomination ? (
+                  <p>
+                    Denominacion: el total siempre queda en multiplo de ${Number(settingState.min_payment_denomination).toLocaleString()} — los puntos sobrantes no se descuentan.
+                  </p>
+                ) : (
+                  <p>Denominacion: sin restriccion de billete minimo.</p>
+                )}
               </div>
 
               <Button
