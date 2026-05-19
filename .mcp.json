@@ -1,16 +1,18 @@
 {
-  "playwright": {
-    "command": "npx",
-    "args": [
-      "-y",
-      "@playwright/mcp@latest",
-      "--browser",
-      "chrome",
-      "--executable-path",
-      "/home/yoiner/.cache/ms-playwright/chromium-1224/chrome-linux64/chrome",
-      "--viewport-size",
-      "1280,720",
-      "--headless"
-    ]
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest",
+        "--browser",
+        "chrome",
+        "--executable-path",
+        "/home/yoiner/.cache/ms-playwright/chromium-1224/chrome-linux64/chrome",
+        "--viewport-size",
+        "1280,720",
+        "--headless"
+      ]
+    }
   }
 }
