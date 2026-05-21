@@ -104,6 +104,7 @@ LOCAL_APPS = [
     "apps.loyalty",
     "apps.notifications",
     "apps.order_chat",
+    "apps.billing",
     # Your stuff: custom apps go here
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
@@ -372,6 +373,17 @@ CELERY_WORKER_SEND_TASK_EVENTS = True
 CELERY_TASK_SEND_SENT_EVENT = True
 # https://docs.celeryq.dev/en/stable/userguide/configuration.html#worker-hijack-root-logger
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+CELERY_BEAT_SCHEDULE = {
+    "billing-expire-trials": {
+        "task": "billing.expire_trials",
+        "schedule": 3600,  # every hour
+    },
+    "billing-process-scheduled-downgrades": {
+        "task": "billing.process_scheduled_downgrades",
+        "schedule": 86400,  # every 24h
+        "options": {"expires": 3600},
+    },
+}
 # django-rest-framework
 # -------------------------------------------------------------------------------
 # django-rest-framework - https://www.django-rest-framework.org/api-guide/settings/

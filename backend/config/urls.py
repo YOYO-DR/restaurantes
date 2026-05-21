@@ -41,6 +41,9 @@ urlpatterns += [
     path("api/", include("apps.order_chat.api.urls")),
     # Operator management
     path("api/", include("apps.restaurants.api.operator_urls")),
+    # Billing
+    path("api/", include("apps.billing.api.admin_urls")),
+    path("api/", include("apps.billing.api.owner_urls")),
     # DRF auth token
     path("api/auth-token/", obtain_auth_token, name="obtain_auth_token"),
     path("api/schema/", SpectacularAPIView.as_view(), name="api-schema"),

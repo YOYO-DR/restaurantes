@@ -5,6 +5,7 @@ from factory import LazyAttribute
 from factory import Sequence
 from factory.django import DjangoModelFactory
 
+from apps.billing.models import Plan as SubscriptionPlan
 from apps.customers.models import AddressType
 from apps.customers.models import CustomerAddress
 from apps.menu.models import MenuCategory
@@ -12,7 +13,6 @@ from apps.menu.models import MenuItem
 from apps.orders.models import OrderStatus
 from apps.orders.models import OrderType
 from apps.platform_config.models import BillingPeriod
-from apps.platform_config.models import SubscriptionPlan
 from apps.restaurants.models import Restaurant
 from apps.restaurants.models import RestaurantAddress
 from apps.restaurants.models import RestaurantCategory
@@ -32,14 +32,16 @@ class BillingPeriodFactory(DjangoModelFactory[BillingPeriod]):
 
 
 class SubscriptionPlanFactory(DjangoModelFactory[SubscriptionPlan]):
-    billing_period = LazyAttribute(lambda _: BillingPeriodFactory())
     code = Sequence(lambda n: f"plan-{n}")
     name = Sequence(lambda n: f"Plan {n}")
     price_amount = Decimal("0.00")
     currency_code = "COP"
+    is_free = False
+    is_active = True
 
     class Meta:
         model = SubscriptionPlan
+        django_get_or_create = ("code",)
 
 
 class RestaurantStatusFactory(DjangoModelFactory[RestaurantStatus]):

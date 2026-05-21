@@ -26,6 +26,9 @@ import AdminUsers from "@/pages/dashboard/admin/usuarios"
 import AdminRestaurants from "@/pages/dashboard/admin/restaurantes"
 import AdminReports from "@/pages/dashboard/admin/reportes"
 import AdminSettings from "@/pages/dashboard/admin/configuracion"
+import AdminFuncionalidades from "@/pages/dashboard/admin/funcionalidades"
+import AdminPlanes from "@/pages/dashboard/admin/planes"
+import AdminSolicitudes from "@/pages/dashboard/admin/solicitudes"
 import ClientDashboardPage from "@/pages/dashboard/cliente"
 import ClientOrdersPage from "@/pages/dashboard/cliente/pedidos"
 import ClientPointsPage from "@/pages/dashboard/cliente/puntos"
@@ -44,6 +47,7 @@ import OwnerLoyaltyPage from "@/pages/dashboard/restaurante/lealtad"
 import OwnerProfilePage from "@/pages/dashboard/restaurante/perfil"
 import OwnerSettingsPage from "@/pages/dashboard/restaurante/configuracion"
 import OwnerOperadoresPage from "@/pages/dashboard/restaurante/operadores"
+import OwnerSuscripcionPage from "@/pages/dashboard/restaurante/suscripcion"
 import InvitacionOperadorPage from "@/pages/invitacion-operador"
 import NotFoundPage from "@/pages/not-found"
 
@@ -103,6 +107,9 @@ export default function App() {
             <Route path="restaurantes" element={<AdminRestaurants />} />
             <Route path="reportes" element={<AdminReports />} />
             <Route path="configuracion" element={<AdminSettings />} />
+            <Route path="funcionalidades" element={<AdminFuncionalidades />} />
+            <Route path="planes" element={<AdminPlanes />} />
+            <Route path="solicitudes" element={<AdminSolicitudes />} />
             <Route path="perfil" element={<Navigate to="/dashboard/admin/configuracion" replace />} />
           </Route>
 
@@ -153,6 +160,14 @@ export default function App() {
             />
             <Route path="perfil" element={<OwnerProfilePage />} />
             <Route path="configuracion" element={<OwnerSettingsPage />} />
+            <Route
+              path="suscripcion"
+              element={
+                <ProtectedRoute allowedRoles={["restaurante", "dueno"]}>
+                  <OwnerSuscripcionPage />
+                </ProtectedRoute>
+              }
+            />
           </Route>
 
           <Route path="*" element={<NotFoundPage />} />

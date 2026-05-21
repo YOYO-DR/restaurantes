@@ -4,20 +4,381 @@ import {
   ChevronDown,
   ChevronUp,
   ChevronsUpDown,
+  CreditCard,
   Loader2,
   Search,
   Settings2,
+  Trash2,
 } from "lucide-react"
 
 import { DashboardShellSkeleton } from "@/components/ui/app-skeletons"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { apiJson } from "@/lib/api"
 import { useAdminRestaurantEditor, useAdminRestaurants } from "@/hooks/use-admin"
 import { formatCurrency } from "@/lib/format"
+
+const SUB_API = "/api/admin/billing/restaurant-subscriptions"
+const PLANS_API = "/api/admin/billing/plans"
+const FEATURES_API = "/api/admin/billing/features"
+
+const STATUS_BADGE = {
+  trial: "bg-amber-100 text-amber-800",
+  active: "bg-emerald-100 text-emerald-800",
+  cancelled: "bg-orange-100 text-orange-800",
+  expired: "bg-slate-100 text-slate-600",
+}
+const STATUS_LABEL = {
+  trial: "Trial",
+  active: "Activo",
+  cancelled: "Cancelado",
+  expired: "Expirado",
+}
+
+function RestaurantSubscriptionModal({ restaurantId, restaurantName, onClose }) {
+  const [sub, setSub] = useState(null)
+  const [plans, setPlans] = useState([])
+  const [features, setFeatures] = useState([])
+  const [overrides, setOverrides] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [loadingAction, setLoadingAction] = useState("")
+  const [selectedPlan, setSelectedPlan] = useState("")
+  const [trialDays, setTrialDays] = useState("")
+  const [overrideForm, setOverrideForm] = useState(null)
+
+  useEffect(() => {
+    if (!restaurantId) return
+    setLoading(true)
+    Promise.all([
+      apiJson(`${SUB_API}/${restaurantId}/`),
+      apiJson(`${PLANS_API}/`),
+      apiJson(`${FEATURES_API}/`),
+      apiJson(`${SUB_API}/${restaurantId}/overrides/`),
+    ]).then(([subData, plansData, featuresData, overridesData]) => {
+      setSub(subData)
+      setSelectedPlan(subData.plan ?? "")
+      setTrialDays(subData.override_trial_days ?? "")
+      setPlans((plansData?.results ?? plansData).filter((p) => p.is_active))
+      setFeatures((featuresData?.results ?? featuresData).filter((f) => f.is_active))
+      setOverrides(Array.isArray(overridesData) ? overridesData : (overridesData?.results ?? []))
+    }).catch(() => {
+      toast.error("Error al cargar la suscripción")
+    }).finally(() => {
+      setLoading(false)
+    })
+  }, [restaurantId])
+
+  const patch = async (body, action = "") => {
+    setSaving(true)
+    setLoadingAction(action)
+    try {
+      const updated = await apiJson(`${SUB_API}/${restaurantId}/`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      })
+      setSub(updated)
+      setSelectedPlan(updated.plan ?? "")
+      setTrialDays(updated.override_trial_days ?? "")
+      toast.success("Suscripción actualizada")
+    } catch (err) {
+      toast.error(err?.detail ?? "Error al actualizar")
+    } finally {
+      setSaving(false)
+      setLoadingAction("")
+    }
+  }
+
+  const addOverride = async () => {
+    if (!overrideForm?.feature) return
+    setSaving(true)
+    setLoadingAction("addOverride")
+    try {
+      const created = await apiJson(`${SUB_API}/${restaurantId}/overrides/`, {
+        method: "POST",
+        body: JSON.stringify(overrideForm),
+      })
+      setOverrides((prev) => {
+        const idx = prev.findIndex((o) => o.feature === created.feature)
+        if (idx >= 0) { const next = [...prev]; next[idx] = created; return next }
+        return [...prev, created]
+      })
+      setOverrideForm(null)
+      toast.success("Override guardado")
+    } catch (err) {
+      toast.error(err?.detail ?? "Error al guardar override")
+    } finally {
+      setSaving(false)
+      setLoadingAction("")
+    }
+  }
+
+  const resetTrialHandler = async () => {
+    await patch({ force_reset_trial: true }, "resetTrial")
+  }
+
+  const saveTrialDaysHandler = async () => {
+    await patch({ override_trial_days: Number(trialDays) }, "saveTrialDays")
+  }
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Suscripción — {restaurantName}</DialogTitle>
+          <DialogDescription>Administra el plan, trial y overrides de features de este restaurante.</DialogDescription>
+        </DialogHeader>
+
+        {loading || !sub ? (
+          <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />Cargando suscripción…
+          </div>
+        ) : (
+          <div className="space-y-6">
+
+            {/* ── Estado actual ── */}
+            <div className="rounded-xl border border-border/70 p-4 space-y-2">
+              <p className="text-sm font-semibold">Estado actual</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className={STATUS_BADGE[sub.status] ?? "bg-slate-100 text-slate-700"}>
+                  {STATUS_LABEL[sub.status] ?? sub.status}
+                </Badge>
+                <span className="text-sm font-medium">{sub.plan_name}</span>
+              </div>
+              {sub.status === "trial" && sub.trial_end && (
+                <p className="text-xs text-muted-foreground">
+                  Trial termina: <span className="font-medium">{new Date(sub.trial_end).toLocaleDateString("es-CO")}</span>
+                  {sub.override_trial_days ? ` · Override: ${sub.override_trial_days} días` : ""}
+                </p>
+              )}
+              {sub.current_period_end && (
+                <p className="text-xs text-muted-foreground">
+                  Período hasta: <span className="font-medium">{new Date(sub.current_period_end).toLocaleDateString("es-CO")}</span>
+                </p>
+              )}
+              {sub.cancelled_at && (
+                <p className="text-xs text-orange-600">
+                  Cancelado el {new Date(sub.cancelled_at).toLocaleDateString("es-CO")}
+                </p>
+              )}
+            </div>
+
+            {/* ── Cambiar plan ── */}
+            <div className="relative space-y-2">
+              <p className="text-sm font-semibold">Cambiar plan</p>
+              <p className="text-xs text-muted-foreground">El cambio es inmediato y no requiere aprobación del propietario.</p>
+              <div className={loadingAction === "applyPlan" ? "space-y-2 opacity-35 transition-opacity" : "space-y-2 transition-opacity"}>
+                <div className="flex gap-2">
+                  <Select value={selectedPlan} onValueChange={setSelectedPlan}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Selecciona un plan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {plans.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}
+                          {p.is_free ? " (Gratis)" : ` — $${Number(p.price_amount).toLocaleString()} ${p.currency_code}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={() => patch({ plan: selectedPlan }, "applyPlan")} disabled={saving || !selectedPlan || selectedPlan === sub.plan}>
+                    {loadingAction === "applyPlan" ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Aplicando...
+                      </>
+                    ) : (
+                      "Aplicar"
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {loadingAction === "applyPlan" ? (
+                <div className="absolute inset-0 flex items-center justify-center rounded-md bg-background/35 backdrop-blur-[1px]">
+                  <div className="flex items-center gap-2 rounded-full bg-background/95 px-4 py-2 text-sm font-medium text-foreground shadow-sm">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Aplicando plan...
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {/* ── Trial ── (solo si está en trial) */}
+            {sub.status === "trial" && (
+              <div className="relative space-y-2">
+                <p className="text-sm font-semibold">Duración del trial</p>
+                <p className="text-xs text-muted-foreground">
+                  Días totales desde el inicio del trial. Deja vacío para usar el default global.
+                  {sub.override_trial_days ? ` Actualmente con override de ${sub.override_trial_days} días.` : " Sin override, usando default global."}
+                </p>
+                <div className={loadingAction === "saveTrialDays" || loadingAction === "resetTrial" ? "space-y-2 opacity-35 transition-opacity" : "space-y-2 transition-opacity"}>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={365}
+                      placeholder="Ej: 30"
+                      value={trialDays}
+                      onChange={(e) => setTrialDays(e.target.value)}
+                      className="w-40"
+                    />
+                    <Button onClick={saveTrialDaysHandler} disabled={saving || !trialDays || Number(trialDays) < 1}>
+                      {loadingAction === "saveTrialDays" ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Guardando...
+                        </>
+                      ) : (
+                        "Guardar días"
+                      )}
+                    </Button>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={resetTrialHandler} disabled={saving}>
+                    {loadingAction === "resetTrial" ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Reiniciando...
+                      </>
+                    ) : (
+                      "Reiniciar trial desde cero"
+                    )}
+                  </Button>
+                </div>
+
+                {loadingAction === "saveTrialDays" || loadingAction === "resetTrial" ? (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-md bg-background/35 backdrop-blur-[1px]">
+                    <div className="flex items-center gap-2 rounded-full bg-background/95 px-4 py-2 text-sm font-medium text-foreground shadow-sm">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {loadingAction === "resetTrial" ? "Reiniciando trial..." : "Guardando días..."}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            )}
+
+            {/* ── Overrides de features ── */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold">Overrides de funcionalidades</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setOverrideForm({ feature: "", can_view: true, can_create: true, can_edit: false, can_delete: false })}
+                >
+                  + Agregar
+                </Button>
+              </div>
+
+              {overrides.length === 0 && !overrideForm && (
+                <p className="text-xs text-muted-foreground">Sin overrides individuales. El restaurante usa los permisos de su plan.</p>
+              )}
+
+              {overrides.length > 0 && (
+                <div className="overflow-x-auto rounded-lg border">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="px-3 py-2 text-left">Feature</th>
+                        <th className="px-2 py-2 text-center">Ver</th>
+                        <th className="px-2 py-2 text-center">Crear</th>
+                        <th className="px-2 py-2 text-center">Editar</th>
+                        <th className="px-2 py-2 text-center">Eliminar</th>
+                        <th className="px-2 py-2 text-center">Fuente</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {overrides.map((ov) => (
+                        <tr key={ov.id} className="border-b last:border-0">
+                          <td className="px-3 py-2 font-medium">{ov.feature_name} <span className="font-mono text-muted-foreground">({ov.feature_code})</span></td>
+                          <td className="px-2 py-2 text-center">{ov.can_view ? "✓" : "—"}</td>
+                          <td className="px-2 py-2 text-center">{ov.can_create ? "✓" : "—"}</td>
+                          <td className="px-2 py-2 text-center">{ov.can_edit ? "✓" : "—"}</td>
+                          <td className="px-2 py-2 text-center">{ov.can_delete ? "✓" : "—"}</td>
+                          <td className="px-2 py-2 text-center">
+                            <span className={`rounded px-1.5 py-0.5 text-xs ${ov.source === "admin" ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"}`}>
+                              {ov.source}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {overrideForm && (
+                <div className="relative rounded-xl border border-dashed border-border p-4 space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground">Nuevo override</p>
+                  <div className={loadingAction === "addOverride" ? "space-y-3 opacity-35 transition-opacity" : "space-y-3 transition-opacity"}>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Funcionalidad</Label>
+                      <Select value={overrideForm.feature} onValueChange={(v) => setOverrideForm((p) => ({ ...p, feature: v }))}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Selecciona una funcionalidad" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {features.map((f) => (
+                            <SelectItem key={f.id} value={f.id}>{f.name} <span className="text-muted-foreground font-mono text-xs">({f.code})</span></SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex flex-wrap gap-4">
+                      {["can_view", "can_create", "can_edit", "can_delete"].map((k) => (
+                        <label key={k} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                          <Checkbox
+                            checked={overrideForm[k]}
+                            onCheckedChange={(v) => setOverrideForm((p) => ({ ...p, [k]: Boolean(v) }))}
+                          />
+                          {k.replace("can_", "")}
+                        </label>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={addOverride} disabled={saving || !overrideForm.feature}>
+                        {loadingAction === "addOverride" ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Guardando...
+                          </>
+                        ) : (
+                          "Guardar override"
+                        )}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setOverrideForm(null)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    </div>
+                  </div>
+
+                  {loadingAction === "addOverride" ? (
+                    <div className="absolute inset-0 flex items-center justify-center rounded-md bg-background/35 backdrop-blur-[1px]">
+                      <div className="flex items-center gap-2 rounded-full bg-background/95 px-4 py-2 text-sm font-medium text-foreground shadow-sm">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Guardando override...
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cerrar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 const STATUS_META = {
   active: { label: "Activo", className: "bg-emerald-100 text-emerald-800" },
@@ -89,6 +450,7 @@ export default function AdminRestaurants() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDialogLoading, setIsDialogLoading] = useState(false)
   const [editForm, setEditForm] = useState(null)
+  const [subModal, setSubModal] = useState(null)
 
   const debouncedName = useDebouncedValue(filters.name)
   const debouncedOwner = useDebouncedValue(filters.owner)
@@ -205,6 +567,7 @@ export default function AdminRestaurants() {
               onPageSizeChange={setPageSize}
               onPageChange={setPage}
               onOpenSettings={openSettings}
+              onOpenSubscription={(r) => setSubModal({ id: r.id, name: r.name })}
             />
           </div>
           <div className="lg:hidden">
@@ -217,10 +580,19 @@ export default function AdminRestaurants() {
               onPageSizeChange={setPageSize}
               onPageChange={setPage}
               onOpenSettings={openSettings}
+              onOpenSubscription={(r) => setSubModal({ id: r.id, name: r.name })}
             />
           </div>
         </>
       ) : null}
+
+      {subModal && (
+        <RestaurantSubscriptionModal
+          restaurantId={subModal.id}
+          restaurantName={subModal.name}
+          onClose={() => setSubModal(null)}
+        />
+      )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
@@ -308,7 +680,7 @@ export default function AdminRestaurants() {
   )
 }
 
-function DesktopRestaurantsTable({ data, filters, isLoading, ordering, onFilterChange, onOrderingChange, pageSize, onPageSizeChange, onPageChange, onOpenSettings }) {
+function DesktopRestaurantsTable({ data, filters, isLoading, ordering, onFilterChange, onOrderingChange, pageSize, onPageSizeChange, onPageChange, onOpenSettings, onOpenSubscription }) {
   return (
     <Card className="overflow-hidden">
       <div className="relative">
@@ -350,7 +722,24 @@ function DesktopRestaurantsTable({ data, filters, isLoading, ordering, onFilterC
                   <td className="px-4 py-4 text-sm text-foreground">{restaurant.orders_count}</td>
                   <td className="px-4 py-4 text-sm text-foreground">{formatCurrency(restaurant.revenue)}</td>
                   <td className="px-4 py-4 text-sm text-muted-foreground">{new Date(restaurant.joined_at).toLocaleDateString("es-CO")}</td>
-                  <td className="px-4 py-4"><Button variant="outline" size="sm" onClick={() => onOpenSettings(restaurant.id)}><Settings2 className="mr-2 h-4 w-4" />Ajustes</Button></td>
+                  <td className="px-4 py-4">
+                    <TooltipProvider>
+                      <div className="flex gap-1">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="outline" size="icon" onClick={() => onOpenSettings(restaurant.id)}><Settings2 className="h-4 w-4" /></Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Ajustes</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="outline" size="icon" onClick={() => onOpenSubscription(restaurant)}><CreditCard className="h-4 w-4" /></Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Suscripción</TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </TooltipProvider>
+                  </td>
                 </tr>
               )
             })}
@@ -366,7 +755,7 @@ function DesktopRestaurantsTable({ data, filters, isLoading, ordering, onFilterC
   )
 }
 
-function MobileRestaurantsList({ data, filters, isLoading, onFilterChange, pageSize, onPageSizeChange, onPageChange, onOpenSettings }) {
+function MobileRestaurantsList({ data, filters, isLoading, onFilterChange, pageSize, onPageSizeChange, onPageChange, onOpenSettings, onOpenSubscription }) {
   return (
     <Card className="overflow-hidden">
       <CardContent className="space-y-4 p-4">
@@ -402,7 +791,10 @@ function MobileRestaurantsList({ data, filters, isLoading, onFilterChange, pageS
                     <MobileStat label="Registro" value={new Date(restaurant.joined_at).toLocaleDateString("es-CO")} />
                     <MobileStat label="Rating" value={restaurant.rating.toFixed(1)} />
                   </div>
-                  <Button variant="outline" className="mt-4 w-full" onClick={() => onOpenSettings(restaurant.id)}><Settings2 className="mr-2 h-4 w-4" />Ajustes</Button>
+                  <div className="mt-4 flex gap-2">
+                    <Button variant="outline" className="flex-1" onClick={() => onOpenSettings(restaurant.id)}><Settings2 className="mr-2 h-4 w-4" />Ajustes</Button>
+                    <Button variant="outline" className="flex-1" onClick={() => onOpenSubscription(restaurant)}><CreditCard className="mr-2 h-4 w-4" />Suscripción</Button>
+                  </div>
                 </div>
               )
             })}

@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { useOwnerOrdersContext } from "@/context/owner-orders-context"
 import { useOwnerRestaurants } from "@/hooks/use-restaurants"
 import { cn } from "@/lib/utils"
-import { Award, BarChart3, Home, Package, Palette, QrCode, Settings, ShoppingBag, Star, User, UserCog, Users, Utensils, UtensilsCrossed } from "lucide-react"
+import { Award, BarChart3, CreditCard, Home, Package, Palette, QrCode, Settings, ShoppingBag, Star, User, UserCog, Users, Utensils, UtensilsCrossed } from "lucide-react"
 import { useAuth } from "@/context/auth-context"
 
 const ownerOnlyItems = ["/dashboard/restaurante/operadores"]
@@ -85,6 +85,12 @@ const menuItems = [
     icon: User,
   },
   {
+    title: "Mi Suscripción",
+    href: "/dashboard/restaurante/suscripcion",
+    icon: CreditCard,
+    ownerOnly: true,
+  },
+  {
     title: "Configuracion",
     href: "/dashboard/restaurante/configuracion",
     icon: Settings,
@@ -123,9 +129,12 @@ export function OwnerSidebar({ className, onNavigate }) {
       <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-4 pb-4">
         {menuItems.filter((item) => {
           if (ownerOnlyItems.includes(item.href) && !isOwner) return false
+          if (item.ownerOnly && !isOwner) return false
+          const planFeatures = user?.subscription?.features
+          const module = MODULE_MAP[item.href]
+          if (module && planFeatures && planFeatures[module]?.can_view === false) return false
           const operatorPerms = user?.operator_permissions
           if (!operatorPerms) return true
-          const module = MODULE_MAP[item.href]
           if (!module) return true
           return operatorPerms[module]?.can_view !== false
         }).map((item) => {

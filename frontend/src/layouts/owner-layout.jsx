@@ -5,6 +5,8 @@ import { Outlet } from "react-router-dom"
 import { OwnerSidebar } from "@/components/dashboard/owner/owner-sidebar"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { TrialBanner } from "@/components/billing/trial-banner"
+import { CancellationBanner } from "@/components/billing/cancellation-banner"
 
 export function OwnerLayout() {
   const { user, activeRole } = useAuth()
@@ -20,6 +22,8 @@ export function OwnerLayout() {
             userType={activeRole === "cliente" ? "cliente" : "dueno"}
             onMobileMenuClick={() => setIsSidebarOpen(true)}
           />
+          <TrialBanner />
+          <CancellationBanner />
           <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto bg-muted/30 p-4 sm:p-6 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/60 [&::-webkit-scrollbar-thumb:hover]:bg-border [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2">
             <Outlet />
           </main>

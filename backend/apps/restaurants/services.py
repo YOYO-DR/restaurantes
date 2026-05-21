@@ -3,8 +3,7 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.text import slugify
 
-from apps.platform_config.models import BillingPeriod
-from apps.platform_config.models import SubscriptionPlan
+from apps.billing.models import Plan as SubscriptionPlan
 from apps.restaurants.models import CartPosition
 from apps.restaurants.models import CategoryNavigationStyle
 from apps.restaurants.models import MenuLayoutOption
@@ -156,18 +155,12 @@ def ensure_owner_restaurant(
         ensure_restaurant_branding(existing_restaurant)
         return existing_restaurant
 
-    billing_period, _ = BillingPeriod.objects.get_or_create(
-        code="monthly",
-        defaults={"name": "Mensual"},
-    )
-    subscription_plan, _ = SubscriptionPlan.objects.get_or_create(
-        code="starter",
-        defaults={
-            "name": "Starter",
-            "billing_period": billing_period,
-            "price_amount": "0.00",
-            "currency_code": "COP",
-        },
+    subscription_plan = (
+        SubscriptionPlan.objects.filter(is_free=True, is_active=True).first()
+        or SubscriptionPlan.objects.get_or_create(
+            code="free",
+            defaults={"name": "Free", "price_amount": "0.00", "currency_code": "COP", "is_free": True, "is_active": True},
+        )[0]
     )
     category, _ = RestaurantCategory.objects.get_or_create(
         code="general",

@@ -49,7 +49,7 @@ class Restaurant(BaseModel):
         related_name="restaurants",
     )
     subscription_plan = models.ForeignKey(
-        "platform_config.SubscriptionPlan",
+        "billing.Plan",
         on_delete=models.PROTECT,
         related_name="restaurants",
     )

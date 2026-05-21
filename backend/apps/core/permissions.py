@@ -206,3 +206,12 @@ class ConfiguracionModulePermission(OperatorModulePermission):
 
 class LealtadModulePermission(OperatorModulePermission):
     module = "lealtad"
+
+
+def plan_feature_can(user, feature_code: str, action: str) -> bool:
+    """Wrapper that delegates to billing.permissions.plan_can. Avoids circular imports."""
+    try:
+        from apps.billing.permissions import plan_can
+        return plan_can(user, feature_code, action)
+    except Exception:
+        return True  # fail-open if billing not configured yet

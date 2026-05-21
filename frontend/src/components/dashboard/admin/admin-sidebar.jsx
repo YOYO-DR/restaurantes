@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useLocation } from "react-router-dom";
-import { BarChart3, Users, Store, Settings, LogOut, Menu, X, } from 'lucide-react';
+import { BarChart3, ClipboardList, CreditCard, Layers, Users, Store, Settings, LogOut, Menu, X, } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 export function AdminSidebar() {
@@ -31,6 +31,21 @@ export function AdminSidebar() {
             icon: Settings,
             label: 'Configuración',
             href: '/dashboard/admin/configuracion',
+        },
+        {
+            icon: Layers,
+            label: 'Funcionalidades',
+            href: '/dashboard/admin/funcionalidades',
+        },
+        {
+            icon: CreditCard,
+            label: 'Planes',
+            href: '/dashboard/admin/planes',
+        },
+        {
+            icon: ClipboardList,
+            label: 'Solicitudes',
+            href: '/dashboard/admin/solicitudes',
         },
     ];
     const isActive = (href) => pathname === href;

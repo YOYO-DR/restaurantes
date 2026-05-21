@@ -242,6 +242,7 @@ class UserMeSerializer(serializers.ModelSerializer):
     date_joined = serializers.SerializerMethodField()
     last_activity_at = serializers.SerializerMethodField()
     operator_permissions = serializers.SerializerMethodField()
+    subscription = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -270,6 +271,7 @@ class UserMeSerializer(serializers.ModelSerializer):
             "date_joined",
             "last_activity_at",
             "operator_permissions",
+            "subscription",
         ]
 
     def get_role(self, obj):
@@ -366,6 +368,45 @@ class UserMeSerializer(serializers.ModelSerializer):
                 "can_delete": p.can_delete,
             }
             for p in perms
+        }
+
+    def get_subscription(self, obj):
+        from apps.core.permissions import is_admin_user, is_owner_user, is_operator_user, get_operator_restaurant_id
+        from apps.billing.models import RestaurantSubscription
+        from apps.billing.services.features import serialize_features_for_jwt
+
+        if is_admin_user(obj):
+            return None
+
+        if is_owner_user(obj):
+            restaurant = obj.owned_restaurants.first()
+        elif is_operator_user(obj):
+            rid = get_operator_restaurant_id(obj)
+            if not rid:
+                return None
+            from apps.restaurants.models import Restaurant
+            restaurant = Restaurant.objects.filter(pk=rid).first()
+        else:
+            return None
+
+        if restaurant is None:
+            return None
+
+        try:
+            sub = RestaurantSubscription.objects.select_related("plan").get(restaurant=restaurant)
+        except RestaurantSubscription.DoesNotExist:
+            return None
+
+        features = serialize_features_for_jwt(restaurant.pk)
+        return {
+            "restaurant_id": str(restaurant.pk),
+            "plan": sub.plan.code,
+            "plan_name": sub.plan.name,
+            "status": sub.status,
+            "trial_end": sub.trial_end.isoformat() if sub.trial_end else None,
+            "current_period_end": sub.current_period_end.isoformat() if sub.current_period_end else None,
+            "cancelled_at": sub.cancelled_at.isoformat() if sub.cancelled_at else None,
+            "features": features,
         }
 
 
