@@ -275,5 +275,4 @@ restaurante/media/
 .ipython/
 .env
 .envs/*
-!.envs/.local/
 .django

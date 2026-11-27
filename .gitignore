@@ -1,0 +1,5 @@
+# Entorno local (plantilla versionada: .env.local.example)
+.env
+
+# Cache/logs de Playwright MCP
+.playwright-mcp/
