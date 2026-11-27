@@ -123,8 +123,10 @@ jobs:
       - name: Activar pnpm
         run: corepack enable && corepack prepare pnpm@latest --activate
 
+      # --ignore-scripts como en los Dockerfile: pnpm aborta si hay scripts de build
+      # sin aprobar (core-js).
       - name: Instalar dependencias
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       # Hoy el lint solo da avisos (0 errores): falla únicamente si aparece un error.
       - name: Lint
