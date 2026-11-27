@@ -176,7 +176,7 @@ Ejemplo SMTP:
 DJANGO_EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
 DJANGO_DEFAULT_FROM_EMAIL=FoodHub <no-reply@tudominio.com>
 DJANGO_SERVER_EMAIL=server@tudominio.com
-DJANGO_EMAIL_SUBJECT_PREFIX=[FoodHub] 
+DJANGO_EMAIL_SUBJECT_PREFIX=[FoodHub]
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_HOST_USER=tu_correo@dominio.com
