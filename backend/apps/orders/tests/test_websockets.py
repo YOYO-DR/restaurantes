@@ -12,6 +12,9 @@ from apps.restaurants.tests.factories import RestaurantFactory
 from apps.users.tests.factories import UserFactory
 from config.asgi import application
 
+# AllowedHostsOriginValidator rechaza conexiones sin Origin, como haria con un navegador real.
+WS_HEADERS = [(b"origin", b"http://localhost")]
+
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.anyio]
 
 
@@ -41,6 +44,7 @@ async def test_session_notifications_accepts_owner_role():
     communicator = WebsocketCommunicator(
         application,
         f"/api/ws/notifications/?access_token={token}&active_role=restaurante",
+        headers=WS_HEADERS,
     )
 
     connected, _subprotocol = await communicator.connect()
@@ -55,6 +59,7 @@ async def test_session_notifications_accepts_owner_role_without_path_ids():
     communicator = WebsocketCommunicator(
         application,
         f"/api/ws/notifications/?access_token={token}&active_role=restaurante",
+        headers=WS_HEADERS,
     )
 
     connected, _subprotocol = await communicator.connect()
@@ -70,6 +75,7 @@ async def test_session_notifications_accepts_client_role_without_path_ids():
     communicator = WebsocketCommunicator(
         application,
         f"/api/ws/notifications/?access_token={token}&active_role=cliente",
+        headers=WS_HEADERS,
     )
 
     connected, _subprotocol = await communicator.connect()
@@ -84,6 +90,7 @@ async def test_session_notifications_accepts_admin_role():
     communicator = WebsocketCommunicator(
         application,
         f"/api/ws/notifications/?access_token={token}&active_role=admin",
+        headers=WS_HEADERS,
     )
 
     connected, _subprotocol = await communicator.connect()
@@ -97,8 +104,14 @@ def create_guest_order_with_tracking():
     owner = UserFactory()
     assign_role(owner, "restaurante")
     restaurant = RestaurantFactory(owner=owner)
-    order_type, _ = OrderType.objects.get_or_create(code="pickup", defaults={"name": "Pickup"})
-    status, _ = OrderStatus.objects.get_or_create(code="new", defaults={"name": "Nuevo"})
+    order_type, _ = OrderType.objects.get_or_create(
+        code="pickup",
+        defaults={"name": "Pickup"},
+    )
+    status, _ = OrderStatus.objects.get_or_create(
+        code="new",
+        defaults={"name": "Nuevo"},
+    )
     order = Order.objects.create(
         order_code="ORD-WS-001",
         restaurant=restaurant,
@@ -116,7 +129,11 @@ def create_guest_order_with_tracking():
 
 async def test_guest_websocket_rejects_without_tracking_code():
     order = await create_guest_order_with_tracking()
-    communicator = WebsocketCommunicator(application, f"/api/ws/guest-orders/{order.id}/")
+    communicator = WebsocketCommunicator(
+        application,
+        f"/api/ws/guest-orders/{order.id}/",
+        headers=WS_HEADERS,
+    )
     connected, _subprotocol = await communicator.connect()
     assert connected is False
 
@@ -126,6 +143,7 @@ async def test_guest_websocket_accepts_valid_tracking_code():
     communicator = WebsocketCommunicator(
         application,
         f"/api/ws/guest-orders/{order.id}/?tracking_code={order.guest_tracking_code}",
+        headers=WS_HEADERS,
     )
     connected, _subprotocol = await communicator.connect()
     assert connected is True
