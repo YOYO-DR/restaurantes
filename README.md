@@ -73,6 +73,8 @@ Un solo `.env` en la raiz (gitignored) alimenta a Docker (todos los servicios), 
 cp .env.local.example .env
 ```
 
+Producción (Dokploy): `.env.prod.example` documenta las claves que necesita cada servicio; el `.env` real vive en el servidor.
+
 Los puertos del host (`DJANGO_PORT`, `FRONTEND_PORT`, `PGBOUNCER_PORT`, `FLOWER_PORT`, `REDISINSIGHT_PORT`) se cambian ahi si chocan con otro stack local; si cambias `DJANGO_PORT`, ajusta tambien `VITE_API_URL`.
 
 ### 1. Levantar backend
