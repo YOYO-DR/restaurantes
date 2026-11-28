@@ -1,7 +1,13 @@
-FROM alpine:3.20
+# Binario oficial de Traefik (estático): el paquete de Alpine va atrasado (la 3.20
+# traía Traefik 3.0.0, de julio de 2024, sin los avisos de seguridad posteriores).
+FROM docker.io/traefik:v3.7.19 AS traefik
 
-# Instala traefik y envsubst (parte del paquete gettext)
-RUN apk add --no-cache traefik gettext
+FROM alpine:3.24
+
+# envsubst (parte del paquete gettext)
+RUN apk add --no-cache gettext
+
+COPY --from=traefik /usr/local/bin/traefik /usr/local/bin/traefik
 
 # Crea carpeta para certificados
 RUN mkdir -p /etc/traefik/acme \
