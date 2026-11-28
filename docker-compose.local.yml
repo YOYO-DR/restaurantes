@@ -19,11 +19,9 @@ services:
     volumes:
       - ./backend:/app:z
     env_file:
-      - ./backend/.envs/.local/.postgres
-      - ./backend/.envs/.local/.django
-      - ./backend/.env
+      - ./.env
     ports:
-      - '8000:8000'
+      - '${DJANGO_PORT:-8000}:8000'
     command: /start
 
   postgres:
@@ -37,7 +35,7 @@ services:
       - restaurantes_local_postgres_data:/var/lib/postgresql/18/docker
       - restaurantes_local_postgres_data_backups:/backups
     env_file:
-      - ./backend/.envs/.local/.postgres
+      - ./.env
 
   pgbouncer:
     build:
@@ -49,9 +47,9 @@ services:
     depends_on:
       - postgres
     env_file:
-      - ./backend/.envs/.local/.postgres
+      - ./.env
     ports:
-      - '6432:6432'
+      - '${PGBOUNCER_PORT:-6432}:6432'
 
   redis:
     image: docker.io/redis:7.2
@@ -65,7 +63,7 @@ services:
     container_name: restaurantes_local_redisinsight
     restart: unless-stopped
     ports:
-      - "5540:5540"
+      - "${REDISINSIGHT_PORT:-5540}:5540"
     volumes:
       - restaurantes_local_redisinsight_data:/data
     depends_on:
@@ -100,7 +98,7 @@ services:
     image: restaurantes_local_flower
     container_name: restaurantes_local_flower
     ports:
-      - '5555:5555'
+      - '${FLOWER_PORT:-5555}:5555'
     command: /start-flower
     restart: unless-stopped
 
@@ -114,9 +112,9 @@ services:
       - ./frontend:/app
       - /app/node_modules  # Volumen anónimo para preservar node_modules
     env_file:
-      - ./frontend/.env
+      - ./.env
     ports:
-      - '5174:5173'
+      - '${FRONTEND_PORT:-5174}:5173'
     depends_on:
       - django
     restart: unless-stopped

@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Stack
 
-**Backend:** Django 6 + DRF + Django Channels (WebSockets) + Celery + PostgreSQL + Redis  
-**Frontend:** React 19 + Vite + React Router 7 + Tailwind v4 + Shadcn/ui (Radix)  
-**Package manager (frontend):** pnpm  
+**Backend:** Django 6 + DRF + Django Channels (WebSockets) + Celery + PostgreSQL + Redis
+**Frontend:** React 19 + Vite + React Router 7 + Tailwind v4 + Shadcn/ui (Radix)
+**Package manager (frontend):** pnpm
 
 ---
 
@@ -119,6 +119,8 @@ Operator-specific API URLs are registered separately in `backend/apps/restaurant
 ---
 
 ## Key environment variables
+
+All of them live in a single root `.env` (gitignored). Create it with `cp .env.local.example .env`; Docker Compose, Django (`DJANGO_READ_DOT_ENV_FILE=True`) and Vite all read that same file.
 
 | Variable | Purpose |
 |---|---|

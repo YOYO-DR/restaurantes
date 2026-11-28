@@ -65,6 +65,18 @@ README.md
 
 ## Desarrollo local
 
+### 0. Variables de entorno
+
+Un solo `.env` en la raiz (gitignored) alimenta a Docker (todos los servicios), a Django fuera de Docker (`DJANGO_READ_DOT_ENV_FILE=True`) y a Vite:
+
+```bash
+cp .env.local.example .env
+```
+
+Producción (Dokploy): `.env.prod.example` documenta las claves que necesita cada servicio; el `.env` real vive en el servidor.
+
+Los puertos del host (`DJANGO_PORT`, `FRONTEND_PORT`, `PGBOUNCER_PORT`, `FLOWER_PORT`, `REDISINSIGHT_PORT`) se cambian ahi si chocan con otro stack local; si cambias `DJANGO_PORT`, ajusta tambien `VITE_API_URL`.
+
 ### 1. Levantar backend
 
 Desde `backend/`:
@@ -166,7 +178,7 @@ Ejemplo SMTP:
 DJANGO_EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
 DJANGO_DEFAULT_FROM_EMAIL=FoodHub <no-reply@tudominio.com>
 DJANGO_SERVER_EMAIL=server@tudominio.com
-DJANGO_EMAIL_SUBJECT_PREFIX=[FoodHub] 
+DJANGO_EMAIL_SUBJECT_PREFIX=[FoodHub]
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_HOST_USER=tu_correo@dominio.com

@@ -1,0 +1,190 @@
+name: Validación de PR
+
+# Valida los PR hacia develop y main: pre-commit sobre los archivos del PR,
+# tests y build del frontend, tests del backend y el build de las imágenes de Dokploy.
+on:
+  pull_request:
+    branches: ['develop', 'main']
+    paths-ignore: ['docs/**']
+
+concurrency:
+  group: pr-validation-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pre-commit:
+    name: Pre-commit (archivos del PR)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: backend/.python-version
+
+      - name: Cache de pre-commit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('backend/.pre-commit-config.yaml') }}
+
+      - name: Instalar pre-commit
+        run: python -m pip install pre-commit
+
+      # Solo los archivos que cambia el PR: el repo aún tiene deuda de formato
+      # histórica y un --all-files fallaría en cada PR.
+      - name: Ejecutar pre-commit
+        run: >-
+          pre-commit run
+          -c backend/.pre-commit-config.yaml
+          --from-ref "origin/${{ github.base_ref }}"
+          --to-ref HEAD
+          --show-diff-on-failure
+          --color=always
+
+  backend-tests:
+    name: Tests backend
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: restaurantes
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/restaurantes
+      REDIS_URL: redis://localhost:6379/0
+      DJANGO_SECRET_KEY: ci-only-secret-key-not-used-anywhere-else-0123456789
+      DJANGO_CSRF_TRUSTED_ORIGINS: http://localhost
+      DJANGO_CORS_ALLOWED_ORIGINS: http://localhost
+      DJANGO_NAME_LOG_FILE: ci
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: backend/.python-version
+          cache: pip
+          cache-dependency-path: backend/requirements/*.txt
+
+      # libmagic1: python-magic detecta el MIME de las subidas.
+      - name: Dependencias del sistema
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libpq-dev gettext libmagic1
+
+      - name: Instalar dependencias
+        run: python -m pip install -r requirements/local.txt
+
+      - name: Preparar directorio de logs
+        run: mkdir -p logs
+
+      - name: Verificar migraciones
+        run: python manage.py makemigrations --check --dry-run --settings=config.settings.test
+
+      - name: Ejecutar pytest
+        run: pytest -p no:sugar --create-db
+
+  frontend:
+    name: Frontend (lint, tests y build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # Igual que los Dockerfile del frontend: pnpm vía corepack.
+      - name: Activar pnpm
+        run: corepack enable && corepack prepare pnpm@latest --activate
+
+      # --ignore-scripts como en los Dockerfile: pnpm aborta si hay scripts de build
+      # sin aprobar (core-js).
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # Hoy el lint solo da avisos (0 errores): falla únicamente si aparece un error.
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Tests
+        run: pnpm run test:run
+
+      - name: Build
+        run: pnpm run build
+
+  dokploy-build:
+    name: Build Dokploy
+    runs-on: ubuntu-latest
+    env:
+      COMPOSE_FILE: docker-compose.dokploy.yml
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # El compose exige ./.env (env_file); para construir basta con valores
+      # de ejemplo. VITE_API_URL se inyecta en el build del frontend.
+      - name: Crear .env de CI
+        run: echo "VITE_API_URL=https://ci.example.com" > .env
+
+      - name: Validar docker-compose.dokploy.yml
+        run: docker compose config --quiet
+
+      - name: Construir imágenes
+        run: docker compose build
+
+      - name: Comprobar la imagen de Django
+        run: >-
+          docker run --rm --entrypoint python
+          -e DJANGO_SETTINGS_MODULE=config.settings.production
+          -e DATABASE_URL=postgres://ci:ci@localhost:5432/ci
+          -e DJANGO_SECRET_KEY=ci-only-secret-key-not-used-anywhere-else-0123456789
+          -e DJANGO_ADMIN_URL=admin/
+          -e DJANGO_CSRF_TRUSTED_ORIGINS=https://ci.example.com
+          -e DJANGO_NAME_LOG_FILE=ci
+          -e RESEND_API_KEY=re_ci
+          -e SENTRY_DSN=
+          restaurant_production_django
+          manage.py check --deploy --fail-level ERROR
+
+      # Celery carga el transporte de Redis al abrir la conexión: si falta una dependencia,
+      # el worker y beat caen en producción aunque los tests pasen.
+      - name: Comprobar el transporte de Celery en la imagen
+        run: >-
+          docker run --rm --entrypoint python
+          -e DJANGO_SETTINGS_MODULE=config.settings.production
+          -e DATABASE_URL=postgres://ci:ci@localhost:5432/ci
+          -e DJANGO_SECRET_KEY=ci-only-secret-key-not-used-anywhere-else-0123456789
+          -e DJANGO_ADMIN_URL=admin/
+          -e DJANGO_CSRF_TRUSTED_ORIGINS=https://ci.example.com
+          -e DJANGO_NAME_LOG_FILE=ci
+          -e RESEND_API_KEY=re_ci
+          -e SENTRY_DSN=
+          restaurant_production_django
+          -c "from config.celery_app import app; app.connection_for_read().transport"

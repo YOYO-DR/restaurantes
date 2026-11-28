@@ -20,6 +20,9 @@ from apps.restaurants.tests.factories import RestaurantFactory
 from apps.users.tests.factories import UserFactory
 from config.asgi import application
 
+# AllowedHostsOriginValidator rechaza conexiones sin Origin, como haria con un navegador real.
+WS_HEADERS = [(b"origin", b"http://localhost")]
+
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.anyio]
 
 
@@ -73,8 +76,14 @@ def create_guest_order():
     restaurant = RestaurantFactory(owner=owner)
     from apps.orders.models import Order
 
-    order_type, _ = OrderType.objects.get_or_create(code="pickup", defaults={"name": "Pickup"})
-    status, _ = OrderStatus.objects.get_or_create(code="new", defaults={"name": "Nuevo"})
+    order_type, _ = OrderType.objects.get_or_create(
+        code="pickup",
+        defaults={"name": "Pickup"},
+    )
+    status, _ = OrderStatus.objects.get_or_create(
+        code="new",
+        defaults={"name": "Nuevo"},
+    )
     tracking_code = uuid.uuid4()
     order = Order.objects.create(
         order_code=f"ORD-{uuid.uuid4().hex[:6].upper()}",
@@ -112,7 +121,11 @@ def create_inventory_movement_for_restaurant(restaurant):
 
 
 async def test_consumer_rejects_unauthenticated():
-    communicator = WebsocketCommunicator(application, "/api/ws/notifications/?active_role=cliente")
+    communicator = WebsocketCommunicator(
+        application,
+        "/api/ws/notifications/?active_role=cliente",
+        headers=WS_HEADERS,
+    )
     connected, _ = await communicator.connect()
     assert connected is False
 
@@ -123,6 +136,7 @@ async def test_owner_joins_all_module_groups():
     communicator = WebsocketCommunicator(
         application,
         f"/api/ws/notifications/?access_token={token}&active_role=restaurante",
+        headers=WS_HEADERS,
     )
     connected, _ = await communicator.connect()
     assert connected is True
@@ -146,7 +160,7 @@ async def test_owner_joins_all_module_groups():
 
 
 async def test_operator_joins_only_permitted_modules():
-    owner, restaurant = await create_owner_with_restaurant()
+    _owner, restaurant = await create_owner_with_restaurant()
     operator_user = await create_operator_with_permissions(
         restaurant,
         {"pedidos": True, "inventario": False},
@@ -156,6 +170,7 @@ async def test_operator_joins_only_permitted_modules():
     communicator = WebsocketCommunicator(
         application,
         f"/api/ws/notifications/?access_token={token}&active_role=operador",
+        headers=WS_HEADERS,
     )
     connected, _ = await communicator.connect()
     assert connected is True
@@ -193,13 +208,17 @@ async def test_operator_joins_only_permitted_modules():
 
 
 async def test_operator_message_dropped_after_permission_revoked():
-    owner, restaurant = await create_owner_with_restaurant()
-    operator_user = await create_operator_with_permissions(restaurant, {"pedidos": True})
+    _owner, restaurant = await create_owner_with_restaurant()
+    operator_user = await create_operator_with_permissions(
+        restaurant,
+        {"pedidos": True},
+    )
     token = await build_access_token(operator_user)
 
     communicator = WebsocketCommunicator(
         application,
         f"/api/ws/notifications/?access_token={token}&active_role=operador",
+        headers=WS_HEADERS,
     )
     connected, _ = await communicator.connect()
     assert connected is True
@@ -233,19 +252,24 @@ async def test_guest_consumer_rejects_wrong_tracking_code():
     communicator = WebsocketCommunicator(
         application,
         f"/api/ws/guest-orders/{order.id}/?tracking_code=wrong",
+        headers=WS_HEADERS,
     )
     connected, _ = await communicator.connect()
     assert connected is False
 
 
 async def test_role_switch_rejoins_groups():
-    owner, restaurant = await create_owner_with_restaurant()
-    operator_user = await create_operator_with_permissions(restaurant, {"pedidos": True})
+    _owner, restaurant = await create_owner_with_restaurant()
+    operator_user = await create_operator_with_permissions(
+        restaurant,
+        {"pedidos": True},
+    )
     token = await build_access_token(operator_user)
 
     communicator = WebsocketCommunicator(
         application,
         f"/api/ws/notifications/?access_token={token}&active_role=cliente",
+        headers=WS_HEADERS,
     )
     connected, _ = await communicator.connect()
     assert connected is True
@@ -279,6 +303,7 @@ async def test_low_stock_signal_fires_inventario_group():
     communicator = WebsocketCommunicator(
         application,
         f"/api/ws/notifications/?access_token={token}&active_role=restaurante",
+        headers=WS_HEADERS,
     )
     connected, _ = await communicator.connect()
     assert connected is True
